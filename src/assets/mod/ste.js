@@ -87,6 +87,7 @@ const Ste = window.Ste = {
 		const btnAllSelect = document.getElementById( 'sim-btn-AllSelect' )
 		const btnAllCancel = document.getElementById( 'sim-btn-AllCancel' )
 		const btnSelMns = document.getElementById( 'sim-btn-SelectMns' )
+		const btnStack = document.getElementById( 'sim-btn-Stack' )
 
 		if ( btnRm ) btnRm.textContent = `❌ Delete selected ( ${ cntSel } ) and ✅ Keep others( ${ cntDiff } )`
 		if ( btnRS ) btnRS.textContent = `✅ Keep selected ( ${ cntSel } ) and ❌ delete others( ${ cntDiff } )`
@@ -98,6 +99,9 @@ const Ste = window.Ste = {
 			btnSelMns.disabled = ( cntAll == 0 )
 			this.updBtnMns()
 		}
+
+		const stackableGroups = this.updGroupStackBtns()
+		if ( btnStack ) btnStack.disabled = stackableGroups == 0
 
 		console.log( `[Ste] updBtns - selected[ ${ cntSel } / ${ cntAll } ]` )
 	},
@@ -206,38 +210,38 @@ const Ste = window.Ste = {
 		let collecting = false
 
 		chs.forEach( child => {
-			if ( child.classList.contains( 'hr' ) )
-			{
-				const label = child.querySelector( 'label' )
-				if ( label )
-				{
-					const match = label.textContent.match( /Group (\d+)/ )
-					if ( match )
-					{
-						let gid = parseInt( match[ 1 ] )
-						if ( collecting && gid != groupId )
-						{
-							collecting = false
-						}
-						else if ( gid == groupId )
-						{
-							collecting = true
-						}
-					}
-				}
-			}
+			const childGroupId = child.getAttribute?.( 'data-group-id' )
+			if ( childGroupId != null ) collecting = String( childGroupId ) === String( groupId )
 			else if ( collecting )
 			{
 				const cardSelect = child.querySelector( '[id*="card-select"]' )
-				if ( cardSelect )
-				{
-					cards.push( cardSelect )
-				}
+				if ( cardSelect ) cards.push( cardSelect )
 			}
 		} )
 
 		console.log( `[Ste] Found ${ cards.length } cards for group ${ groupId }` )
 		return cards
+	},
+
+	updGroupStackBtns()
+	{
+		let stackableGroups = 0
+		const buttons = document.querySelectorAll( '[id*=\'"type":"sim-stack-group"\']' )
+		buttons.forEach( button => {
+			try
+			{
+				const patternId = JSON.parse( button.id )
+				const cards = this.getGroupCards( patternId.id )
+				const selectedCount = cards.reduce( ( count, card ) => {
+					const assetId = this.extractAssetIdBy( card )
+					return count + ( assetId && this.selectedIds.has( assetId ) ? 1 : 0 )
+				}, 0 )
+				button.disabled = selectedCount < 2
+				if ( selectedCount >= 2 ) stackableGroups++
+			}
+			catch ( e ) { console.error( '[Ste] Invalid stack group button id:', e ) }
+		} )
+		return stackableGroups
 	},
 
 	selectGroup( groupId )

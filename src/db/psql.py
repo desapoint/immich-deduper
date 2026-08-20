@@ -27,6 +27,7 @@ class SchemaInfo:
 	album: str = 'album'
 	tag: str = 'tag'
 	user: str = 'user'
+	stack: str = 'stack'
 	# Related table names (old: exif/asset_files/asset_faces, new: asset_exif/asset_file/asset_face)
 	assetExif: str = 'asset_exif'
 	assetFile: str = 'asset_file'
@@ -74,7 +75,8 @@ def detectSchema():
 				c.execute("""
 					SELECT table_name FROM information_schema.tables
 					WHERE table_schema = 'public'
-					AND table_name IN ('assets', 'asset', 'albums', 'album', 'tags', 'tag', 'users', 'user')
+					AND table_name IN ('assets', 'asset', 'albums', 'album', 'tags', 'tag', 'users', 'user',
+									   'asset_stack', 'stack')
 					ORDER BY table_name
 				""")
 				tables = {row[0] for row in c.fetchall()}
@@ -83,6 +85,7 @@ def detectSchema():
 				schema.album = 'album' if 'album' in tables else 'albums'
 				schema.tag = 'tag' if 'tag' in tables else 'tags'
 				schema.user = 'user' if 'user' in tables else 'users'
+				schema.stack = 'stack' if 'stack' in tables else 'asset_stack'
 
 				# Detect related table names (old: exif/asset_files/asset_faces, new: asset_exif/asset_file/asset_face)
 				c.execute("""
@@ -180,7 +183,7 @@ def detectSchema():
 				schema.albumUserAlbumId = 'albumId' if 'albumId' in cols else 'albumsId'
 				schema.albumUserUserId = 'userId' if 'userId' in cols else 'usersId'
 
-				lg.info(f"Schema detected - Tables: asset={schema.asset}, album={schema.album}, tag={schema.tag}, user={schema.user}")
+				lg.info(f"Schema detected - Tables: asset={schema.asset}, album={schema.album}, tag={schema.tag}, user={schema.user}, stack={schema.stack}")
 				lg.info(f"Schema detected - Junction: albumAsset={schema.albumAsset}, tagAsset={schema.tagAsset}, albumUser={schema.albumUser}")
 				lg.info(f"Schema detected - albumAsset cols: albumId={schema.albumAssetAlbumId}, assetId={schema.albumAssetAssetId}")
 				lg.info(f"Schema detected - tagAsset cols: tagId={schema.tagAssetTagId}, assetId={schema.tagAssetAssetId}")

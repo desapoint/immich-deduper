@@ -9,6 +9,32 @@ lg = log.get(__name__)
 
 from ui import gvEx, cards
 
+STACK_GROUP_BUTTON = "sim-stack-group"
+STACK_GROUP_DELETE = "sim-stack-group-delete"
+
+
+def _mkGroupHeader(groupId: int, count: int):
+	return htm.Div([
+		htm.Label(f"Group {groupId} ( {count} items )"),
+		dbc.Button([htm.Span(className="fake-checkbox checked"), "select this group all"], size="sm", color="secondary", id=f"cbx-sel-grp-all-{groupId}", className="txt-sm me-1"),
+		dbc.Button([htm.Span(className="fake-checkbox"), "deselect this group All"], size="sm", color="secondary", id=f"cbx-sel-grp-non-{groupId}", className="txt-sm"),
+		dbc.Checkbox(
+			id={"type": STACK_GROUP_DELETE, "id": groupId},
+			label="Delete unselected",
+			value=False,
+			className="d-inline-block ms-3 sm",
+		),
+		dbc.Button(
+			"Stack selected",
+			id={"type": STACK_GROUP_BUTTON, "id": groupId},
+			size="sm",
+			color="info",
+			className="txt-sm ms-1",
+			disabled=True,
+			title="Stack selected assets in this group; the first displayed selection becomes the cover",
+		),
+	], className="hr", **{"data-group-id": str(groupId)})
+
 
 def mkGrd(assets: list[models.Asset], minW=230, onEmpty=None, maker=cards.mk):
 	if not assets or len(assets) == 0:
@@ -40,11 +66,7 @@ def mkGrd(assets: list[models.Asset], minW=230, onEmpty=None, maker=cards.mk):
 	cntRelats = sum(1 for a in assets if a.vw.isRelats)
 
 	gid = assets[0].vw.muodId if assets[0].vw.muodId is not None else assets[0].autoId
-	rows.append(htm.Div([
-		htm.Label(f"Group {gid} ( {len(assets)} items )"),
-		dbc.Button([htm.Span(className="fake-checkbox checked"), "select this group all"], size="sm", color="secondary", id=f"cbx-sel-grp-all-{gid}", className="txt-sm me-1"),
-		dbc.Button([htm.Span(className="fake-checkbox"), "deselect this group All"], size="sm", color="secondary", id=f"cbx-sel-grp-non-{gid}", className="txt-sm"),
-	], className="hr"))
+	rows.append(_mkGroupHeader(gid, len(assets)))
 
 	for idx, a in enumerate(assets):
 		card = maker(a)
@@ -97,13 +119,7 @@ def mkGrdGrps(assets: List[models.Asset], minW=250, maxW=300, onEmpty=None):
 		grpCount = len(grpAssets)
 
 
-		rows.append(htm.Div([
-			htm.Label(f"Group {grpId} ( {grpCount} items )"),
-
-			dbc.Button([htm.Span(className="fake-checkbox checked"), "select this group all"], size="sm", color="secondary", id=f"cbx-sel-grp-all-{grpId}", className="txt-sm me-1"),
-			dbc.Button([htm.Span(className="fake-checkbox"),"deselect this group All"], size="sm", color="secondary", id=f"cbx-sel-grp-non-{grpId}", className="txt-sm"),
-
-		], className="hr"))
+		rows.append(_mkGroupHeader(grpId, grpCount))
 
 		for asset in grpAssets:
 			card = cards.mk(asset)

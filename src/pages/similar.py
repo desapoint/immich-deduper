@@ -13,6 +13,7 @@ from dsh import dash, htm, dcc, dbc, inp, out, ste, getTrgId, noUpd, ctx, ALL
 from dsh import cbk, ccbk, cbkFn
 from util import log
 from mod import mapFns, models, tskSvc
+import sim_stack
 from mod.models import Mdl, Now, Cnt, Nfy, Pager, Tsk, Ste, PgSim
 
 from ui import pager, cardSets, gv
@@ -76,12 +77,14 @@ class k:
 	btnReset = "sim-btn-reset"
 	btnRmSel = "sim-btn-RmSel"
 	btnOkSel = "sim-btn-OkSel"
+	btnStack = "sim-btn-Stack"
 	btnOkAll = "sim-btn-OkAll"
 	btnRmAll = "sim-btn-RmAll"
 	cbxNChkOkAll = "sim-cbx-NChk-OkAll"
 	cbxNChkRmSel = "sim-cbx-NChk-RmSel"
 	cbxNChkOkSel = "sim-cbx-NChk-OkSel"
 	cbxNChkRmAll = "sim-cbx-NChk-RmAll"
+	cbxStackDelete = "sim-cbx-StackDelete"
 
 
 	tabs = 'sim-tabs'
@@ -195,6 +198,19 @@ def layout(autoId=None):
 										dbc.Checkbox(id=k.cbxNChkRmSel, label="No-Confirm", className="sm"),
 										htm.Br(),
 										dbc.Button("Del Select, Keep others", id=k.btnRmSel, color="danger", size="sm", disabled=True),
+									]),
+
+									htm.Div([
+										dbc.Checkbox(id=k.cbxStackDelete, label="Delete unselected", className="sm"),
+										htm.Br(),
+										dbc.Button(
+											"Stack selected per group",
+											id=k.btnStack,
+											color="info",
+											size="sm",
+											disabled=True,
+											title="Create one Immich stack per similarity group and owner",
+										),
 									]),
 
 									htm.Div([
@@ -541,6 +557,7 @@ ccbk(
 		out(k.btnRmAll, "disabled"),
 		out(k.btnRmSel, "disabled"),
 		out(k.btnOkSel, "disabled"),
+		out(k.btnStack, "disabled"),
 		out(k.btnExportIds, "disabled"),
 	],
 	[
@@ -583,12 +600,16 @@ def sim_UpdateButtons(dta_now, dta_ste, dta_cnt, dta_tsk):
 	cntSel = len(ste.selectedIds) if ste.selectedIds else 0
 	disRm = cntSel == 0
 	disRS = cntSel == 0
+	disStack = isTaskRunning
+	if not disStack:
+		try: sim_stack.buildPlan(now.sim.assCur, ste.selectedIds, db.dto.muod.on)
+		except ValueError: disStack = True
 
 	disExport = cntAssets <= 0
 
 	# lg.info(f"[sim:UpdBtns] disFind[{disFind}]")
 
-	return disFind, disClear, disReset, disOk, disDel, disRm, disRS, disExport
+	return disFind, disClear, disReset, disOk, disDel, disRm, disRS, disStack, disExport
 
 
 #------------------------------------------------------------------------
@@ -649,8 +670,10 @@ def sim_OnSwitchViewGroup(clks, dta_now):
 		inp(k.btnReset, "n_clicks"),
 		inp(k.btnRmSel, "n_clicks"),
 		inp(k.btnOkSel, "n_clicks"),
+		inp(k.btnStack, "n_clicks"),
 		inp(k.btnOkAll, "n_clicks"),
 		inp(k.btnRmAll, "n_clicks"),
+		inp({"type": gv.STACK_GROUP_BUTTON, "id": ALL}, "n_clicks"),
 	],
 	[
 		ste(ks.sto.now, "data"),
@@ -663,16 +686,22 @@ def sim_OnSwitchViewGroup(clks, dta_now):
 		ste(k.cbxNChkRmSel, "value"),
 		ste(k.cbxNChkOkSel, "value"),
 		ste(k.cbxNChkRmAll, "value"),
+		ste(k.cbxStackDelete, "value"),
+		ste({"type": gv.STACK_GROUP_DELETE, "id": ALL}, "value"),
+		ste({"type": gv.STACK_GROUP_DELETE, "id": ALL}, "id"),
 	],
 	prevent_initial_call=True
 )
 def sim_RunModal(
-	clk_fnd, clk_clr, clk_rst, clk_rm, clk_rs, clk_ok, clk_ra,
+	clk_fnd, clk_clr, clk_rst, clk_rm, clk_rs, clk_stack, clk_ok, clk_ra, clk_stack_groups,
 	dta_now, dta_cnt, dta_mdl, dta_tsk, dta_nfy, dta_ste,
-	nchkOkAll, nchkRmSel, ncRS, ncRA
+	nchkOkAll, nchkRmSel, ncRS, ncRA, stackDelete, groupDeleteValues, groupDeleteIds
 ):
-	if not clk_fnd and not clk_clr and not clk_rst and not clk_rm and not clk_rs and not clk_ok and not clk_ra:
+	if not ctx.triggered:
 		lg.info(f"[sim:RunModal] non clicked")
+		return noUpd.by(5)
+	triggerValue = ctx.triggered[0].get('value')
+	if (isinstance(triggerValue, list) and not any(triggerValue)) or (not isinstance(triggerValue, list) and not triggerValue):
 		return noUpd.by(5)
 
 	trgId = getTrgId()
@@ -798,6 +827,52 @@ def sim_RunModal(
 			if ncRS:
 				retTsk = mdl.mkTsk()
 				mdl.reset()
+	#------------------------------------------------------------------------
+	elif trgId == k.btnStack or trgId.get('type') == gv.STACK_GROUP_BUTTON:
+		targetGroupId = trgId.get('id') if trgId.get('type') == gv.STACK_GROUP_BUTTON else None
+		deleteOthers = bool(stackDelete)
+		if targetGroupId is not None:
+			deleteByGroup = {
+				str(item.get('id')): bool(value)
+				for item, value in zip(groupDeleteIds or [], groupDeleteValues or [])
+			}
+			deleteOthers = deleteByGroup.get(str(targetGroupId), False)
+
+		try:
+			plan = sim_stack.buildPlan(
+				now.sim.assCur,
+				ste.selectedIds,
+				db.dto.muod.on,
+				targetGroupId=targetGroupId,
+			)
+		except ValueError as e:
+			nfy.warn(str(e))
+			return noUpd.by(5).upd(0, nfy)
+
+		if deleteOthers and db.dto.mrg.on:
+			errs = immich.validateKeepPaths(plan.selected)
+			if errs:
+				nfy.error(f"Cannot merge: {errs[0]}")
+				return noUpd.by(5).upd(0, nfy)
+
+		mdl.reset()
+		mdl.id = ks.pg.similar
+		mdl.cmd = ks.cmd.sim.stack
+		mdl.args = {
+			'selectedIds': [asset.autoId for asset in plan.selected],
+			'targetGroupId': targetGroupId,
+			'deleteOthers': deleteOthers,
+		}
+		mdl.msg = [
+			f"Create {len(plan.stacks)} Immich stack(s) from {len(plan.selected)} selected assets across {len(plan.groups)} group(s)?",
+			htm.Br(),
+			"The first displayed selected asset for each owner will be the stack cover.",
+			htm.Br(),
+			f"{'Delete' if deleteOthers else 'Keep'} the {len(plan.others)} unselected assets in those groups.",
+		]
+		if deleteOthers:
+			mdl.msg.extend([htm.Br(), htm.B("Deleting unselected assets cannot be undone here.")])
+			if db.dto.mrg.on: mdl.msg.extend(_mkMrgMsg(plan.selected))
 	#------------------------------------------------------------------------
 	elif trgId == k.btnRmAll:
 		ass = now.sim.assCur
@@ -1174,6 +1249,83 @@ def sim_SelectedResolve(doReport: IFnProg, sto: models.ITaskStore):
 		raise RuntimeError(msg)
 
 
+def sim_StackSelected(doReport: IFnProg, sto: models.ITaskStore):
+	nfy, now, ste, tsk = sto.nfy, sto.now, sto.ste, sto.tsk
+	xmpInfos = []
+	try:
+		selectedIds = [int(autoId) for autoId in tsk.args.get('selectedIds', [])]
+		targetGroupId = tsk.args.get('targetGroupId')
+		deleteOthers = bool(tsk.args.get('deleteOthers', False))
+		plan = sim_stack.buildPlan(
+			now.sim.assCur,
+			selectedIds,
+			db.dto.muod.on,
+			targetGroupId=targetGroupId,
+		)
+
+		doReport(5, f"Preparing {len(plan.stacks)} stack(s) across {len(plan.groups)} group(s)")
+		apiStacks = 0
+		dbStacks = 0
+
+		with psql.mkConn() as conn:
+			with conn.cursor() as cur:
+				for idx, stack in enumerate(plan.stacks):
+					doReport(10 + int(45 * idx / len(plan.stacks)), f"Stacking group {stack.groupId}")
+					_, method = immich.stackByAssetsPreferApi(stack.assets, cur)
+					if method == 'api': apiStacks += 1
+					else: dbStacks += 1
+
+				if deleteOthers and db.dto.mrg.on:
+					for group in plan.groups:
+						if not group.others: continue
+						result = immich.mergeMetadata(group.selected, group.others, immich.MergeOpts(
+							albums=db.dto.mrg.albums,
+							favorites=db.dto.mrg.favs,
+							tags=db.dto.mrg.tags,
+							rating=db.dto.mrg.rating,
+							description=db.dto.mrg.desc,
+							location=db.dto.mrg.loc,
+							visibility=db.dto.mrg.vis,
+						), cur)
+						xmpInfos.extend(result.get('xmpInfos', []))
+
+				if deleteOthers and plan.others:
+					doReport(70, f"Moving {len(plan.others)} unselected asset(s) to trash")
+					immich.trashByAssets(plan.others, cur)
+				conn.commit()
+
+		if deleteOthers and plan.others: db.pics.deleteBy(plan.others)
+		db.pics.setResolveBy(plan.selected if deleteOthers else plan.assets)
+
+		if xmpInfos: immich.cleanupXmpBak(xmpInfos)
+
+		affectedIds = {asset.autoId for asset in plan.assets}
+		now.sim.assCur = [asset for asset in now.sim.assCur if asset.autoId not in affectedIds]
+		now.sim.assAid = now.sim.assCur[0].autoId if now.sim.assCur else 0
+		ste.selectedIds = [autoId for autoId in ste.selectedIds if autoId not in affectedIds]
+		ste.cntTotal = len(now.sim.assCur)
+
+		if not now.sim.assCur:
+			if not db.dto.autoNext: now.sim.activeTab = k.tabPnd
+			else: queueAutoNext(sto)
+
+		doReport(100, f"Created {len(plan.stacks)} stack(s)")
+		keptOrDeleted = "deleted" if deleteOthers else "kept"
+		msg = (
+			f"Created {len(plan.stacks)} Immich stack(s) across {len(plan.groups)} group(s); "
+			f"{keptOrDeleted} {len(plan.others)} unselected asset(s) "
+			f"(API: {apiStacks}, database: {dbStacks})."
+		)
+		nfy.success(msg)
+		return sto, msg
+	except Exception as e:
+		if xmpInfos: immich.restoreXmpBak(xmpInfos)
+		msg = f"[sim] Stack selected failed: {str(e)}"
+		nfy.error(msg)
+		lg.error(traceback.format_exc())
+		raise RuntimeError(msg)
+
+
 def sim_AllResolve(doReport: IFnProg, sto: models.ITaskStore):
 	nfy, now, cnt = sto.nfy, sto.now, sto.cnt
 	try:
@@ -1247,5 +1399,6 @@ mapFns[ks.cmd.sim.clear] = sim_ClearSims
 mapFns[ks.cmd.sim.reset] = sim_ClearSims
 mapFns[ks.cmd.sim.selOk] = sim_SelectedResolve
 mapFns[ks.cmd.sim.selRm] = sim_SelectedDelete
+mapFns[ks.cmd.sim.stack] = sim_StackSelected
 mapFns[ks.cmd.sim.allOk] = sim_AllResolve
 mapFns[ks.cmd.sim.allRm] = sim_AllDelete

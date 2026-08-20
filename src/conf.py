@@ -139,6 +139,7 @@ class cmds:
 		reset = co.tit('sim_clearAll', desc='Clear all similar results')
 		selOk = co.tit('sim_selOk', desc='Resolve selected assets')
 		selRm = co.tit('sim_selRm', desc='Delete selected assets')
+		stack = co.tit('sim_stack', desc='Stack selected assets per group')
 		allOk = co.tit('sim_allOk', desc='Resolve All assets')
 		allRm = co.tit('sim_allRm', desc='Delete All assets')
 	class view(co.to): assDel = co.tit('view_AssDel',desc='Delete asset')
@@ -251,6 +252,9 @@ class envs:
 	isDock = False if not isDock else True
 	envImmichPath:str = os.getenv('IMMICH_PATH', '')    # original from .env
 	envImmichThumb:str = os.getenv('IMMICH_THUMB', '')  # original from .env
+	immichUrl:str = os.getenv('IMMICH_URL', '')
+	immichApiKey:str = os.getenv('IMMICH_API_KEY', '')
+	immichApiKeys:str = os.getenv('IMMICH_API_KEYS', '')
 	immichPath:str = '/immich' if isDock else envImmichPath
 	immichThumb:str = '/thumbs' if isDock and envImmichThumb else envImmichThumb
 	qdrantUrl:str = os.getenv('QDRANT_URL') or ('http://immich-deduper-qdrant:6333' if isDock else '')
