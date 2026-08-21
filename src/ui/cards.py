@@ -28,7 +28,7 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 	stackHue = int(hashlib.sha1(stackId.encode()).hexdigest()[:8], 16) % 360 if stackId else 0
 	stackColor = f"hsl({stackHue}, 70%, 45%)" if stackId else None
 	stackLabel = f"Stack {stackId[:8]}" if stackId else None
-	stackCardStyle = {"border": f"3px solid {stackColor}"} if stackColor else None
+	stackCardStyle = {"--sim-stack-color": stackColor} if stackColor else None
 
 	imgW = exi.exifImageWidth
 	imgH = exi.exifImageHeight
@@ -42,6 +42,7 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 	css = f"h-100 sim {cssIds} {'' if modSim else 'view'}"
 	if isMain: css += " main"
 	if isRels: css += " rels"
+	if stackId: css += " has-stack"
 
 	tipExif = gvEx.mkTipExif(ass.autoId, ass.jsonExif)
 
@@ -129,15 +130,15 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 					"data-group-id": str(stackGroupId) if stackGroupId is not None else "",
 				}),
 				htm.Div([
-					htm.Span(stackLabel, className="badge", style={"backgroundColor": stackColor}, title=stackId),
-					htm.Span("★ Thumbnail", className="badge bg-warning text-dark") if isStackPrimary else None,
+					htm.Span(stackLabel, className="badge sim-stack-badge", style={"backgroundColor": stackColor}, title=f"Immich stack {stackId}"),
+					htm.Span("★ Thumbnail", className="badge bg-warning text-dark sim-stack-thumbnail", title="Current Immich stack thumbnail") if isStackPrimary else None,
 				], className="sim-stack-status") if stackId else None,
 				dbc.Button(
-					"☆ Cover",
+					"Set cover",
 					id={"type": "sim-stack-cover", "id": ass.autoId, "group": stackGroupId, "owner": ass.ownerId},
 					n_clicks=0,
 					size="sm",
-					color="warning",
+					color="info",
 					outline=True,
 					className="sim-stack-cover-btn text-nowrap",
 					title="Use this image as the stack cover; it will also be selected",

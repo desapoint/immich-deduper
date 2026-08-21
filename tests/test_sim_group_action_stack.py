@@ -47,6 +47,28 @@ TEST_DTO = SimpleNamespace(
 
 
 class TestManualGroupResolution(unittest.TestCase):
+	def test_group_action_confirmation_offers_mark_resolved(self):
+		assets = [asset(1, 1), asset(2, 1), asset(3, 2)]
+		now = models.Now(sim=models.PgSim(assCur=assets))
+		ste = models.Ste(cntTotal=3, selectedIds=[1])
+		trigger = {'type': gv.GROUP_ACTION_BUTTON, 'action': gv.GROUP_KEEP_SELECTED, 'id': 1}
+
+		with (
+			patch.object(similar, 'ctx', SimpleNamespace(triggered=[{'value': [1]}])),
+			patch.object(similar, 'getTrgId', return_value=trigger),
+			patch.object(similar.db, 'dto', TEST_DTO),
+		):
+			result = similar.sim_RunModal(
+				0, 0, 0, 0, 0, 0, 0, 0, [], [1],
+				now.toDict(), models.Cnt().toDict(), models.Mdl().toDict(), models.Tsk().toDict(),
+				models.Nfy().toDict(), ste.toDict(),
+				False, False, False, False, False, [], [],
+			)
+
+		modal = models.Mdl.fromDic(result[2])
+		self.assertTrue(modal.args['allowMarkResolved'])
+		self.assertEqual(modal.args['targetGroupId'], 1)
+
 	def test_selection_update_avoids_db_count_and_scopes_group_buttons(self):
 		assets = [asset(1, 1), asset(2, 1), asset(3, 2)]
 		now = models.Now(sim=models.PgSim(assCur=assets))
@@ -69,9 +91,8 @@ class TestManualGroupResolution(unittest.TestCase):
 			)
 
 		countHasSimIds.assert_not_called()
-		self.assertIs(result[0], dash.no_update)
-		self.assertEqual(result[9], [False, True])
-		self.assertEqual(result[10], [False, True, False])
+		self.assertEqual(len(result), 14)
+		self.assertTrue(all(item is dash.no_update for item in result))
 
 	def test_group_delete_selected_keeps_survivors_open(self):
 		assets = [asset(1, 1), asset(2, 1), asset(3, 2)]
@@ -89,6 +110,22 @@ class TestManualGroupResolution(unittest.TestCase):
 		self.assertEqual([item.autoId for item in sto.now.sim.assCur], [2, 3])
 		setResolved.assert_not_called()
 
+	def test_group_delete_selected_can_resolve_survivors_in_one_action(self):
+		assets = [asset(1, 1), asset(2, 1), asset(3, 2)]
+		sto = store(assets, [1], markResolved=True)
+
+		with (
+			patch.object(similar.db, 'dto', TEST_DTO),
+			patch.object(similar.psql, 'mkConn'),
+			patch.object(similar.immich, 'trashByAssets'),
+			patch.object(similar.db.pics, 'deleteBy'),
+			patch.object(similar.db.pics, 'setResolveBy') as setResolved,
+		):
+			similar.sim_SelectedDelete(lambda *_: None, sto)
+
+		self.assertEqual([item.autoId for item in sto.now.sim.assCur], [3])
+		self.assertEqual([item.autoId for item in setResolved.call_args.args[0]], [2])
+
 	def test_group_keep_selected_keeps_survivors_open(self):
 		assets = [asset(1, 1), asset(2, 1), asset(3, 2)]
 		sto = store(assets, [1])
@@ -104,6 +141,22 @@ class TestManualGroupResolution(unittest.TestCase):
 
 		self.assertEqual([item.autoId for item in sto.now.sim.assCur], [1, 3])
 		setResolved.assert_not_called()
+
+	def test_group_keep_selected_can_resolve_kept_images_in_one_action(self):
+		assets = [asset(1, 1), asset(2, 1), asset(3, 2)]
+		sto = store(assets, [1], markResolved=True)
+
+		with (
+			patch.object(similar.db, 'dto', TEST_DTO),
+			patch.object(similar.psql, 'mkConn'),
+			patch.object(similar.immich, 'trashByAssets'),
+			patch.object(similar.db.pics, 'deleteBy'),
+			patch.object(similar.db.pics, 'setResolveBy') as setResolved,
+		):
+			similar.sim_SelectedResolve(lambda *_: None, sto)
+
+		self.assertEqual([item.autoId for item in sto.now.sim.assCur], [3])
+		self.assertEqual([item.autoId for item in setResolved.call_args.args[0]], [1])
 
 	def test_group_stack_stays_open_when_all_images_share_the_new_stack(self):
 		assets = [asset(1, 1), asset(2, 1), asset(3, 2)]
@@ -131,6 +184,32 @@ class TestManualGroupResolution(unittest.TestCase):
 		self.assertEqual(sto.ste.selectedIds, [])
 		self.assertEqual([item.ex.stackId for item in sto.now.sim.assCur[:2]], ['stack-a', 'stack-a'])
 		setResolved.assert_not_called()
+
+	def test_group_stack_can_resolve_the_group_in_one_action(self):
+		assets = [asset(1, 1), asset(2, 1), asset(3, 2)]
+		sto = store(
+			assets,
+			[1, 2],
+			selectedIds=[1, 2],
+			coverIds=[],
+			deleteOthers=False,
+			markResolved=True,
+		)
+
+		with (
+			patch.object(similar.db, 'dto', TEST_DTO),
+			patch.object(similar.psql, 'mkConn'),
+			patch.object(
+				similar.immich,
+				'stackByAssetsPreferApi',
+				return_value=('stack-a', 'api', ['asset-1', 'asset-2'], 'asset-1'),
+			),
+			patch.object(similar.db.pics, 'setResolveBy') as setResolved,
+		):
+			similar.sim_StackSelected(lambda *_: None, sto)
+
+		self.assertEqual([item.autoId for item in sto.now.sim.assCur], [3])
+		self.assertEqual([item.autoId for item in setResolved.call_args.args[0]], [1, 2])
 
 	def test_group_stack_with_delete_remaining_keeps_stack_open(self):
 		assets = [asset(1, 1), asset(2, 1), asset(3, 1), asset(4, 2)]

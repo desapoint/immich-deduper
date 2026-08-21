@@ -297,6 +297,7 @@ function waitForCardsAndUpdate(ids, assets, isAutoSelection){
 		updated = true
 		cleanup()
 		const realCnt = await Ste.updAllCss()
+		Ste.updStackCoverButtons()
 		Ste.updBtns()
 		await updAuslTips()
 		updAuslLog()
@@ -584,8 +585,9 @@ window.dash_clientside.similar = {
 		if (dash_clientside.callback_context.triggered.length > 0) {
 			let triggered = dash_clientside.callback_context.triggered[0]
 			if (triggered.prop_id && triggered.value > 0) {
-				let triggeredId = JSON.parse(triggered.prop_id.split('.')[0])
-				Ste.toggle(triggeredId.id)
+				const componentId = triggered.prop_id.split('.')[0]
+				let triggeredId = JSON.parse(componentId)
+				Ste.toggle(triggeredId.id, document.getElementById(componentId))
 
 				let steData = {
 					cntTotal: Ste.cntTotal,
@@ -604,8 +606,11 @@ window.dash_clientside.similar = {
 		if (dash_clientside.callback_context.triggered.length > 0) {
 			const triggered = dash_clientside.callback_context.triggered[0]
 			if (triggered.prop_id && triggered.value > 0) {
-				const triggeredId = JSON.parse(triggered.prop_id.split('.')[0])
-				Ste.setStackCover(triggeredId.id, triggeredId.group, triggeredId.owner)
+				const componentId = triggered.prop_id.split('.')[0]
+				const triggeredId = JSON.parse(componentId)
+				const coverButton = document.getElementById(componentId)
+				const card = coverButton?.closest('.card')?.querySelector('[id*="card-select"]') || null
+				Ste.setStackCover(triggeredId.id, triggeredId.group, triggeredId.owner, card)
 				return {
 					cntTotal: Ste.cntTotal,
 					selectedIds: Array.from(Ste.selectedIds),
@@ -618,19 +623,17 @@ window.dash_clientside.similar = {
 
 	onSimJs(now_data, ste_data, sets_data){
 		const triggered = dash_clientside.callback_context.triggered
-		const propId = triggered?.[0]?.prop_id
+		const triggeredProps = new Set((triggered || []).map(item => item.prop_id))
+		const stateOnly = triggeredProps.size === 1 && triggeredProps.has('store-state.data')
 		if (Ste && ste_data) {
 			Ste.cntTotal = ste_data.cntTotal || 0
 			Ste.selectedIds = new Set(ste_data.selectedIds || [])
 			Ste.stackCoverIds = new Set(ste_data.stackCoverIds || [])
 		}
-		if (triggered?.length > 0) {
-			if (propId === 'store-state.data') {
-				Ste.updAllCss()
-				Ste.updBtns()
-				console.log('[Ste] Restored selection from ste store')
-				return dash_clientside.no_update
-			}
+		if (stateOnly) {
+			Ste.updStackCoverButtons()
+			console.log('[Ste] Accepted state already rendered by the originating client action')
+			return dash_clientside.no_update
 		}
 
 		const assets = now_data?.sim?.assCur

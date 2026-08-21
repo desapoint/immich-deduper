@@ -19,23 +19,35 @@ GROUP_MARK_RESOLVED = "mark-resolved"
 GROUP_DELETE_ALL = "delete-all"
 
 
-def _mkGroupAction(label: str, groupId: int, action: str, color: str, disabled: bool = False, title: str = ""):
+def _mkGroupAction(
+	label: str,
+	groupId: int,
+	action: str,
+	color: str,
+	disabled: bool = False,
+	title: str = "",
+	outline: bool = False,
+):
 	return dbc.Button(
 		label,
 		id={"type": GROUP_ACTION_BUTTON, "action": action, "id": groupId},
 		size="sm",
 		color=color,
-		className="txt-sm",
+		className="txt-sm sim-group-action",
 		disabled=disabled,
 		title=title,
+		outline=outline,
 	)
 
 
 def _mkGroupHeader(groupId: int, count: int):
 	return htm.Div([
 		htm.Div([
-			htm.Label(f"Group {groupId}"),
-			htm.Small(f"{count} images", className="text-muted"),
+			htm.Div([
+				htm.Small("Similarity group", className="sim-group-eyebrow"),
+				htm.Strong(f"#{groupId}"),
+			], className="sim-group-name"),
+			htm.Span(f"{count} images", className="sim-group-count"),
 		], className="sim-group-title", **{"data-group-id": str(groupId)}),
 		htm.Div([
 			htm.Small("Select", className="sim-control-label"),
@@ -64,7 +76,7 @@ def _mkGroupHeader(groupId: int, count: int):
 				title="Stack selected images; reuse existing stacks and keep this group open",
 			),
 			_mkGroupAction("Mark resolved", groupId, GROUP_MARK_RESOLVED, "primary", title="Finish this group without deleting its remaining images"),
-			_mkGroupAction("Delete group", groupId, GROUP_DELETE_ALL, "danger", title="Delete every remaining image in this group"),
+			_mkGroupAction("Delete group", groupId, GROUP_DELETE_ALL, "danger", title="Delete every remaining image in this group", outline=True),
 		], className="sim-controls sim-group-actions"),
 	], className="hr sim-group-header", **{"data-group-id": str(groupId)})
 

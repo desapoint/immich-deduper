@@ -488,7 +488,7 @@ $spac: ($pad * 2) + ($gx * 2) + $sideW + 10px;
 		margin-bottom: 10px;
 
 		.sim-global-selection { flex: 0 1 auto; }
-		.sim-global-actions { flex: 1 1 auto; justify-content: flex-end; }
+		.sim-global-actions { flex: 0 1 auto; justify-content: flex-start; }
 
 		padding-bottom: 5px;
 		border-bottom: #cccccc 1px dotted;

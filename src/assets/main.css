@@ -991,3 +991,113 @@ body { background: radial-gradient(circle at 15% -10%, rgba(14, 165, 233, 0.12),
 @media (max-width: 900px) { .page-vector .vector-action-grid { grid-template-columns: 1fr; } .page-vector .vector-action-unit { display: grid; grid-template-columns: minmax(7rem, 0.3fr) minmax(12rem, 0.7fr); align-items: center; } .page-vector .vector-action-unit > small:last-child { grid-column: 2; } }
 
 @media (max-width: 680px) { .page-vector .vector-intro { align-items: flex-start; flex-wrap: wrap; } .page-vector .vector-runtime-badge { margin-left: 3.75rem; } .page-vector .vector-pipeline-card .card-header { align-items: flex-start; flex-direction: column; gap: 0.15rem; } .page-vector .vector-steps, .page-vector .vector-action-unit { grid-template-columns: 1fr; } .page-vector .vector-action-unit > small:last-child { grid-column: auto; } }
+
+.page-similar .similar-intro { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; padding: 1rem 1.1rem; border: 1px solid rgba(56, 189, 248, 0.25); border-radius: var(--ui-radius); background: linear-gradient(120deg, rgba(14, 165, 233, 0.12), rgba(17, 29, 46, 0.58)); }
+
+.page-similar .similar-intro h4 { margin: 0.08rem 0 0.2rem; color: var(--ui-text); font-size: 1rem; font-weight: 680; }
+
+.page-similar .similar-intro p { margin: 0; color: var(--ui-text-soft); font-size: 0.82rem; }
+
+.page-similar .similar-intro-icon { display: grid; place-items: center; flex: 0 0 2.75rem; width: 2.75rem; height: 2.75rem; border: 1px solid rgba(125, 211, 252, 0.38); border-radius: 0.8rem; background: rgba(14, 165, 233, 0.14); color: #7dd3fc; font-size: 1.25rem; }
+
+.page-similar .similar-eyebrow, .page-similar .similar-action-label { font-size: 0.68rem; font-weight: 720; letter-spacing: 0.075em; text-transform: uppercase; }
+
+.page-similar .similar-eyebrow { color: #7dd3fc; }
+
+.page-similar .similar-runtime-badge { display: flex; align-items: center; gap: 0.38rem; margin-left: auto; padding: 0.34rem 0.62rem; border: 1px solid rgba(101, 212, 138, 0.28); border-radius: 999px; background: rgba(34, 197, 94, 0.1); color: #bbf7d0; font-size: 0.68rem; font-weight: 650; white-space: nowrap; }
+
+.page-similar .similar-config-grid { display: grid; grid-template-columns: minmax(20rem, 0.86fr) minmax(26rem, 1.14fr); gap: 0.9rem; align-items: start; }
+
+.page-similar .similar-config-primary, .page-similar .similar-config-search { display: grid; gap: 0.65rem; min-width: 0; padding: 0.85rem; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-lg); background: rgba(13, 23, 39, 0.52); }
+
+.page-similar .similar-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 0 0.15rem 0.15rem; }
+
+.page-similar .similar-section-heading > span { color: var(--ui-text); font-size: 0.82rem; font-weight: 680; }
+
+.page-similar .similar-section-heading > small { font-size: 0.68rem; text-align: right; }
+
+.page-similar .similar-config-grid .ifns { margin-bottom: 0 !important; border-color: var(--ui-border); box-shadow: none; }
+
+.page-similar .similar-config-grid .irow:not(:last-child) { border-color: var(--ui-border); }
+
+.page-similar .similar-config-grid .irow li { color: var(--ui-text-muted); }
+
+.page-similar .similar-search-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; }
+
+.page-similar .similar-search-action { display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; padding: 0.7rem; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-sm); background: rgba(8, 17, 31, 0.38); }
+
+.page-similar .similar-search-action .similar-action-label { color: var(--ui-accent); }
+
+.page-similar .similar-search-action .similar-action-detail { color: var(--ui-text-muted); font-size: 0.67rem; line-height: 1.35; }
+
+.page-similar .similar-search-action .btn { min-height: 2.55rem; }
+
+.page-similar .similar-search-action-danger { border-color: rgba(240, 112, 112, 0.24); }
+
+.page-similar .similar-search-action-danger .similar-action-label { color: var(--ui-danger); }
+
+.similar-workspace { margin-top: 1rem; }
+
+.similar-workspace .nav-tabs { gap: 0.3rem; }
+
+.similar-workspace .nav-link { padding: 0.58rem 0.9rem; }
+
+.similar-workspace .tab-content { padding: 0.8rem; border-color: var(--ui-border); background: rgba(8, 17, 31, 0.48); box-shadow: var(--ui-shadow-sm); }
+
+.similar-workspace .tab-acts { gap: 0.55rem; margin-bottom: 0.8rem; padding: 0 0 0.75rem; border-bottom: 1px solid var(--ui-border); }
+
+.similar-workspace .sim-controls { width: fit-content; max-width: 100%; padding: 0.42rem; border-color: var(--ui-border); border-radius: var(--ui-radius-sm); background: rgba(17, 29, 46, 0.78); }
+
+.similar-workspace .sim-control-label { padding: 0 0.25rem; color: var(--ui-text-muted); }
+
+.similar-workspace .sim-selection-count { padding-right: 0.2rem; color: var(--ui-text-soft); }
+
+.similar-workspace .sim-stack-delete { margin: 0 0.2rem; padding: 0.2rem 0.35rem; border-radius: 0.35rem; background: rgba(8, 17, 31, 0.45); }
+
+.similar-workspace .sim-confirm-options { border-color: var(--ui-border-strong); background: var(--ui-surface-raised); box-shadow: var(--ui-shadow); }
+
+.similar-workspace .gv { gap: 0.8rem !important; }
+
+.similar-workspace .card.sim { position: relative; overflow: hidden; border: 1px solid var(--ui-border); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-shadow-sm); transition: border-color 100ms ease, box-shadow 100ms ease; }
+
+.similar-workspace .card.sim.main, .similar-workspace .card.sim.rels { background: var(--ui-surface); }
+
+.similar-workspace .card.sim.main .card-header { background: linear-gradient(90deg, rgba(14, 165, 233, 0.13), rgba(17, 29, 46, 0.84)); }
+
+.similar-workspace .card.sim.has-stack { border-color: var(--sim-stack-color); box-shadow: inset 4px 0 0 var(--sim-stack-color), var(--ui-shadow-sm); }
+
+.similar-workspace .card.sim.checked { border-color: var(--ui-accent) !important; box-shadow: inset 0 0 0 2px var(--ui-accent), 0 12px 28px rgba(14, 165, 233, 0.18); }
+
+.similar-workspace .card.sim .sim-card-header { gap: 0.45rem; min-height: 3rem; padding: 0.48rem !important; border-color: var(--ui-border); background: rgba(17, 29, 46, 0.9); }
+
+.similar-workspace .card.sim .sim-card-select { flex: 1 1 7rem; padding: 0.18rem 0.25rem; border-radius: 0.4rem; }
+
+.similar-workspace .card.sim .sim-card-select:hover { background: rgba(56, 189, 248, 0.08); }
+
+.similar-workspace .card.sim .sim-source-label { display: inline-flex; padding: 0.18rem 0.4rem; border: 1px solid rgba(125, 211, 252, 0.3); border-radius: 999px; background: rgba(14, 165, 233, 0.12); color: #bae6fd; }
+
+.similar-workspace .card.sim .sim-stack-status { flex: 0 1 auto; margin-left: 0; }
+
+.similar-workspace .card.sim .sim-stack-status .badge { padding: 0.28rem 0.42rem; border: 1px solid rgba(255, 255, 255, 0.16); font-size: 0.62rem; font-weight: 650; }
+
+.similar-workspace .card.sim .sim-stack-cover-btn { flex: 0 0 auto; min-width: 4.5rem; border-radius: 999px; font-weight: 620; }
+
+.similar-workspace .card.sim .sim-stack-cover-btn.active { box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.18); }
+
+.similar-workspace .card.sim .viewer .view { height: 190px; background: #050b14; }
+
+.similar-workspace .card.sim .card-body { background: rgba(8, 17, 31, 0.24); }
+
+.similar-workspace .ausl-tip { animation: none; box-shadow: none; }
+
+.similar-workspace .ausl-log-tag { margin-left: 0.15rem; }
+
+.modal-footer { gap: 0.5rem; }
+
+.modal-footer .btn { margin: 0 !important; }
+
+@media (max-width: 1200px) { .page-similar .similar-config-grid { grid-template-columns: 1fr; } .page-similar .similar-config-primary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .page-similar .similar-section-heading, .page-similar .similar-config-primary .ifns:last-child { grid-column: 1 / -1; } }
+
+@media (max-width: 900px) { .page-similar .similar-search-actions { grid-template-columns: 1fr; } .similar-workspace .sim-controls { width: 100%; } .similar-workspace .card.sim .sim-card-select { flex-basis: 100%; } }
+
+@media (max-width: 680px) { .page-similar .similar-intro { align-items: flex-start; flex-wrap: wrap; } .page-similar .similar-runtime-badge { margin-left: 3.75rem; } .page-similar .similar-config-primary { grid-template-columns: 1fr; } .page-similar .similar-section-heading { align-items: flex-start; flex-direction: column; gap: 0.12rem; } .page-similar .similar-section-heading > small { text-align: left; } .similar-workspace .tab-content { padding: 0.55rem; } .similar-workspace .sim-controls { align-items: flex-start; } .modal-footer { flex-direction: column-reverse; } .modal-footer .btn { width: 100%; } }

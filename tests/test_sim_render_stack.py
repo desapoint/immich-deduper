@@ -50,6 +50,20 @@ def props(node):
 
 
 class TestSimilarPartialRendering(unittest.TestCase):
+	def test_similar_page_has_guided_review_hierarchy(self):
+		with (
+			patch.object(similar.immich, 'isMergeAvailable', return_value=(True, None)),
+			patch.object(similar.cardSets.db.psql, 'fetchUsers', return_value=[]),
+		):
+			nodes = list(walk(similar.layout()))
+
+		classes = [str(props(node).get('className', '')) for node in nodes]
+		self.assertTrue(any('main page-similar' in value for value in classes))
+		self.assertTrue(any(value == 'similar-intro' for value in classes))
+		self.assertTrue(any(value == 'similar-config-grid' for value in classes))
+		self.assertEqual(sum(value == 'similar-search-action' or value.startswith('similar-search-action ') for value in classes), 3)
+		self.assertTrue(any('similar-workspace' in value for value in classes))
+
 	def test_render_state_callback_is_registered(self):
 		testApp.layout = dash.html.Div()
 		testApp._setup_server()

@@ -374,13 +374,13 @@ div .txt-AL { text-align: left; }
 
 button { text-decoration: none; }
 
-.sim-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; padding: 0.3rem 0.45rem; border: 1px solid #ffffff22; border-radius: 6px; background: #00000018; }
+.sim-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; padding: 0.3rem 0.45rem; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-sm); background: rgba(8, 17, 31, 0.42); }
 
 .sim-controls button { margin: 0 !important; }
 
-.sim-control-label, .sim-confirm-title { color: #bbb; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.sim-control-label, .sim-confirm-title { color: var(--ui-text-muted); font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 
-.sim-selection-count { color: #999; font-size: 0.72rem; white-space: nowrap; }
+.sim-selection-count { color: var(--ui-text-muted); font-size: 0.72rem; white-space: nowrap; }
 
 .sim-stack-delete label { white-space: nowrap; font-size: 0.78rem; }
 
@@ -390,7 +390,7 @@ button { text-decoration: none; }
 
 .sim-confirm-menu > summary::-webkit-details-marker { display: none; }
 
-.sim-confirm-menu .sim-confirm-options { position: absolute; top: calc(100% + 0.35rem); right: 0; z-index: 1100; min-width: 190px; padding: 0.65rem 0.75rem; border: 1px solid #ffffff33; border-radius: 6px; background: #242a30; box-shadow: 0 4px 14px #0009; }
+.sim-confirm-menu .sim-confirm-options { position: absolute; top: calc(100% + 0.35rem); right: 0; z-index: 1100; min-width: 190px; padding: 0.65rem 0.75rem; border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-sm); background: var(--ui-surface-raised); box-shadow: var(--ui-shadow); }
 
 .sim-confirm-menu .sim-confirm-options .form-check { margin-top: 0.3rem; }
 
@@ -404,15 +404,29 @@ button { text-decoration: none; }
 
 .gv .hr:has(.ausl-log-tag) .ausl-log-tag { margin: 0; }
 
-.gv .sim-group-header { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem 0.75rem; position: relative; }
+.gv .sim-group-header { display: grid; grid-template-columns: minmax(9rem, auto) minmax(16rem, 0.8fr) minmax(24rem, 1.2fr); align-items: center; gap: 0.55rem 0.8rem; position: relative; margin-top: 0.45rem; padding: 0.68rem; border: 1px solid var(--ui-border) !important; border-radius: var(--ui-radius); background: linear-gradient(105deg, rgba(14, 165, 233, 0.09), rgba(17, 29, 46, 0.86)); box-shadow: var(--ui-shadow-sm); }
 
 .gv .sim-group-header button { margin: 0 !important; }
 
-.gv .sim-group-title { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+.gv .sim-group-title { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0.2rem 0.55rem; min-width: 0; white-space: nowrap; }
 
-.gv .sim-group-title { margin-right: auto; white-space: nowrap; }
+.gv .sim-group-name { display: grid; gap: 0.02rem; }
 
-@media (max-width: 900px) { .gv .sim-group-title, .gv .sim-controls { width: 100%; } }
+.gv .sim-group-name strong { color: var(--ui-text); font-size: 0.96rem; font-weight: 720; }
+
+.gv .sim-group-eyebrow { color: var(--ui-accent); font-size: 0.61rem; font-weight: 720; letter-spacing: 0.075em; text-transform: uppercase; }
+
+.gv .sim-group-count { padding: 0.23rem 0.45rem; border: 1px solid var(--ui-border); border-radius: 999px; background: rgba(8, 17, 31, 0.48); color: var(--ui-text-soft); font-size: 0.66rem; font-weight: 620; }
+
+.gv .sim-group-selection, .gv .sim-group-actions { width: fit-content; max-width: 100%; }
+
+.gv .sim-group-actions { justify-self: end; }
+
+.gv .ausl-log-tag { grid-column: 1 / -1; width: fit-content; margin: 0.12rem 0 0; }
+
+@media (max-width: 1250px) { .gv .sim-group-header { grid-template-columns: auto 1fr; } .gv .sim-group-title { grid-row: 1 / span 2; } .gv .sim-group-actions { justify-self: stretch; } }
+
+@media (max-width: 900px) { .gv .sim-group-header { grid-template-columns: 1fr; } .gv .sim-group-title { grid-row: auto; } .gv .sim-group-title, .gv .sim-controls { width: 100%; } .gv .sim-group-actions { justify-self: stretch; } }
 
 /*======================== task ========================*/
 .tskPanel { flex: inherit !important; width: 80vw; margin: 15px auto 15px auto; padding: 10px 30px 10px 30px; border-radius: 16px; border: 2px solid #4acdff99; box-shadow: 0 0 6px rgba(255, 255, 255, 0.5); background: #2d4a69; background: #264a69; }
@@ -491,3 +505,15 @@ button { text-decoration: none; }
 .modal-footer { border-top: 1px solid #333333; background-color: #212121; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
 
 .modal-dialog.img-pop .modal-body { margin: auto; text-align: center; padding: 5px 0px; }
+
+#modal-container .modal-content { overflow: hidden; border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-lg); background: var(--ui-surface-raised); box-shadow: var(--ui-shadow); }
+
+#modal-container .modal-header, #modal-container .modal-footer { border-color: var(--ui-border); background: rgba(8, 17, 31, 0.72); }
+
+#modal-container .modal-header { padding: 0.85rem 1rem; color: var(--ui-text); font-size: 0.88rem; font-weight: 680; }
+
+#modal-container .modal-body { margin: 0; padding: 1.15rem 1.25rem; color: var(--ui-text-soft); font-size: 0.88rem; line-height: 1.55; text-align: left; }
+
+#modal-container .modal-footer { gap: 0.5rem; padding: 0.75rem 1rem; }
+
+#modal-container .modal-footer .btn { margin: 0 !important; }

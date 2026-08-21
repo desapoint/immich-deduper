@@ -11,6 +11,9 @@ function main() {
 	const headerChildren = []
 	const cardChildren = []
 	const selectors = []
+	let coverUpdates = 0
+	let fullCssUpdates = 0
+	let buttonUpdates = 0
 	const header = {appendChild(child) { headerChildren.push(child) }}
 	const title = {
 		getAttribute(name) { return name === 'data-group-id' ? '7' : null },
@@ -30,6 +33,9 @@ function main() {
 			selectedIds: new Set(),
 			stackCoverIds: new Set(),
 			extractAssetIdBy() { return null },
+			updStackCoverButtons() { coverUpdates++ },
+			updAllCss() { fullCssUpdates++; return Promise.resolve(0) },
+			updBtns() { buttonUpdates++ },
 		},
 		dash_clientside: {callback_context: {triggered: []}, no_update: {}},
 		ui: {
@@ -89,6 +95,16 @@ function main() {
 	assert.equal(vm.runInContext('isExistingResultUpdate([1, 2, 3], "same")', context), true)
 	assert.equal(vm.runInContext('isExistingResultUpdate([1, 2, 3, 4], "same")', context), false)
 	assert.equal(vm.runInContext('isExistingResultUpdate([1, 2], "changed")', context), false)
+
+	context.dash_clientside.callback_context.triggered = [{prop_id: 'store-state.data', value: {}}]
+	context.window.dash_clientside.similar.onSimJs(
+		null,
+		{cntTotal: 3, selectedIds: [1], stackCoverIds: [1]},
+		{},
+	)
+	assert.equal(coverUpdates, 1, 'store persistence must refresh only cover controls')
+	assert.equal(fullCssUpdates, 0, 'store persistence must not rescan every card')
+	assert.equal(buttonUpdates, 0, 'store persistence must not repaint buttons a second time')
 }
 
 

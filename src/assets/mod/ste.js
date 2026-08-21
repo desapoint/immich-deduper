@@ -23,8 +23,9 @@ const Ste = window.Ste = {
 		console.log( `[Ste] Silent init with ${ cnt } assets, selected[ ${ this.selectedIds.size } ]` )
 	},
 
-	toggle( aid )
+	toggle( aid, card = null )
 	{
+		const clearedCover = this.stackCoverIds.has( aid )
 		if ( this.selectedIds.has( aid ) )
 		{
 			this.selectedIds.delete( aid )
@@ -34,7 +35,8 @@ const Ste = window.Ste = {
 
 		console.log( `[Ste] Toggled ${ aid }, selected count: ${ this.selectedIds.size }` )
 
-		this.updCss( aid )
+		this.updCss( aid, card )
+		if ( clearedCover ) this.updStackCoverButtons()
 		this.updBtns()
 	},
 
@@ -213,6 +215,7 @@ const Ste = window.Ste = {
 		this.selectedIds.clear()
 		this.stackCoverIds.clear()
 		await this.updAllCss()
+		this.updStackCoverButtons()
 		this.updBtns()
 		console.log( `[Ste] Cleared all selections` )
 		dsh.syncSte( this.cntTotal, this.selectedIds )
@@ -283,13 +286,36 @@ const Ste = window.Ste = {
 		} )
 
 		await this.updAllCss()
+		this.updStackCoverButtons( groupId )
 		this.updBtns()
 		console.log( `[Ste] Selected ${ matchingCards.length } ${ isStacked ? 'stacked' : 'non-stacked' } items${ groupId == null ? '' : ` in group ${ groupId }` }` )
 		dsh.syncSte( this.cntTotal, this.selectedIds )
 	},
 
-	setStackCover( aid, groupId, ownerId )
+	updStackCoverButtons( groupId = null, ownerId = null )
 	{
+		const buttons = document.querySelectorAll( '[id*=\'"type":"sim-stack-cover"\']' )
+		buttons.forEach( button => {
+			try
+			{
+				const patternId = JSON.parse( button.id )
+				if ( groupId != null && String( patternId.group ) !== String( groupId ) ) return
+				if ( ownerId != null && patternId.owner !== ownerId ) return
+
+				const chosen = this.stackCoverIds.has( patternId.id )
+				button.textContent = chosen ? 'Cover choice' : 'Set cover'
+				button.classList.toggle( 'active', chosen )
+				button.classList.toggle( 'btn-info', chosen )
+				button.classList.toggle( 'btn-outline-info', !chosen )
+				button.setAttribute( 'aria-pressed', String( chosen ) )
+			}
+			catch ( e ) { console.error( '[Ste] Invalid stack cover button id:', e ) }
+		} )
+	},
+
+	setStackCover( aid, groupId, ownerId, card = null )
+	{
+		const wasChosen = this.stackCoverIds.has( aid )
 		const buttons = document.querySelectorAll( '[id*=\'"type":"sim-stack-cover"\']' )
 		buttons.forEach( button => {
 			try
@@ -301,11 +327,15 @@ const Ste = window.Ste = {
 			catch ( e ) { console.error( '[Ste] Invalid stack cover button id:', e ) }
 		} )
 
-		this.stackCoverIds.add( aid )
-		this.selectedIds.add( aid )
-		this.updCss( aid )
+		if ( !wasChosen )
+		{
+			this.stackCoverIds.add( aid )
+			this.selectedIds.add( aid )
+			this.updCss( aid, card )
+		}
+		this.updStackCoverButtons( groupId, ownerId )
 		this.updBtns()
-		console.log( `[Ste] Stack cover set to ${ aid } for group ${ groupId }, owner ${ ownerId }` )
+		console.log( `[Ste] Stack cover ${ wasChosen ? 'cleared' : `set to ${ aid }` } for group ${ groupId }, owner ${ ownerId }` )
 	},
 
 	selectGroup( groupId )
@@ -344,6 +374,7 @@ const Ste = window.Ste = {
 			}
 		} )
 
+		this.updStackCoverButtons( groupId )
 		this.updBtns()
 		console.log( `[Ste] Deselected ${ deselectedCount } items in group ${ groupId }` )
 		dsh.syncSte( this.cntTotal, this.selectedIds )

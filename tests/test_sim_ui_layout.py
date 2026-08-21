@@ -79,6 +79,10 @@ class TestSimilarUiLayout(unittest.TestCase):
 		self.assertEqual([props(node).get('data-group-id') for node in cardSelects], ['7', '7'])
 		self.assertEqual([props(node).get('data-stack-id') for node in cardSelects], ['stack-a', 'stack-a'])
 		self.assertEqual(len(coverButtons), 2)
+		self.assertTrue(all(props(button).get('children') == 'Set cover' for button in coverButtons))
+		stackCards = [node for node in nodes if 'has-stack' in str(props(node).get('className', ''))]
+		self.assertEqual(len(stackCards), 2)
+		self.assertTrue(all('--sim-stack-color' in props(card).get('style', {}) for card in stackCards))
 		self.assertTrue(any(getattr(node, 'children', None) == 'Source' for node in nodes))
 		self.assertTrue(any(getattr(node, 'children', None) == '★ Thumbnail' for node in nodes))
 
