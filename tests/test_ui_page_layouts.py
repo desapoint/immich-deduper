@@ -10,7 +10,7 @@ import dash
 
 dash.Dash(__name__, use_pages=True, pages_folder='')
 
-from pages import settings
+from pages import fetch, settings
 
 
 def walk(node):
@@ -36,6 +36,16 @@ class TestPageLayouts(unittest.TestCase):
 		self.assertTrue(any('settings-intro' == value for value in classes))
 		self.assertTrue(any('settings-layout' == value for value in classes))
 		self.assertEqual(sum('settings-status-item' in value for value in classes), 7)
+
+	def test_fetch_page_explains_sync_and_separates_actions(self):
+		nodes = list(walk(fetch.layout()))
+		classes = [str(props(node).get('className', '')) for node in nodes]
+
+		self.assertTrue(any('main page-fetch' in value for value in classes))
+		self.assertTrue(any('fetch-intro' == value for value in classes))
+		self.assertEqual(sum('fetch-sync-note' == value for value in classes), 4)
+		self.assertEqual(sum('fetch-action-unit' in value for value in classes), 3)
+		self.assertTrue(any('fetch-action-danger' in value for value in classes))
 
 
 if __name__ == '__main__':
