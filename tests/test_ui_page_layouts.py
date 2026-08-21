@@ -11,7 +11,7 @@ import dash
 
 dash.Dash(__name__, use_pages=True, pages_folder='')
 
-from pages import fetch, settings, vector, view
+from pages import fetch, not_found_404, settings, vector, view
 
 
 def walk(node):
@@ -74,6 +74,16 @@ class TestPageLayouts(unittest.TestCase):
 		path = next(node for node in nodes if props(node).get('id') == view.k.schPath)
 		self.assertTrue(props(filename).get('debounce'))
 		self.assertTrue(props(path).get('debounce'))
+
+	def test_not_found_page_reassures_and_offers_recovery_paths(self):
+		nodes = list(walk(not_found_404.layout()))
+		classes = [str(props(node).get('className', '')) for node in nodes]
+		hrefs = [props(node).get('href') for node in nodes if props(node).get('href')]
+
+		self.assertTrue(any('main page-not-found' in value for value in classes))
+		self.assertTrue(any('not-found-state' == value for value in classes))
+		self.assertIn('/', hrefs)
+		self.assertIn(f'/{not_found_404.ks.pg.view}', hrefs)
 
 
 if __name__ == '__main__':
