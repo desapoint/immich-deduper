@@ -68,9 +68,10 @@ class TestExistingStackReuse(unittest.TestCase):
 			],
 		)
 
-		stackId, memberIds = immich.stackByAssets([asset('asset-1'), asset('asset-2')], cur)
+		stackId, memberIds, primaryId = immich.stackByAssets([asset('asset-1'), asset('asset-2')], cur)
 
 		self.assertEqual(stackId, 'stack-b')
+		self.assertEqual(primaryId, 'asset-1')
 		self.assertEqual(memberIds, ['asset-1', 'asset-2', 'asset-b-extra', 'asset-a-extra'])
 		deleteCall = next(call for call in cur.calls if call[0].strip().lower().startswith('delete from stack'))
 		self.assertEqual(deleteCall[1], (['stack-a'],))
@@ -105,9 +106,10 @@ class TestExistingStackReuse(unittest.TestCase):
 			],
 		)
 
-		stackId, memberIds = immich.stackByAssets([asset('asset-1'), asset('asset-2')], cur)
+		stackId, memberIds, primaryId = immich.stackByAssets([asset('asset-1'), asset('asset-2')], cur)
 
 		self.assertEqual(stackId, 'stack-a')
+		self.assertEqual(primaryId, 'cover-a')
 		self.assertEqual(memberIds, ['asset-1', 'asset-2', 'cover-a'])
 		updateStackCall = next(call for call in cur.calls if call[0].strip().lower().startswith('update stack'))
 		self.assertEqual(updateStackCall[1], ('cover-a', 'stack-a', 'owner-a'))
@@ -126,13 +128,14 @@ class TestExistingStackReuse(unittest.TestCase):
 			],
 		)
 
-		stackId, _ = immich.stackByAssets(
+		stackId, _, primaryId = immich.stackByAssets(
 			[asset('asset-1'), asset('asset-2')],
 			cur,
 			preferredPrimaryId='asset-2',
 		)
 
 		self.assertEqual(stackId, 'stack-a')
+		self.assertEqual(primaryId, 'asset-2')
 		updateStackCall = next(call for call in cur.calls if call[0].strip().lower().startswith('update stack'))
 		self.assertEqual(updateStackCall[1], ('asset-2', 'stack-a', 'owner-a'))
 
@@ -140,12 +143,12 @@ class TestExistingStackReuse(unittest.TestCase):
 		assets = [asset('asset-1'), asset('asset-2')]
 		with (
 			patch.object(immich, '_hasExistingStack', return_value=True),
-			patch.object(immich, 'stackByAssets', return_value=('stack-a', ['asset-1', 'asset-2'])),
+			patch.object(immich, 'stackByAssets', return_value=('stack-a', ['asset-1', 'asset-2'], 'asset-1')),
 			patch.object(immich.api, 'stackAssets') as apiCreate,
 		):
 			result = immich.stackByAssetsPreferApi(assets, object())
 
-		self.assertEqual(result, ('stack-a', 'database', ['asset-1', 'asset-2']))
+		self.assertEqual(result, ('stack-a', 'database', ['asset-1', 'asset-2'], 'asset-1'))
 		apiCreate.assert_not_called()
 
 	def test_fresh_stack_uses_api_first(self):
@@ -158,7 +161,7 @@ class TestExistingStackReuse(unittest.TestCase):
 		):
 			result = immich.stackByAssetsPreferApi(assets, object())
 
-		self.assertEqual(result, ('stack-new', 'api', ['asset-1', 'asset-2']))
+		self.assertEqual(result, ('stack-new', 'api', ['asset-1', 'asset-2'], 'asset-1'))
 		apiCreate.assert_called_once_with(['asset-1', 'asset-2'], 'owner-a')
 		directCreate.assert_not_called()
 

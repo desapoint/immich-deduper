@@ -113,6 +113,39 @@ def splitUnselectedByStackMembership(
 	return deletable, protected
 
 
+def applyStackMetadata(
+	assets: List[Any],
+	stackResults: List[tuple[str, str, List[str]]],
+):
+	byMemberId = {}
+	for stackId, primaryId, memberIds in stackResults:
+		for memberId in memberIds: byMemberId[memberId] = (stackId, primaryId, memberIds)
+
+	for asset in assets:
+		stackInfo = byMemberId.get(asset.id)
+		if not stackInfo or asset.ex is None: continue
+		stackId, primaryId, memberIds = stackInfo
+		asset.ex.stackId = stackId
+		asset.ex.stackPrimaryAssetId = primaryId
+		asset.ex.stackAssets = list(memberIds)
+
+
+def commonStackId(assets: List[Any]) -> Optional[str]:
+	stackIds = {asset.ex.stackId if asset.ex else None for asset in assets}
+	if len(stackIds) != 1 or None in stackIds: return None
+	return next(iter(stackIds))
+
+
+def fullyStackedGroupAssets(plan: StackPlan) -> tuple[List[Any], List[int]]:
+	assets = []
+	groupIds = []
+	for group in plan.groups:
+		if commonStackId(group.assets):
+			assets.extend(group.assets)
+			groupIds.append(group.groupId)
+	return assets, groupIds
+
+
 def buildPlan(
 	assets: List[Any],
 	selectedIds: List[int],

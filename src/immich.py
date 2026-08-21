@@ -161,7 +161,7 @@ def stackByAssets(
 	assets: List[models.Asset],
 	cur,
 	preferredPrimaryId: Optional[str] = None,
-) -> Tuple[str, List[str]]:
+) -> Tuple[str, List[str], str]:
 	if not assets or len(assets) < 2: raise RuntimeError("A stack requires at least two assets")
 
 	assetIds = list(dict.fromkeys(asset.id for asset in assets))
@@ -277,7 +277,7 @@ def stackByAssets(
 		f"[stack] id[{stackId}] primary[{primaryId}] assets[{len(allAssetIds)}] "
 		f"reused[{len(existingStackIds)}] owner[{ownerId}]"
 	)
-	return stackId, allAssetIds
+	return stackId, allAssetIds, primaryId
 
 
 def _hasExistingStack(assetIds: List[str], ownerId: str, cur) -> bool:
@@ -308,7 +308,7 @@ def stackByAssetsPreferApi(
 	assets: List[models.Asset],
 	cur,
 	preferredPrimaryId: Optional[str] = None,
-) -> Tuple[str, str, List[str]]:
+) -> Tuple[str, str, List[str], str]:
 	ownerId = assets[0].ownerId if assets else ''
 	assetIds = [asset.id for asset in assets]
 	if preferredPrimaryId is not None:
@@ -319,10 +319,10 @@ def stackByAssetsPreferApi(
 		stackId = api.stackAssets(assetIds, ownerId)
 		if stackId:
 			memberIds = list(dict.fromkeys(assetIds + _stackMemberIds(stackId, cur)))
-			return stackId, 'api', memberIds
+			return stackId, 'api', memberIds, assetIds[0]
 
-	stackId, memberIds = stackByAssets(assets, cur, preferredPrimaryId=preferredPrimaryId)
-	return stackId, 'database', memberIds
+	stackId, memberIds, primaryId = stackByAssets(assets, cur, preferredPrimaryId=preferredPrimaryId)
+	return stackId, 'database', memberIds, primaryId
 
 
 #------------------------------------------------------------------------

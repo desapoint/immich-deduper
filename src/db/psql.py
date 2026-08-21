@@ -764,8 +764,13 @@ def fetchExInfos(assetIds: List[str]) -> Dict[str, models.AssetExInfo]:
 				if stkMap:
 					uniqStkIds = list(set(stkMap.values()))
 					stkMembers = {}
+					stkPrimary = {}
 					for i in range(0, len(uniqStkIds), szChunk):
 						chunk = uniqStkIds[i:i + szChunk]
+						stkInfoQ = Q(f'''Select id, "primaryAssetId" From {sch.stack} Where id = ANY(%s)''')
+						cursor.execute(stkInfoQ, (chunk,))
+						for row in cursor.fetchall(): stkPrimary[str(row['id'])] = str(row['primaryAssetId'])
+
 						memQ = Q(f'''Select id, "stackId" From {sch.asset} Where "stackId" = ANY(%s) And status = 'active' ''')
 						cursor.execute(memQ, (chunk,))
 						for row in cursor.fetchall():
@@ -774,7 +779,10 @@ def fetchExInfos(assetIds: List[str]) -> Dict[str, models.AssetExInfo]:
 							stkMembers[sid].append(str(row['id']))
 
 					for assetId, stkId in stkMap.items():
-						if assetId in rst and stkId in stkMembers: rst[assetId].stackAssets = stkMembers[stkId]
+						if assetId not in rst: continue
+						rst[assetId].stackId = stkId
+						rst[assetId].stackPrimaryAssetId = stkPrimary.get(stkId)
+						if stkId in stkMembers: rst[assetId].stackAssets = stkMembers[stkId]
 
 				# albums
 				if sch.hasAlbumOwnerId:

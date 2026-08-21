@@ -1,4 +1,5 @@
 from os import wait, path
+import hashlib
 from typing import List
 
 from dash_bootstrap_components import ListGroup
@@ -21,6 +22,13 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 
 	exi = ass.jsonExif
 	ex = ass.ex
+	stackId = ex.stackId if ex else None
+	stackPrimaryId = ex.stackPrimaryAssetId if ex else None
+	isStackPrimary = bool(stackId and stackPrimaryId == ass.id)
+	stackHue = int(hashlib.sha1(stackId.encode()).hexdigest()[:8], 16) % 360 if stackId else 0
+	stackColor = f"hsl({stackHue}, 70%, 45%)" if stackId else None
+	stackLabel = f"Stack {stackId[:8]}" if stackId else None
+	stackCardStyle = {"border": f"3px solid {stackColor}"} if stackColor else None
 
 	imgW = exi.exifImageWidth
 	imgH = exi.exifImageHeight
@@ -115,7 +123,11 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 							]
 						)
 					])
-				], id={"type": "card-select", "id": ass.autoId}, className="flex-grow-1 curP"),
+				], id={"type": "card-select", "id": ass.autoId}, className="flex-grow-1 curP", **{"data-stacked": "true" if stackId else "false"}),
+				htm.Div([
+					htm.Span(stackLabel, className="badge", style={"backgroundColor": stackColor}, title=stackId),
+					htm.Span("★ Thumbnail", className="badge bg-warning text-dark") if isStackPrimary else None,
+				], className="d-flex flex-column gap-1 align-items-end") if stackId else None,
 				dbc.Button(
 					[htm.I(className="bi bi-star"), " Stack cover"],
 					id={"type": "sim-stack-cover", "id": ass.autoId, "group": stackGroupId, "owner": ass.ownerId},
@@ -254,7 +266,7 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 
 
 			], className="p-0"),
-		], className=css)
+		], className=css, style=stackCardStyle)
 	])
 
 

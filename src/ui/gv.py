@@ -15,7 +15,7 @@ STACK_COVER_BUTTON = "sim-stack-cover"
 GROUP_ACTION_BUTTON = "sim-group-action"
 GROUP_KEEP_SELECTED = "keep-selected"
 GROUP_DELETE_SELECTED = "delete-selected"
-GROUP_KEEP_ALL = "keep-all"
+GROUP_MARK_RESOLVED = "mark-resolved"
 GROUP_DELETE_ALL = "delete-all"
 
 
@@ -35,11 +35,13 @@ def _mkGroupHeader(groupId: int, count: int):
 		htm.Label(f"Group {groupId} ( {count} items )"),
 		dbc.Button([htm.Span(className="fake-checkbox checked"), "select this group all"], size="sm", color="secondary", id=f"cbx-sel-grp-all-{groupId}", className="txt-sm me-1"),
 		dbc.Button([htm.Span(className="fake-checkbox"), "deselect this group All"], size="sm", color="secondary", id=f"cbx-sel-grp-non-{groupId}", className="txt-sm"),
+		dbc.Button("Select stacked", size="sm", color="secondary", id=f"sel-grp-stacked-{groupId}", className="txt-sm ms-1", title="Replace this group's selection with its stacked images"),
+		dbc.Button("Select non-stacked", size="sm", color="secondary", id=f"sel-grp-unstacked-{groupId}", className="txt-sm ms-1", title="Replace this group's selection with its non-stacked images"),
 		_mkGroupAction("Keep selected, delete others", groupId, GROUP_KEEP_SELECTED, "success", disabled=True),
 		_mkGroupAction("Delete selected, keep others", groupId, GROUP_DELETE_SELECTED, "danger", disabled=True),
 		dbc.Checkbox(
 			id={"type": STACK_GROUP_DELETE, "id": groupId},
-			label="Delete unselected",
+			label="Delete remaining",
 			value=False,
 			className="d-inline-block ms-3 sm",
 		),
@@ -52,7 +54,7 @@ def _mkGroupHeader(groupId: int, count: int):
 			disabled=True,
 			title="Stack selected assets in this group; existing stacks are reused, otherwise the first displayed selection becomes the cover",
 		),
-		_mkGroupAction("Keep all", groupId, GROUP_KEEP_ALL, "success"),
+		_mkGroupAction("Mark resolved", groupId, GROUP_MARK_RESOLVED, "primary"),
 		_mkGroupAction("Delete all", groupId, GROUP_DELETE_ALL, "danger"),
 	], className="hr", **{"data-group-id": str(groupId)})
 

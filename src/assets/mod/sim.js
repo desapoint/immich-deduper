@@ -592,9 +592,16 @@ window.dash_clientside.similar = {
 	onSimJs(now_data, ste_data, sets_data){
 		const triggered = dash_clientside.callback_context.triggered
 		const propId = triggered?.[0]?.prop_id
+		if (Ste && ste_data) {
+			Ste.cntTotal = ste_data.cntTotal || 0
+			Ste.selectedIds = new Set(ste_data.selectedIds || [])
+			Ste.stackCoverIds = new Set(ste_data.stackCoverIds || [])
+		}
 		if (triggered?.length > 0) {
 			if (propId === 'store-state.data') {
-				console.log('[Ste] Skip: triggered by ste store (selection click)')
+				Ste.updAllCss()
+				Ste.updBtns()
+				console.log('[Ste] Restored selection from ste store')
 				return dash_clientside.no_update
 			}
 		}
@@ -603,6 +610,8 @@ window.dash_clientside.similar = {
 		const ausl = sets_data?.ausl
 		const curSig = getAutoSelSig(assets, ausl)
 		if (curSig === _lastAutoSelSig) {
+			Ste.updAllCss()
+			Ste.updBtns()
 			console.log('[ausl] Skip: assets & ausl unchanged')
 			return dash_clientside.no_update
 		}

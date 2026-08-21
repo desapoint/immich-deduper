@@ -95,12 +95,24 @@ const Ste = window.Ste = {
 		const btnAllSelect = document.getElementById( 'sim-btn-AllSelect' )
 		const btnAllCancel = document.getElementById( 'sim-btn-AllCancel' )
 		const btnSelMns = document.getElementById( 'sim-btn-SelectMns' )
+		const btnSelStacked = document.getElementById( 'sim-btn-SelectStacked' )
+		const btnSelUnstacked = document.getElementById( 'sim-btn-SelectUnstacked' )
 
 		if ( btnRm ) btnRm.textContent = `❌ Delete selected ( ${ cntSel } ) and ✅ Keep others( ${ cntDiff } )`
 		if ( btnRS ) btnRS.textContent = `✅ Keep selected ( ${ cntSel } ) and ❌ delete others( ${ cntDiff } )`
 
 		if ( btnAllSelect ) btnAllSelect.disabled = ( cntSel >= cntAll || cntAll == 0 )
 		if ( btnAllCancel ) btnAllCancel.disabled = ( cntSel == 0 )
+		if ( btnSelStacked ) btnSelStacked.disabled = this.getStackStatusCards( true ).length == 0
+		if ( btnSelUnstacked ) btnSelUnstacked.disabled = this.getStackStatusCards( false ).length == 0
+		document.querySelectorAll( '[id^="sel-grp-stacked-"]' ).forEach( btn => {
+			const groupId = btn.id.replace( 'sel-grp-stacked-', '' )
+			btn.disabled = this.getStackStatusCards( true, groupId ).length == 0
+		} )
+		document.querySelectorAll( '[id^="sel-grp-unstacked-"]' ).forEach( btn => {
+			const groupId = btn.id.replace( 'sel-grp-unstacked-', '' )
+			btn.disabled = this.getStackStatusCards( false, groupId ).length == 0
+		} )
 		if ( btnSelMns )
 		{
 			btnSelMns.disabled = ( cntAll == 0 )
@@ -228,6 +240,41 @@ const Ste = window.Ste = {
 		return cards
 	},
 
+	getStackStatusCards( isStacked, groupId = null )
+	{
+		const cards = groupId == null
+			? Array.from( document.querySelectorAll( '[id*="card-select"]' ) )
+			: this.getGroupCards( groupId )
+		const expected = isStacked ? 'true' : 'false'
+		return cards.filter( card => card.getAttribute( 'data-stacked' ) === expected )
+	},
+
+	async selectStackStatus( isStacked, groupId = null )
+	{
+		const scopeCards = groupId == null
+			? Array.from( document.querySelectorAll( '[id*="card-select"]' ) )
+			: this.getGroupCards( groupId )
+		const matchingCards = this.getStackStatusCards( isStacked, groupId )
+		if ( matchingCards.length == 0 ) return
+
+		scopeCards.forEach( card => {
+			const assetId = this.extractAssetIdBy( card )
+			if ( assetId ) {
+				this.selectedIds.delete( assetId )
+				this.stackCoverIds.delete( assetId )
+			}
+		} )
+		matchingCards.forEach( card => {
+			const assetId = this.extractAssetIdBy( card )
+			if ( assetId ) this.selectedIds.add( assetId )
+		} )
+
+		await this.updAllCss()
+		this.updBtns()
+		console.log( `[Ste] Selected ${ matchingCards.length } ${ isStacked ? 'stacked' : 'non-stacked' } items${ groupId == null ? '' : ` in group ${ groupId }` }` )
+		dsh.syncSte( this.cntTotal, this.selectedIds )
+	},
+
 	setStackCover( aid, groupId, ownerId )
 	{
 		const buttons = document.querySelectorAll( '[id*=\'"type":"sim-stack-cover"\']' )
@@ -315,6 +362,16 @@ document.addEventListener( 'DOMContentLoaded', function(){
 			event.preventDefault()
 			if ( ste ) ste.toggleMains()
 		}
+		if ( event.target.id == 'sim-btn-SelectStacked' )
+		{
+			event.preventDefault()
+			if ( ste ) ste.selectStackStatus( true )
+		}
+		if ( event.target.id == 'sim-btn-SelectUnstacked' )
+		{
+			event.preventDefault()
+			if ( ste ) ste.selectStackStatus( false )
+		}
 		if ( event.target.id == 'sim-btn-ExportIds' || event.target.id == 'view-btn-ExportIds' )
 		{
 			event.preventDefault()
@@ -360,6 +417,18 @@ document.addEventListener( 'DOMContentLoaded', function(){
 			event.preventDefault()
 			const groupId = event.target.id.replace( 'cbx-sel-grp-non-', '' )
 			if ( ste ) ste.clearGroup( groupId )
+		}
+		if ( event.target.id && event.target.id.startsWith( 'sel-grp-stacked-' ) )
+		{
+			event.preventDefault()
+			const groupId = event.target.id.replace( 'sel-grp-stacked-', '' )
+			if ( ste ) ste.selectStackStatus( true, groupId )
+		}
+		if ( event.target.id && event.target.id.startsWith( 'sel-grp-unstacked-' ) )
+		{
+			event.preventDefault()
+			const groupId = event.target.id.replace( 'sel-grp-unstacked-', '' )
+			if ( ste ) ste.selectStackStatus( false, groupId )
 		}
 
 		//------------------------------------------------------

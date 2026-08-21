@@ -4,24 +4,40 @@ import os
 import sys
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
 from sim_stack import (
+	applyStackMetadata,
 	assetsForGroup,
 	buildPlan,
+	commonStackId,
+	fullyStackedGroupAssets,
 	orderExistingStackIds,
 	removeHandled,
 	splitUnselectedByStackMembership,
 )
+from db import sim as db_sim
 
 
-def asset(autoId: int, groupId: int, ownerId: str = 'owner-a'):
+def asset(
+	autoId: int,
+	groupId: int,
+	ownerId: str = 'owner-a',
+	stackId: str | None = None,
+	stackPrimaryAssetId: str | None = None,
+):
 	return SimpleNamespace(
 		autoId=autoId,
 		id=f'asset-{autoId}',
 		ownerId=ownerId,
 		vw=SimpleNamespace(muodId=groupId),
+		ex=SimpleNamespace(
+			stackId=stackId,
+			stackPrimaryAssetId=stackPrimaryAssetId,
+			stackAssets=[],
+		),
 	)
 
 
@@ -94,6 +110,50 @@ class TestStackPlan(unittest.TestCase):
 
 		self.assertEqual([a.autoId for a in deletable], [1, 3])
 		self.assertEqual([a.autoId for a in protected], [2])
+
+	def test_new_stack_metadata_marks_members_and_thumbnail(self):
+		assets = [asset(1, 1), asset(2, 1), asset(3, 1)]
+
+		applyStackMetadata(assets, [('stack-a', 'asset-2', ['asset-1', 'asset-2'])])
+
+		self.assertEqual(assets[0].ex.stackId, 'stack-a')
+		self.assertEqual(assets[1].ex.stackPrimaryAssetId, 'asset-2')
+		self.assertIsNone(assets[2].ex.stackId)
+
+	def test_group_is_complete_only_when_every_asset_uses_the_same_stack(self):
+		assets = [asset(1, 1, stackId='stack-a'), asset(2, 1, stackId='stack-a')]
+		plan = buildPlan(assets, [1, 2], multiMode=True)
+
+		resolved, groupIds = fullyStackedGroupAssets(plan)
+
+		self.assertEqual(commonStackId(assets), 'stack-a')
+		self.assertEqual([item.autoId for item in resolved], [1, 2])
+		self.assertEqual(groupIds, [1])
+
+	def test_group_with_multiple_stacks_remains_open(self):
+		assets = [asset(1, 1, stackId='stack-a'), asset(2, 1, stackId='stack-b')]
+		plan = buildPlan(assets, [1, 2], multiMode=True)
+
+		resolved, groupIds = fullyStackedGroupAssets(plan)
+
+		self.assertIsNone(commonStackId(assets))
+		self.assertEqual(resolved, [])
+		self.assertEqual(groupIds, [])
+
+	def test_search_skips_and_resolves_a_same_stack_only_group(self):
+		source = asset(1, 1, stackId='stack-a')
+		members = [source, asset(2, 1, stackId='stack-a')]
+		group = db_sim.SearchInfo(asset=source, assets=members)
+
+		with (
+			patch.object(db_sim.db.vecs, 'findSimiliar', return_value={1: [SimpleNamespace()]}),
+			patch.object(db_sim, 'findGroupBy', return_value=group),
+			patch.object(db_sim.db.pics, 'setResolveBy') as setResolved,
+		):
+			result = db_sim.searchBy(source, lambda *_: None, lambda: False, fromUrl=True)
+
+		self.assertEqual(result.groups, [])
+		setResolved.assert_called_once_with(members)
 
 	def test_selected_assets_are_partitioned_by_owner(self):
 		assets = [

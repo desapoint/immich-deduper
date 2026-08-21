@@ -71,6 +71,8 @@ class k:
 	btnAllCancel = 'sim-btn-AllCancel'
 	btnExportIds = 'sim-btn-ExportIds'
 	btnSelectMns = 'sim-btn-SelectMns'
+	btnSelectStacked = 'sim-btn-SelectStacked'
+	btnSelectUnstacked = 'sim-btn-SelectUnstacked'
 
 	btnFind = "sim-btn-fnd"
 	btnClear = "sim-btn-clear"
@@ -181,6 +183,8 @@ def layout(autoId=None):
 									dbc.Button([htm.Span(className="fake-checkbox"),"Deselect All"], id=k.btnAllCancel, size="sm", color="secondary", disabled=True),
 									htm.Hr(),
 									dbc.Button([htm.Span(className="fake-checkbox"), "select Mains"], id=k.btnSelectMns, size="xs", color="secondary", disabled=True),
+									dbc.Button("Select stacked", id=k.btnSelectStacked, size="xs", color="secondary", disabled=True, title="Replace the current selection with stacked images"),
+									dbc.Button("Select non-stacked", id=k.btnSelectUnstacked, size="xs", color="secondary", disabled=True, title="Replace the current selection with non-stacked images"),
 									dbc.Button("Export IDs", id=k.btnExportIds, size="xs", color="info", disabled=True),
 
 								], className="left"),
@@ -201,7 +205,11 @@ def layout(autoId=None):
 									]),
 
 									htm.Div([
-										dbc.Checkbox(id=k.cbxStackDelete, label="Delete unselected", className="sm"),
+										dbc.Checkbox(
+											id=k.cbxStackDelete,
+											label="Delete remaining and finish groups",
+											className="sm",
+										),
 										htm.Br(),
 										dbc.Button(
 											"Stack selected per group",
@@ -859,6 +867,8 @@ def sim_RunModal(
 				f" in {'group ' + str(groupTargetId) if groupTargetId is not None else 'the current results'}?", htm.Br(),
 				htm.B("This operation cannot be undone"),
 			]
+			if groupTargetId is not None:
+				mdl.msg.extend([htm.Br(), "Surviving images stay in this group until you click Mark resolved."])
 
 			if db.dto.mrg.on: mdl.msg.extend(_mkMrgMsg(assKeep))
 
@@ -893,6 +903,8 @@ def sim_RunModal(
 				f" in {'group ' + str(groupTargetId) if groupTargetId is not None else 'the current results'}?", htm.Br(),
 				htm.B("This operation cannot be undone"),
 			]
+			if groupTargetId is not None:
+				mdl.msg.extend([htm.Br(), "Surviving images stay in this group until you click Mark resolved."])
 
 			if db.dto.mrg.on: mdl.msg.extend(_mkMrgMsg(ass))
 
@@ -942,7 +954,15 @@ def sim_RunModal(
 			htm.Br(),
 			"A chosen cover is used; otherwise existing stacks keep their cover and new stacks use the first displayed selection.",
 			htm.Br(),
-			f"{'Delete' if deleteOthers else 'Keep'} the {len(plan.others)} unselected assets in those groups.",
+			(
+				f"Delete the {len(plan.others)} remaining assets; this group stays open until Mark resolved."
+				if targetGroupId is not None and deleteOthers else
+				"Keep this group open until Mark resolved."
+				if targetGroupId is not None else
+				f"Delete the {len(plan.others)} remaining assets and finish those groups."
+				if deleteOthers else
+				"Keep the groups open for more stacks; a group finishes automatically once every image belongs to the same stack."
+			),
 		]
 		if deleteOthers:
 			mdl.msg.extend([htm.Br(), htm.B("Deleting unselected assets cannot be undone here.")])
@@ -972,7 +992,7 @@ def sim_RunModal(
 				retTsk = mdl.mkTsk()
 				mdl.reset()
 	#------------------------------------------------------------------------
-	elif trgId == k.btnOkAll or groupAction == gv.GROUP_KEEP_ALL:
+	elif trgId == k.btnOkAll or groupAction == gv.GROUP_MARK_RESOLVED:
 		try: ass = sim_stack.assetsForGroup(now.sim.assCur, db.dto.muod.on, groupTargetId)
 		except ValueError as e:
 			nfy.warn(str(e))
@@ -987,8 +1007,9 @@ def sim_RunModal(
 			mdl.cmd = ks.cmd.sim.allOk
 			mdl.args = {'targetGroupId': groupTargetId}
 			mdl.msg = (
-				f"Are you sure you want to Keep all {cnt} images"
-				f" in {'group ' + str(groupTargetId) if groupTargetId is not None else 'the current results'}?"
+				f"Mark group {groupTargetId} resolved and remove its {cnt} images from the current list?"
+				if groupTargetId is not None else
+				f"Are you sure you want to Keep all {cnt} images in the current results?"
 			)
 
 			if groupTargetId is None and nchkOkAll:
@@ -1278,11 +1299,13 @@ def sim_SelectedDelete(doReport: IFnProg, sto: models.ITaskStore):
 				conn.commit()
 
 		db.pics.deleteBy(assSels)
-		db.pics.setResolveBy(assLefts)
+		if targetGroupId is None: db.pics.setResolveBy(assLefts)
 
 		if xmpInfos: immich.cleanupXmpBak(xmpInfos)
 
-		_removeHandledAssets(sto, assAlls)
+		_removeHandledAssets(sto, assAlls if targetGroupId is None else assSels)
+		if targetGroupId is not None and assLefts:
+			msg += f" Group {targetGroupId} remains open with {len(assLefts)} image(s)."
 
 		nfy.success(msg)
 
@@ -1310,11 +1333,15 @@ def sim_SelectedResolve(doReport: IFnProg, sto: models.ITaskStore):
 
 		cntSelect = len(assSels)
 		cntOthers = len(assOthers)
-		msg = f"[sim] Resolve Selected Assets( {cntSelect} ) and Delete Others( {cntOthers} ) Success!"
+		msg = (
+			f"[sim] Resolve Selected Assets( {cntSelect} ) and Delete Others( {cntOthers} ) Success!"
+			if targetGroupId is None else
+			f"[sim] Kept Selected Assets( {cntSelect} ) and Deleted Others( {cntOthers} ) Success!"
+		)
 
 		if not assSels or cntSelect == 0: raise RuntimeError("Selected not found")
 
-		lg.info(f"[sim:selOk] resolve assets[{cntSelect}] delete[ {cntOthers} ] mergeOn[{db.dto.mrg.on}]")
+		lg.info(f"[sim:selOk] {'resolve' if targetGroupId is None else 'keep'} assets[{cntSelect}] delete[ {cntOthers} ] mergeOn[{db.dto.mrg.on}]")
 
 		with psql.mkConn() as conn:
 			with conn.cursor() as cur:
@@ -1335,11 +1362,13 @@ def sim_SelectedResolve(doReport: IFnProg, sto: models.ITaskStore):
 				conn.commit()
 
 		if assOthers: db.pics.deleteBy(assOthers)
-		db.pics.setResolveBy(assSels)
+		if targetGroupId is None: db.pics.setResolveBy(assSels)
 
 		if xmpInfos: immich.cleanupXmpBak(xmpInfos)
 
-		_removeHandledAssets(sto, assAlls)
+		_removeHandledAssets(sto, assAlls if targetGroupId is None else assOthers)
+		if targetGroupId is not None:
+			msg += f" Group {targetGroupId} remains open with {len(assSels)} image(s)."
 
 		return sto, msg
 	except Exception as e:
@@ -1372,20 +1401,22 @@ def sim_StackSelected(doReport: IFnProg, sto: models.ITaskStore):
 
 		doReport(5, f"Preparing {len(plan.stacks)} stack(s) across {len(plan.groups)} group(s)")
 		stackMethods = {}
+		stackResults = []
 		protectedStackAssetIds = set()
 		deleteAssets = []
-		resolvedAssets = plan.assets
+		deleteIds = set()
 
 		with psql.mkConn() as conn:
 			with conn.cursor() as cur:
 				for idx, stack in enumerate(plan.stacks):
 					doReport(10 + int(45 * idx / len(plan.stacks)), f"Stacking group {stack.groupId}")
-					stackId, method, memberIds = immich.stackByAssetsPreferApi(
+					stackId, method, memberIds, primaryId = immich.stackByAssetsPreferApi(
 						stack.assets,
 						cur,
 						preferredPrimaryId=stack.primary.id if stack.coverAutoId is not None else None,
 					)
 					stackMethods[stackId] = method
+					stackResults.append((stackId, primaryId, memberIds))
 					protectedStackAssetIds.update(memberIds)
 
 				if deleteOthers:
@@ -1394,7 +1425,6 @@ def sim_StackSelected(doReport: IFnProg, sto: models.ITaskStore):
 						protectedStackAssetIds,
 					)
 					deleteIds = {asset.autoId for asset in deleteAssets}
-					resolvedAssets = [asset for asset in plan.assets if asset.autoId not in deleteIds]
 
 				if deleteOthers and db.dto.mrg.on:
 					for group in plan.groups:
@@ -1417,22 +1447,48 @@ def sim_StackSelected(doReport: IFnProg, sto: models.ITaskStore):
 					immich.trashByAssets(deleteAssets, cur)
 				conn.commit()
 
+		stackMemberIds = {memberId for _, _, memberIds in stackResults for memberId in memberIds}
+		for asset in now.sim.assCur:
+			if asset.id in stackMemberIds and asset.ex is None: asset.ex = models.AssetExInfo()
+		sim_stack.applyStackMetadata(now.sim.assCur, stackResults)
+
+		if targetGroupId is not None:
+			resolvedAssets = []
+			handledAssets = deleteAssets
+			completedGroupIds = []
+		elif deleteOthers:
+			resolvedAssets = [asset for asset in plan.assets if asset.autoId not in deleteIds]
+			handledAssets = plan.assets
+			completedGroupIds = [group.groupId for group in plan.groups]
+		else:
+			resolvedAssets, completedGroupIds = sim_stack.fullyStackedGroupAssets(plan)
+			handledAssets = resolvedAssets
+
 		if deleteAssets: db.pics.deleteBy(deleteAssets)
-		db.pics.setResolveBy(resolvedAssets)
+		if resolvedAssets: db.pics.setResolveBy(resolvedAssets)
 
 		if xmpInfos: immich.cleanupXmpBak(xmpInfos)
 
-		_removeHandledAssets(sto, plan.assets)
+		if handledAssets: _removeHandledAssets(sto, handledAssets)
+		stackedAutoIds = {asset.autoId for asset in plan.selected}
+		ste.selectedIds = [autoId for autoId in ste.selectedIds if autoId not in stackedAutoIds]
+		ste.stackCoverIds = [autoId for autoId in ste.stackCoverIds if autoId not in stackedAutoIds]
 
 		apiStacks = sum(method == 'api' for method in stackMethods.values())
 		dbStacks = sum(method == 'database' for method in stackMethods.values())
 		doReport(100, f"Finalized {len(stackMethods)} stack(s)")
-		if deleteOthers:
+		if targetGroupId is not None:
+			assetResult = f"deleted {len(deleteAssets)} remaining asset(s)" if deleteOthers else "kept remaining assets"
+			assetResult += f" and left group {targetGroupId} open for Mark resolved"
+		elif deleteOthers:
 			protectedOthers = len(plan.others) - len(deleteAssets)
-			assetResult = f"deleted {len(deleteAssets)} unselected asset(s)"
+			assetResult = f"deleted {len(deleteAssets)} remaining asset(s) and finished {len(completedGroupIds)} group(s)"
 			if protectedOthers:
 				assetResult += f" and preserved {protectedOthers} existing stack member(s)"
-		else: assetResult = f"kept {len(plan.others)} unselected asset(s)"
+		else:
+			openGroups = len(plan.groups) - len(completedGroupIds)
+			assetResult = f"resolved {len(completedGroupIds)} fully stacked group(s)"
+			if openGroups: assetResult += f" and left {openGroups} group(s) open for more stacks"
 		msg = (
 			f"Finalized {len(stackMethods)} Immich stack(s) across {len(plan.groups)} group(s); "
 			f"{assetResult} (API: {apiStacks}, database: {dbStacks})."
