@@ -10,7 +10,7 @@ import dash
 
 dash.Dash(__name__, use_pages=True, pages_folder='')
 
-from pages import fetch, settings
+from pages import fetch, settings, vector
 
 
 def walk(node):
@@ -46,6 +46,17 @@ class TestPageLayouts(unittest.TestCase):
 		self.assertEqual(sum('fetch-sync-note' == value for value in classes), 4)
 		self.assertEqual(sum('fetch-action-unit' in value for value in classes), 3)
 		self.assertTrue(any('fetch-action-danger' in value for value in classes))
+
+	def test_vector_page_presents_pipeline_and_action_risk(self):
+		nodes = list(walk(vector.layout()))
+		classes = [str(props(node).get('className', '')) for node in nodes]
+
+		self.assertTrue(any('main page-vector' in value for value in classes))
+		self.assertTrue(any('vector-intro' == value for value in classes))
+		self.assertEqual(sum('vector-step' == value for value in classes), 4)
+		self.assertEqual(sum('vector-action-unit' in value for value in classes), 3)
+		self.assertTrue(any('vector-action-danger' in value for value in classes))
+		self.assertTrue(any('vector-repair-note' == value for value in classes))
 
 
 if __name__ == '__main__':
