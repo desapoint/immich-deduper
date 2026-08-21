@@ -68,10 +68,12 @@ def renderFooter():
 
 
 #========================================================================
-def renderBody(top, bottom):
+def renderBody(top, bottom, pageClass=None):
+	mainClass = "main"
+	if pageClass: mainClass += f" {pageClass}"
 	return htm.Div([
 
-		htm.Div([*top,], className="main"),
+		htm.Div([*top,], className=mainClass),
 		tsk.render(),
 		*bottom
 
