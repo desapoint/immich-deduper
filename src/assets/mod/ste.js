@@ -98,6 +98,7 @@ const Ste = window.Ste = {
 		const btnSelStacked = document.getElementById( 'sim-btn-SelectStacked' )
 		const btnSelUnstacked = document.getElementById( 'sim-btn-SelectUnstacked' )
 		const btnStack = document.getElementById( 'sim-btn-Stack' )
+		const txtCntSel = document.getElementById( 'sim-txt-cnt-sel' )
 		const cards = Array.from( document.querySelectorAll( '[id*="card-select"]' ) )
 		const selectedGroups = new Set()
 		const stackedGroups = new Set()
@@ -112,13 +113,16 @@ const Ste = window.Ste = {
 		} )
 
 		if ( btnRm ) {
-			btnRm.textContent = `Delete selected (${ cntSel }) · keep ${ cntDiff }`
+			btnRm.textContent = 'Delete selected'
+			btnRm.title = `Delete ${ cntSel } selected images and keep ${ cntDiff } others`
 			btnRm.disabled = cntSel == 0
 		}
 		if ( btnRS ) {
-			btnRS.textContent = `Keep selected (${ cntSel }) · delete ${ cntDiff }`
+			btnRS.textContent = 'Keep selected'
+			btnRS.title = `Keep ${ cntSel } selected images and delete ${ cntDiff } others`
 			btnRS.disabled = cntSel == 0
 		}
+		if ( txtCntSel ) txtCntSel.textContent = `${ cntSel }/${ cntAll } selected`
 		if ( btnStack ) btnStack.disabled = cntSel == 0
 
 		if ( btnAllSelect ) btnAllSelect.disabled = ( cntSel >= cntAll || cntAll == 0 )
@@ -189,8 +193,8 @@ const Ste = window.Ste = {
 		const ids = this.getMainIds()
 		const allSel = this.isAllMainsSel()
 		ids.forEach( aid => { allSel ? this.selectedIds.delete( aid ) : this.selectedIds.add( aid ) } )
-		await this.updAllCss()
 		this.updBtns()
+		await this.updAllCss()
 		console.log( `[Ste] ${ allSel ? 'Deselected' : 'Selected' } ${ ids.length } main assets` )
 		dsh.syncSte( this.cntTotal, this.selectedIds )
 	},
@@ -200,9 +204,8 @@ const Ste = window.Ste = {
 		const btn = document.getElementById( 'sim-btn-SelectMns' )
 		if ( !btn ) return
 		const allSel = this.isAllMainsSel()
-		const fcbx = btn.querySelector( '.fake-checkbox' )
-		if ( fcbx ) fcbx.classList[ allSel ? 'add' : 'remove' ]( 'checked' )
-		btn.childNodes.forEach( n => { if ( n.nodeType === 3 ) n.textContent = allSel ? 'Deselect sources' : 'Sources' } )
+		btn.classList.toggle( 'active', allSel )
+		btn.setAttribute( 'aria-pressed', String( allSel ) )
 	},
 
 	async clearAll()

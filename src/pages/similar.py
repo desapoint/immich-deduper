@@ -1,4 +1,6 @@
 from enum import auto
+import hashlib
+import json
 import traceback
 from typing import Optional
 import time
@@ -51,6 +53,88 @@ def _mkMrgMsg(keepAssets):
 # Debug flag for verbose logging
 DEBUG = False
 
+
+def _assetRenderSignature(asset: models.Asset) -> str:
+	payload = json.dumps(asset.toDict(), sort_keys=True, separators=(',', ':'), default=str)
+	return hashlib.sha1(payload.encode('utf-8')).hexdigest()
+
+
+def _similarRenderState(assets: list[models.Asset], multiMode: bool) -> dict:
+	groups = sim_stack.groupAssets(assets, multiMode)
+	return {
+		'multi': multiMode,
+		'count': len(assets),
+		'groups': [
+			{
+				'id': groupId,
+				'assets': [
+					{'id': asset.autoId, 'signature': _assetRenderSignature(asset)}
+					for asset in groupAssets
+				],
+			}
+			for groupId, groupAssets in sorted(groups.items())
+		],
+	}
+
+
+def _patchMultiGrid(oldState: dict, newState: dict, assets: list[models.Asset]):
+	if not oldState or not oldState.get('multi') or not newState.get('multi'): return None
+	if not oldState.get('groups') or not newState.get('groups'): return None
+	if (oldState.get('count', 0) <= 4) != (newState.get('count', 0) <= 4): return None
+
+	oldGroups = oldState['groups']
+	newGroups = newState['groups']
+	oldGroupIds = [str(group['id']) for group in oldGroups]
+	newGroupIds = [str(group['id']) for group in newGroups]
+	newGroupSet = set(newGroupIds)
+	if newGroupIds != [groupId for groupId in oldGroupIds if groupId in newGroupSet]: return None
+
+	groupedAssets = {
+		str(groupId): (groupId, groupAssets)
+		for groupId, groupAssets in sim_stack.groupAssets(assets, True).items()
+	}
+	newGroupsById = {str(group['id']): group for group in newGroups}
+	style = {'flex': '1 1 250px'} if len(assets) <= 4 else {}
+
+	starts = []
+	start = 0
+	for group in oldGroups:
+		starts.append((start, group))
+		start += 1 + len(group['assets'])
+
+	patch = dash.Patch()
+	rows = patch['props']['children']
+	changed = False
+
+	for start, oldGroup in reversed(starts):
+		groupId = str(oldGroup['id'])
+		newGroup = newGroupsById.get(groupId)
+		oldAssetIds = [str(asset['id']) for asset in oldGroup['assets']]
+		newAssetIds = [str(asset['id']) for asset in newGroup['assets']] if newGroup else []
+
+		if newGroup and oldAssetIds == newAssetIds:
+			assetsById = {str(asset.autoId): asset for asset in groupedAssets[groupId][1]}
+			for offset, (oldAsset, newAsset) in enumerate(zip(oldGroup['assets'], newGroup['assets']), start=1):
+				if oldAsset['signature'] == newAsset['signature']: continue
+				rows[start + offset] = gv.mkCardRow(
+					assetsById[str(newAsset['id'])],
+					groupedAssets[groupId][0],
+					style,
+				)
+				changed = True
+			continue
+
+		for rowIndex in range(start + len(oldGroup['assets']), start - 1, -1):
+			del rows[rowIndex]
+		changed = True
+
+		if newGroup:
+			actualGroupId, groupAssets = groupedAssets[groupId]
+			for offset, row in enumerate(gv.mkGroupRows(actualGroupId, groupAssets, style)):
+				rows.insert(start + offset, row)
+
+	return patch if changed else None
+
 dash.register_page(
 	__name__,
 	path=f'/{ks.pg.similar}',
@@ -96,6 +180,7 @@ class k:
 
 	gvSim = "sim-gvSim"
 	gvPnd = 'sim-gvPnd'
+	renderState = 'sim-render-state'
 
 	@staticmethod
 	def id(k): return {"type": "sim", "id": f"{k}"}
@@ -111,6 +196,7 @@ def layout(autoId=None):
 	return ui.renderBody([
 		#====== top start =======================================================
 		dcc.Store(id=k.assUrl, data=autoId),
+		dcc.Store(id=k.renderState, storage_type="memory"),
 
 		# 客戶端選擇狀態管理的 dummy 元素
 		htm.Div(id={"type": "dummy-output", "id": "selection"}, style={"display": "none"}),
@@ -180,56 +266,38 @@ def layout(autoId=None):
 								htm.Div([
 
 									htm.Small("Select", className="sim-control-label"),
-									dbc.Button("All", id=k.btnAllSelect, size="sm", color="secondary", disabled=True, title="Select every visible image"),
-									dbc.Button("None", id=k.btnAllCancel, size="sm", color="secondary", disabled=True, title="Clear the current selection"),
-									dbc.Button([htm.Span(className="fake-checkbox"), "Sources"], id=k.btnSelectMns, size="xs", color="secondary", disabled=True, title="Toggle the source image in every group"),
-									dbc.Button("Stacked", id=k.btnSelectStacked, size="xs", color="secondary", disabled=True, title="Replace the current selection with stacked images"),
-									dbc.Button("Not stacked", id=k.btnSelectUnstacked, size="xs", color="secondary", disabled=True, title="Replace the current selection with non-stacked images"),
-									dbc.Button("Export IDs", id=k.btnExportIds, size="xs", color="info", disabled=True),
+									htm.Small("0 selected", id=k.txtCntSel, className="sim-selection-count"),
+									dbc.Button("All", id=k.btnAllSelect, size="sm", color="secondary", className="txt-sm", disabled=True, title="Select every visible image"),
+									dbc.Button("None", id=k.btnAllCancel, size="sm", color="secondary", className="txt-sm", disabled=True, title="Clear the current selection"),
+									dbc.Button("Sources", id=k.btnSelectMns, size="sm", color="secondary", className="txt-sm", disabled=True, title="Toggle the source image in every group"),
+									dbc.Button("Stacked", id=k.btnSelectStacked, size="sm", color="secondary", className="txt-sm", disabled=True, title="Replace the current selection with stacked images"),
+									dbc.Button("Not stacked", id=k.btnSelectUnstacked, size="sm", color="secondary", className="txt-sm", disabled=True, title="Replace the current selection with non-stacked images"),
+									dbc.Button("Export IDs", id=k.btnExportIds, size="sm", color="info", className="txt-sm", disabled=True),
 
-								], className="left sim-global-controls"),
+								], className="sim-controls sim-global-selection"),
 
 
 								htm.Div([
 									htm.Small("Actions", className="sim-control-label"),
 
-									htm.Div([
-										dbc.Button("Keep selected · delete rest", id=k.btnOkSel, color="success", size="sm", disabled=True),
-										dbc.Checkbox(id=k.cbxNChkOkSel, label="Skip confirm", className="sm"),
-									], className="sim-action-unit"),
+									dbc.Button("Keep selected", id=k.btnOkSel, color="success", size="sm", className="txt-sm", disabled=True, title="Keep selected images and delete the other visible images"),
+									dbc.Button("Delete selected", id=k.btnRmSel, color="danger", size="sm", className="txt-sm", disabled=True, title="Delete selected images and keep the other visible images"),
+									dbc.Checkbox(id=k.cbxStackDelete, label="Delete rest", className="sim-stack-delete sm"),
+									dbc.Button("Stack selected", id=k.btnStack, color="info", size="sm", className="txt-sm", disabled=True, title="Create one Immich stack per similarity group and owner"),
+									dbc.Button("Mark all resolved", id=k.btnOkAll, color="primary", size="sm", className="txt-sm", disabled=True),
+									dbc.Button("Delete all", id=k.btnRmAll, color="danger", size="sm", className="txt-sm", disabled=True),
+									htm.Details([
+										htm.Summary("Confirmations", className="btn btn-secondary btn-sm txt-sm"),
+										htm.Div([
+											htm.Small("Skip confirmation for", className="sim-confirm-title"),
+											dbc.Checkbox(id=k.cbxNChkOkSel, label="Keep selected", className="sm"),
+											dbc.Checkbox(id=k.cbxNChkRmSel, label="Delete selected", className="sm"),
+											dbc.Checkbox(id=k.cbxNChkOkAll, label="Mark all resolved", className="sm"),
+											dbc.Checkbox(id=k.cbxNChkRmAll, label="Delete all", className="sm"),
+										], className="sim-confirm-options"),
+									], className="sim-confirm-menu"),
 
-									htm.Div([
-										dbc.Button("Delete selected · keep rest", id=k.btnRmSel, color="danger", size="sm", disabled=True),
-										dbc.Checkbox(id=k.cbxNChkRmSel, label="Skip confirm", className="sm"),
-									], className="sim-action-unit"),
-
-									htm.Div([
-										dbc.Button(
-											"Stack selected by group",
-											id=k.btnStack,
-											color="info",
-											size="sm",
-											disabled=True,
-											title="Create one Immich stack per similarity group and owner",
-										),
-										dbc.Checkbox(
-											id=k.cbxStackDelete,
-											label="Delete rest + finish",
-											className="sm sim-global-stack-option",
-										),
-									], className="sim-action-unit"),
-
-									htm.Div([
-										dbc.Button("Mark all resolved", id=k.btnOkAll, color="success", size="sm", disabled=True),
-										dbc.Checkbox(id=k.cbxNChkOkAll, label="Skip confirm", className="sm"),
-									], className="sim-action-unit"),
-
-									htm.Div([
-										dbc.Button("Delete all", id=k.btnRmAll, color="danger", size="sm", disabled=True),
-										dbc.Checkbox(id=k.cbxNChkRmAll, label="Skip confirm", className="sm"),
-									], className="sim-action-unit"),
-
-								], className="right sim-global-controls"),
+								], className="sim-controls sim-global-actions"),
 
 
 							],
@@ -436,14 +504,16 @@ def sim_SyncUrlAssetToNow(autoId, dta_now, dta_nfy):
 		out(k.tabPnd, "disabled"),
 		out(k.tabPnd, "label"),
 		out(k.tabs, "active_tab", allow_duplicate=True),
+		out(k.renderState, "data"),
 	],
 	inp(ks.sto.now, "data"),
 	[
 		ste(ks.sto.cnt, "data"),
+		ste(k.renderState, "data"),
 	],
 	prevent_initial_call="initial_duplicate"
 )
-def sim_Load(dta_now, dta_cnt):
+def sim_Load(dta_now, dta_cnt, oldRenderState):
 	now = Now.fromDic(dta_now)
 	cnt = Cnt.fromDic(dta_cnt)
 
@@ -452,13 +522,18 @@ def sim_Load(dta_now, dta_cnt):
 
 	cntNo, cntOk, cntPn = cnt.simNo, cnt.simOk, cnt.simPnd
 
-	gview = []
+	multiMode = db.dto.muod.on
+	renderState = _similarRenderState(now.sim.assCur, multiMode)
+	renderStateChanged = oldRenderState != renderState
 
-	# Check multi mode from dto settings
-	if db.dto.muod.on:
-		gview = gv.mkGrdGrps(now.sim.assCur, onEmpty=[
-			dbc.Alert("No grouped results found..", color="secondary", className="text-center m-5"),
-		])
+	if not renderStateChanged:
+		gview = noUpd
+	elif multiMode:
+		gview = _patchMultiGrid(oldRenderState, renderState, now.sim.assCur)
+		if gview is None:
+			gview = gv.mkGrdGrps(now.sim.assCur, onEmpty=[
+				dbc.Alert("No grouped results found..", color="secondary", className="text-center m-5"),
+			])
 	else:
 		gview = gv.mkGrd(now.sim.assCur, onEmpty=[
 			dbc.Alert("Please find the similar images..", color="secondary", className="text-center m-5"),
@@ -521,7 +596,8 @@ def sim_Load(dta_now, dta_cnt):
 		gview, gvPnd,
 		nowDict,
 		pagerData.toDict() if pagerData else noUpd,
-		tabDisabled, tabLabel, activeTab
+		tabDisabled, tabLabel, activeTab,
+		renderState if renderStateChanged else noUpd,
 	]
 
 

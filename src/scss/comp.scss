@@ -1,5 +1,65 @@
 @import "base";
 
+.sim-controls {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.3rem 0.45rem;
+	border: 1px solid #ffffff22;
+	border-radius: 6px;
+	background: #00000018;
+
+	button { margin: 0 !important; }
+}
+
+.sim-control-label,
+.sim-confirm-title {
+	color: #bbb;
+	font-size: 0.72rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.sim-selection-count {
+	color: #999;
+	font-size: 0.72rem;
+	white-space: nowrap;
+}
+
+.sim-stack-delete label {
+	white-space: nowrap;
+	font-size: 0.78rem;
+}
+
+.sim-confirm-menu {
+	position: relative;
+
+	> summary {
+		list-style: none;
+		cursor: pointer;
+
+		&::-webkit-details-marker { display: none; }
+	}
+
+	.sim-confirm-options {
+		position: absolute;
+		top: calc(100% + 0.35rem);
+		right: 0;
+		z-index: 1100;
+		min-width: 190px;
+		padding: 0.65rem 0.75rem;
+		border: 1px solid #ffffff33;
+		border-radius: 6px;
+		background: #242a30;
+		box-shadow: 0 4px 14px #0009;
+
+		.form-check { margin-top: 0.3rem; }
+		.form-check-label { white-space: nowrap; font-size: 0.78rem; }
+	}
+}
+
 .gv {
 	.hr {
 		&:not(:first-child){
@@ -22,7 +82,6 @@
 		}
 
 		&:has(.ausl-log-tag) .ausl-log-tag { margin: 0; }
-		&:not(:has(.ausl-log-tag)) button:first-of-type { margin-left: 12px; }
 	}
 
 	.sim-group-header {
@@ -35,8 +94,7 @@
 		button { margin: 0 !important; }
 	}
 
-	.sim-group-title,
-	.sim-group-controls {
+	.sim-group-title {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
@@ -48,28 +106,9 @@
 		white-space: nowrap;
 	}
 
-	.sim-group-controls {
-		padding: 0.3rem 0.45rem;
-		border: 1px solid #ffffff22;
-		border-radius: 6px;
-		background: #00000018;
-	}
-
-	.sim-control-label {
-		color: #bbb;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-	}
-
-	.sim-stack-delete label {
-		white-space: nowrap;
-		font-size: 0.78rem;
-	}
-
 	@media (max-width: 900px) {
 		.sim-group-title,
-		.sim-group-controls { width: 100%; }
+		.sim-controls { width: 100%; }
 	}
 }
 
