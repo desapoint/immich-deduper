@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - feat/similar-ui-improvements
       - feat/stack-selected-groups
   workflow_dispatch:
 
@@ -13,7 +14,8 @@ permissions:
 
 concurrency:
   group: docker-publish-fork-${{ github.ref }}
-  cancel-in-progress: true
+  # Every UI-step commit publishes an immutable rollback image.
+  cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
