@@ -27,6 +27,7 @@ Find and remove similar/duplicate images using deep learning.
 - **Exclude Filters**: Skip specific extensions (.dng, .png) or filename patterns
 - **Safe Deletion**: Removed photos go to Immich trash, fully recoverable
 - **Metadata Merge** *(BETA)*: Transfer metadata from deleted photos to kept ones (albums, favorites, tags, rating, description, location)
+- **Native Immich Stacking**: Stack selected similar photos per group while keeping or deleting the unselected photos
 
 
 ## Preview
@@ -75,10 +76,30 @@ Re-running Fetch reconciles the local database with Immich's current state. Newl
 
 - `Find Similar`
   - Starts searching for the next photo that matches your `Threshold Min` settings and shows it in the `current` tab
-  - When photo groups appear in the `current` tab, you can click on a photo's header to select it. This lights up the four action buttons on the top right. After using one of these actions, the kept photos in that group will be marked as resolved
+  - When photo groups appear in the `current` tab, click a photo's header to select it and enable the available actions
+  - Each group header provides `Keep selected`, `Delete selected`, `Stack selected`, `Mark resolved`, and `Delete all`
+  - Direct per-group keep, delete, and stack actions leave surviving photos visible and unresolved. Click `Mark resolved` when that group is finished; it then disappears while other groups remain available. `Delete all` naturally removes the empty group
+  - `Select stacked` and `Select non-stacked` replace the selection with matching photos, either in one group or across all current results
+  - Top-level global keep/delete actions retain their existing behavior and finish the current results they process
   - If you don't do anything with a searched group, it'll show up in the `pending` tab waiting for you to handle it later
   - `Auto Find Next`: When enabled, resolving or deleting the current group automatically triggers a search for the next unprocessed photo. When disabled, the system switches to the `pending` tab after each action, letting you work through all found groups before searching again
   - You can always manually switch to the `pending` tab to review and process previously found groups
+
+- `Stack selected`
+  - Select at least two photos from a similarity group, then use that group's `Stack selected` button
+  - Use an image's `Stack cover` button to choose the photo Immich displays for that stack; choosing a cover also selects the image
+  - With only one selected photo, `Stack selected` remains available and shows a warning that stacking requires at least two photos
+  - Use `Stack selected per group` at the top to process every represented group without combining unrelated groups
+  - Stacked images remain visible with a shared stack label and color; the image Immich uses as the stack thumbnail is marked separately
+  - Direct per-group stacking is non-terminal: selected images are deselected and the group stays open, even when every displayed image belongs to one stack, until you click `Mark resolved`
+  - Top-level global stacking retains its batch behavior: with `Delete remaining and finish groups` off, split-stack groups remain open while same-stack groups finish automatically
+  - Similarity searches resolve and skip groups containing only members of one stack
+  - For a new stack, the first displayed selected photo for each Immich owner becomes the stack cover
+  - If a selected photo already belongs to a stack, that stack and its existing cover are reused unless you choose a different cover. If the selection references multiple stacks, all of their current members are consolidated into the first existing stack encountered in displayed selection order
+  - Enable a group's `Delete remaining` option to trash unrelated unselected photos while keeping the surviving group open; the global `Delete remaining and finish groups` option completes its affected groups
+  - The delete option never deletes a current member inherited from a reused stack
+  - Stacks cannot span Immich owners. Cross-user selections are safely split into a separate stack for each owner
+  - When `IMMICH_URL` and an applicable API key are configured, stacking uses Immich's API first. If the API is not configured or the request fails, Deduper uses its direct PostgreSQL-compatible implementation
 
 - `Workflow`
   - Press `Find Similar` to search a batch of groups
@@ -386,6 +407,9 @@ Using Docker Compose is the easiest installation method, automatically including
    - `DEDUP_DATA`: Directory for Deduper data storage
    - `DEDUP_IMAGE`: Deduper image tag to run (see [Docker Image Tags](#docker-image-tags--gpu-support))
    - `QDRANT_URL`: (Optional) Custom Qdrant database URL for non-Docker environments or custom container setups
+   - `IMMICH_URL`: (Optional) Immich server URL used for API-first stacking
+   - `IMMICH_API_KEY`: (Optional) API key for single-user stacking
+   - `IMMICH_API_KEYS`: (Optional) JSON object mapping Immich owner UUIDs to API keys for cross-user stacking; owner-specific keys take priority over `IMMICH_API_KEY`
    - `OFFLINE`: (Optional) Set to `true` for air-gapped environments (see [Offline Mode](#offline-mode))
 
 3. **Create Docker Network (Same-host only)**
@@ -559,6 +583,12 @@ For custom environments and development needs.
   - `IMMICH_THUMB`: (Optional) Separate thumbnail directory. Compose mounts it to `/thumbs`.
 - **Source**: `IMMICH_PATH`, `IMMICH_THUMB` refer directly to your filesystem paths.
 
+**Optional API-first stacking:**
+- `IMMICH_URL`: An Immich server URL reachable from Deduper, for example `https://immich.example.com`.
+- `IMMICH_API_KEY`: Default API key. The key needs `stack.create` and `asset.update` access.
+- `IMMICH_API_KEYS`: Per-owner keys as JSON, for example `{"owner-uuid":"api-key"}`. This is recommended for cross-user groups.
+- API credentials are used only for creating stacks. Existing direct database behavior remains the fallback and is still used for other Deduper actions.
+
 **Path Mapping (Docker only):**
 > If your Immich database stores original host paths (e.g., `/mnt/photos/upload/...`),
 > Deduper automatically detects and translates them to container paths (`/immich/...`).
@@ -629,6 +659,7 @@ Deduper automatically logs system operations and errors to help with troubleshoo
 **Automatic Schema Detection:**
 Deduper automatically detects and adapts to your Immich database schema:
 - Table names (plural vs singular: assets/asset, albums/album, tags/tag, users/user)
+- Stack table names (`asset_stack`/`stack`)
 - Junction table column names (plural vs singular: albumsId/albumId, assetsId/assetId, tagsId/tagId)
 - Album ownership location (v3.0+: `album.ownerId` moved to `album_user` with `role='owner'`)
 - Asset device tracking field (v3.0+: `asset.deviceId` removed; Auto-Selection device grouping unavailable on v3.0+)

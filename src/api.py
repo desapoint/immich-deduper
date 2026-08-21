@@ -1,3 +1,6 @@
+import json
+from typing import Optional
+
 import requests
 
 from conf import envs
@@ -8,19 +11,35 @@ lg = log.get(__name__)
 #================================================================
 # about api
 #
-# Because using the API requires you to record all users API keys
-# and the API key is only displayed once when it's generated
-# This causes some inconvenience for our usage
-# So currently the API module is not being used
+# Most Deduper operations use direct database access because cross-user work
+# would otherwise require retaining every user's API key. Features can opt in
+# to API-first behavior when optional credentials are configured.
 #================================================================
 
 
 assets = []
-timeout = 5000
-urlApi:str = "current we don't need it"
+timeout = 30
+urlApi: str = envs.immichUrl.rstrip('/')
+if urlApi and not urlApi.endswith('/api'): urlApi += '/api'
 
-if not urlApi.endswith('/'): urlApi += '/'
-if not urlApi.endswith('api'): urlApi = urlApi + 'api'
+
+def _ownerApiKeys() -> dict[str, str]:
+	if not envs.immichApiKeys: return {}
+	try:
+		data = json.loads(envs.immichApiKeys)
+		if not isinstance(data, dict): raise ValueError("expected a JSON object")
+		return {str(ownerId): str(apiKey) for ownerId, apiKey in data.items() if apiKey}
+	except (TypeError, ValueError, json.JSONDecodeError) as e:
+		lg.error(f"IMMICH_API_KEYS is invalid: {e}")
+		return {}
+
+
+def apiKeyFor(ownerId: str) -> Optional[str]:
+	return _ownerApiKeys().get(ownerId) or envs.immichApiKey or None
+
+
+def isAvailable(ownerId: str) -> bool:
+	return bool(urlApi and apiKeyFor(ownerId))
 
 def _get(endpoint: str, apiKey: str, headers=None, params=None, stream=False):
 	if not apiKey: raise KeyError('muse have ApiKey')
@@ -32,7 +51,7 @@ def _get(endpoint: str, apiKey: str, headers=None, params=None, stream=False):
 
 	url = f"{urlApi}/{endpoint.lstrip('/')}"
 	try:
-		lg.info(f"[API] GET: url[{url}] header[{headers}]")
+		lg.info(f"[API] GET: url[{url}]")
 		rep = requests.get(url, headers=headers, params=params, verify=False, timeout=timeout, stream=stream)
 		rep.raise_for_status()
 		return rep
@@ -56,7 +75,7 @@ def _post(endpoint: str, apiKey: str, data=None, json_data=None, headers=None):
 	url = f"{urlApi}/{endpoint.lstrip('/')}"
 	try:
 		lg.debug(f"POST: {url}")
-		rep = requests.post(url, headers=headers, data=data, json=json_data, verify=False, timeout=timeout)
+		rep = requests.post(url, headers=headers, data=data, json=json_data, timeout=timeout)
 		rep.raise_for_status()
 		return rep
 	except requests.exceptions.RequestException as e:
@@ -64,6 +83,27 @@ def _post(endpoint: str, apiKey: str, data=None, json_data=None, headers=None):
 		return None
 	except Exception as e:
 		lg.error(f"Unexpected error in API POST: {str(e)}")
+		return None
+
+
+def stackAssets(assetIds: list[str], ownerId: str) -> Optional[str]:
+	apiKey = apiKeyFor(ownerId)
+	if not urlApi or not apiKey: return None
+	if len(assetIds) < 2: raise ValueError("A stack requires at least two assets")
+
+	rep = _post("stacks", apiKey, json_data={"assetIds": assetIds})
+	if not rep:
+		lg.warning(f"[API:stack] API unavailable for owner[{ownerId}], using direct database fallback")
+		return None
+
+	try:
+		data = rep.json()
+		stackId = data.get('id')
+		if not stackId: raise RuntimeError("response did not include a stack id")
+		lg.info(f"[API:stack] id[{stackId}] assets[{len(assetIds)}] owner[{ownerId}]")
+		return str(stackId)
+	except Exception as e:
+		lg.warning(f"[API:stack] Invalid response for owner[{ownerId}]: {e}; using direct database fallback")
 		return None
 
 

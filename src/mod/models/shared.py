@@ -51,10 +51,12 @@ class Cnt(BaseDictModel):
 class Ste(BaseDictModel):
     cntTotal: int = 0
     selectedIds: List[int] = field(default_factory=list)
+    stackCoverIds: List[int] = field(default_factory=list)
     sysOk: bool = False
 
     def clear(self):
         self.selectedIds.clear()
+        self.stackCoverIds.clear()
         self.cntTotal = 0
         return self
 

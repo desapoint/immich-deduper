@@ -4,6 +4,7 @@ from typing import List, Tuple, Set, Callable, Optional
 from dataclasses import dataclass, field
 
 import db
+import sim_stack
 from mod import models
 from mod.models import IFnProg, IFnCancel
 from util import log
@@ -143,6 +144,9 @@ def searchBy(src:models.Asset, doRep:IFnProg, isCancel:IFnCancel, fromUrl=False,
 			processed += 1
 			if isCancel(): break
 			if len(gis) >= sizeMax: break
+			if ass.autoId in skipAids:
+				stats.add(ass.autoId, "resolvedStackSkip")
+				continue
 
 			sinfo = simMap[ass.autoId]
 
@@ -167,6 +171,20 @@ def searchBy(src:models.Asset, doRep:IFnProg, isCancel:IFnCancel, fromUrl=False,
 						stopUrl = True
 						break
 					stats.add(ass.autoId, gi.result or "noFound")
+					continue
+
+				sameStackId = sim_stack.commonStackId(gi.assets)
+				if sameStackId:
+					db.pics.setResolveBy(gi.assets)
+					skipAids.extend(asset.autoId for asset in gi.assets if asset.autoId not in skipAids)
+					stats.add(ass.autoId, "sameStack")
+					lg.info(
+						f"[sim:sh] auto-resolved group for stack[{sameStackId}] "
+						f"assets[{len(gi.assets)}]"
+					)
+					if fromUrl:
+						stopUrl = True
+						break
 					continue
 
 				existingIds = {a.autoId for grp in gis for a in grp.assets}

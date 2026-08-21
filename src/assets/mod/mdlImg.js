@@ -381,7 +381,8 @@ window.dash_clientside.mdlImg = {
 							let selectedIds = Array.from(Ste.selectedIds)
 							let ste = {
 								selectedIds,
-								cntTotal: Ste.cntTotal
+								cntTotal: Ste.cntTotal,
+								stackCoverIds: Array.from(Ste.stackCoverIds),
 							}
 							console.log('[mdlImg] Toggled autoId:', autoId, 'ste:', ste)
 							return ste

@@ -1,4 +1,5 @@
 from os import wait, path
+import hashlib
 from typing import List
 
 from dash_bootstrap_components import ListGroup
@@ -12,7 +13,7 @@ from ui import gvEx
 
 lg = log.get(__name__)
 
-def mk(ass: models.Asset, modSim=True):
+def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 
 	imgSrc = f"/api/img/{ass.autoId}" if ass.id else None
 
@@ -21,6 +22,13 @@ def mk(ass: models.Asset, modSim=True):
 
 	exi = ass.jsonExif
 	ex = ass.ex
+	stackId = ex.stackId if ex else None
+	stackPrimaryId = ex.stackPrimaryAssetId if ex else None
+	isStackPrimary = bool(stackId and stackPrimaryId == ass.id)
+	stackHue = int(hashlib.sha1(stackId.encode()).hexdigest()[:8], 16) % 360 if stackId else 0
+	stackColor = f"hsl({stackHue}, 70%, 45%)" if stackId else None
+	stackLabel = f"Stack {stackId[:8]}" if stackId else None
+	stackCardStyle = {"border": f"3px solid {stackColor}"} if stackColor else None
 
 	imgW = exi.exifImageWidth
 	imgH = exi.exifImageHeight
@@ -97,7 +105,7 @@ def mk(ass: models.Asset, modSim=True):
 		]),
 		#------------------------------------------------------------------------
 		dbc.Card([
-			dbc.CardHeader(
+			dbc.CardHeader([
 				htm.Div([
 					dbc.Row([
 						dbc.Col(
@@ -105,7 +113,7 @@ def mk(ass: models.Asset, modSim=True):
 						),
 						dbc.Col(
 							[
-								htm.Span(f"Main", className="tag info lg ms-1")
+								htm.Span("Source", className="sim-source-label", title="Source image used to find this similarity group")
 							] if isMain else [
 								htm.Span("score:", className="tag sm info no-border"),
 								htm.Span(f"{ass.vw.score:.5f}", className="tag lg ms-1")
@@ -115,8 +123,27 @@ def mk(ass: models.Asset, modSim=True):
 							]
 						)
 					])
-				], id={"type": "card-select", "id": ass.autoId}),
-				className=f"p-2 curP"
+				], id={"type": "card-select", "id": ass.autoId}, className="flex-grow-1 curP sim-card-select", **{
+					"data-stacked": "true" if stackId else "false",
+					"data-stack-id": stackId or "",
+					"data-group-id": str(stackGroupId) if stackGroupId is not None else "",
+				}),
+				htm.Div([
+					htm.Span(stackLabel, className="badge", style={"backgroundColor": stackColor}, title=stackId),
+					htm.Span("★ Thumbnail", className="badge bg-warning text-dark") if isStackPrimary else None,
+				], className="sim-stack-status") if stackId else None,
+				dbc.Button(
+					"☆ Cover",
+					id={"type": "sim-stack-cover", "id": ass.autoId, "group": stackGroupId, "owner": ass.ownerId},
+					n_clicks=0,
+					size="sm",
+					color="warning",
+					outline=True,
+					className="sim-stack-cover-btn text-nowrap",
+					title="Use this image as the stack cover; it will also be selected",
+				),
+			],
+				className="p-2 d-flex align-items-center sim-card-header"
 			) if modSim else None,
 
 			#------------------------------------------------------------------------
@@ -243,7 +270,7 @@ def mk(ass: models.Asset, modSim=True):
 
 
 			], className="p-0"),
-		], className=css)
+		], className=css, style=stackCardStyle)
 	])
 
 

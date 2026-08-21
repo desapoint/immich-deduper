@@ -231,14 +231,49 @@ function _selectBestAsset(grpAssets, ausl){
 window.auslLogs = {}
 window.auslReasons = {}
 
-let _lastAutoSelSig = null
+let _lastAutoSelAssetIds = null
+let _lastAutoSelConfigSig = null
 let _auslObserver = null
 let _auslTimeout = null
 
-function getAutoSelSig(assets, ausl){
-	const assSig = assets?.map(a => a.autoId).sort((a,b) => a - b).join(',') || ''
-	const auslSig = JSON.stringify(ausl || {})
-	return `${assSig}|${auslSig}`
+function getAssetIds(assets){
+	return (assets || []).map(a => parseInt(a.autoId)).sort((a,b) => a - b)
+}
+
+function getAssetUiSig(assets){
+	return (assets || [])
+		.map(a => `${parseInt(a.autoId)}:${a.ex?.stackId || ''}`)
+		.sort()
+		.join('|')
+}
+
+function getRenderedAssetUiSig(){
+	const cards = document.querySelectorAll('#sim-gvSim [id*="card-select"]')
+	const values = []
+	for (const card of cards) {
+		const aid = Ste.extractAssetIdBy(card)
+		if (aid) values.push(`${aid}:${card.getAttribute('data-stack-id') || ''}`)
+	}
+	return values.sort().join('|')
+}
+
+function pruneAuslState(assets){
+	const assetIds = new Set(getAssetIds(assets).map(String))
+	for (const aid of Object.keys(window.auslReasons || {})) {
+		if (!assetIds.has(String(aid))) delete window.auslReasons[aid]
+	}
+
+	const groupIds = new Set((assets || []).map(a => String(a.vw?.muodId ?? a.autoId)))
+	for (const gid of Object.keys(window.auslLogs || {})) {
+		if (!groupIds.has(String(gid))) delete window.auslLogs[gid]
+	}
+}
+
+function isExistingResultUpdate(assetIds, configSig){
+	if (_lastAutoSelAssetIds === null || configSig !== _lastAutoSelConfigSig) return false
+	if (assetIds.length > _lastAutoSelAssetIds.length) return false
+	const previousIds = new Set(_lastAutoSelAssetIds)
+	return assetIds.every(aid => previousIds.has(aid))
 }
 
 function cleanup(){
@@ -252,37 +287,33 @@ function cleanup(){
 	}
 }
 
-function waitForCardsAndUpdate(ids){
+function waitForCardsAndUpdate(ids, assets, isAutoSelection){
 	cleanup()
+	const expectedUiSig = getAssetUiSig(assets)
+	let updated = false
 
 	async function doUpdate(){
+		if (updated) return
+		updated = true
 		cleanup()
 		const realCnt = await Ste.updAllCss()
 		Ste.updBtns()
 		await updAuslTips()
 		updAuslLog()
-		dsh.syncSte(Ste.cntTotal, Ste.selectedIds)
-		if (ids.length > 0) notify(`[Auto Selection] selected ${realCnt} items`, 'success')
-		console.log(`[Ste] Auto-selected ${realCnt}/${ids.length} items`)
-	}
-
-	if (!ids.length) {
-		console.log('[Ste] No auto-selection needed')
-		Ste.updBtns()
-		Ste.updAllCss()
-		updAuslLog()
-		document.querySelectorAll('.ausl-tip').forEach(el => el.remove())
-		dsh.syncSte(Ste.cntTotal, Ste.selectedIds)
-		return
+		if (isAutoSelection) {
+			dsh.syncSte(Ste.cntTotal, Ste.selectedIds)
+			if (ids.length > 0) notify(`[Auto Selection] selected ${realCnt} items`, 'success')
+			console.log(`[Ste] Auto-selected ${realCnt}/${ids.length} items`)
+		}
 	}
 
 	function isReady(){
 		const gv = document.querySelector('#sim-gvSim')
-		return gv && gv.querySelector('.hr') && gv.querySelector('.card-meta')
+		return !!gv && getRenderedAssetUiSig() === expectedUiSig
 	}
 
 	if (isReady()) {
-		doUpdate()
+		setTimeout(doUpdate, 0)
 		return
 	}
 
@@ -297,11 +328,11 @@ function waitForCardsAndUpdate(ids){
 	})
 	_auslTimeout = setTimeout(() =>{
 		if (_auslObserver) {
-			console.warn('[Ste] Timeout waiting for cards')
-			cleanup()
+			console.warn('[Ste] Timeout waiting for updated cards; applying current state')
+			doUpdate()
 		}
-	}, 6000)
-	_auslObserver.observe(gv, {childList: true, subtree: true})
+	}, 2500)
+	_auslObserver.observe(gv, {childList: true, subtree: true, attributes: true})
 }
 
 function getAutoSelectAuids(assets, ausl){
@@ -460,26 +491,22 @@ function updAuslLog(){
 		return
 	}
 
-	ui.mob.waitAll('.gv.fsp .hr', divs => {
+	ui.mob.waitAll('.gv.fsp > .sim-group-header > .sim-group-title[data-group-id]', titles => {
 
-		divs.forEach(hr =>{
-			const label = hr.querySelector('label')
-			if (!label) return
-
-			const match = label.textContent.match(/Group\s+(\d+)/)
-			if (!match) return
-
-			const gid = match[1]
+		titles.forEach(title =>{
+			const gid = title.getAttribute('data-group-id')
 			const log = logs[gid]
 			if (!log) return
+			const header = title.closest('.sim-group-header')
+			if (!header) return
 
 			const tipId = `ausl-log-${gid}`
 
 			const tag = document.createElement('span')
 			tag.className = 'ausl-log-tag'
 			tag.setAttribute('data-tip-id', tipId)
-			tag.textContent = 'auto select log'
-			label.after(tag)
+			tag.textContent = 'Auto log'
+			title.appendChild(tag)
 
 			let detailsHtml = ''
 			if (log.details?.length) {
@@ -495,10 +522,10 @@ function updAuslLog(){
 			tip.className = 'poptip ausl-log-poptip'
 			tip.id = tipId
 			tip.innerHTML = `<div class="ausl-log-wrap"><div class="ausl-log-title">Group ${gid}</div><div class="ausl-log-reason">${log.reason}</div>${detailsHtml}</div>`
-			hr.appendChild(tip)
+			header.appendChild(tip)
 		})
 
-		console.log(`[ausl] Inserted ${divs.length} log tag(s)`)
+		console.log(`[ausl] Positioned logs in ${titles.length} group header(s)`)
 	})
 }
 
@@ -563,6 +590,7 @@ window.dash_clientside.similar = {
 				let steData = {
 					cntTotal: Ste.cntTotal,
 					selectedIds: Array.from(Ste.selectedIds),
+					stackCoverIds: Array.from(Ste.stackCoverIds),
 				}
 
 				console.log('[Ste] Syncing to ste store on selection:', steData)
@@ -572,37 +600,65 @@ window.dash_clientside.similar = {
 		return dash_clientside.no_update
 	},
 
+	onStackCoverClicked(){
+		if (dash_clientside.callback_context.triggered.length > 0) {
+			const triggered = dash_clientside.callback_context.triggered[0]
+			if (triggered.prop_id && triggered.value > 0) {
+				const triggeredId = JSON.parse(triggered.prop_id.split('.')[0])
+				Ste.setStackCover(triggeredId.id, triggeredId.group, triggeredId.owner)
+				return {
+					cntTotal: Ste.cntTotal,
+					selectedIds: Array.from(Ste.selectedIds),
+					stackCoverIds: Array.from(Ste.stackCoverIds),
+				}
+			}
+		}
+		return dash_clientside.no_update
+	},
+
 	onSimJs(now_data, ste_data, sets_data){
 		const triggered = dash_clientside.callback_context.triggered
 		const propId = triggered?.[0]?.prop_id
+		if (Ste && ste_data) {
+			Ste.cntTotal = ste_data.cntTotal || 0
+			Ste.selectedIds = new Set(ste_data.selectedIds || [])
+			Ste.stackCoverIds = new Set(ste_data.stackCoverIds || [])
+		}
 		if (triggered?.length > 0) {
 			if (propId === 'store-state.data') {
-				console.log('[Ste] Skip: triggered by ste store (selection click)')
+				Ste.updAllCss()
+				Ste.updBtns()
+				console.log('[Ste] Restored selection from ste store')
 				return dash_clientside.no_update
 			}
 		}
 
 		const assets = now_data?.sim?.assCur
 		const ausl = sets_data?.ausl
-		const curSig = getAutoSelSig(assets, ausl)
-		if (curSig === _lastAutoSelSig) {
-			console.log('[ausl] Skip: assets & ausl unchanged')
-			return dash_clientside.no_update
-		}
-		_lastAutoSelSig = curSig
+		const assetIds = getAssetIds(assets)
+		const configSig = JSON.stringify(ausl || {})
+		const existingResultUpdate = isExistingResultUpdate(assetIds, configSig)
+		_lastAutoSelAssetIds = assetIds
+		_lastAutoSelConfigSig = configSig
 		console.log(`[NowSync] ==================== triggered[${JSON.stringify(triggered)}] =====================`)
 
-		if (assets) {
-			if (Ste) {
-				Ste.initSilent(assets.length)
-				Ste.selectedIds.clear()
-
-				const ids = getAutoSelectAuids(assets, ausl)
-
-				for ( const autoId of ids ) Ste.selectedIds.add(autoId)
-
-				waitForCardsAndUpdate(ids)
+		if (assets && Ste) {
+			Ste.cntTotal = assets.length
+			if (existingResultUpdate) {
+				pruneAuslState(assets)
+				waitForCardsAndUpdate(Array.from(Ste.selectedIds), assets, false)
+				console.log('[ausl] Preserved selection after existing-result update')
+				return dash_clientside.no_update
 			}
+
+			Ste.initSilent(assets.length)
+			Ste.selectedIds.clear()
+
+			const ids = getAutoSelectAuids(assets, ausl)
+
+			for ( const autoId of ids ) Ste.selectedIds.add(autoId)
+
+			waitForCardsAndUpdate(ids, assets, true)
 		}
 		return dash_clientside.no_update
 	}

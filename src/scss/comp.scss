@@ -1,5 +1,65 @@
 @import "base";
 
+.sim-controls {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.3rem 0.45rem;
+	border: 1px solid #ffffff22;
+	border-radius: 6px;
+	background: #00000018;
+
+	button { margin: 0 !important; }
+}
+
+.sim-control-label,
+.sim-confirm-title {
+	color: #bbb;
+	font-size: 0.72rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.sim-selection-count {
+	color: #999;
+	font-size: 0.72rem;
+	white-space: nowrap;
+}
+
+.sim-stack-delete label {
+	white-space: nowrap;
+	font-size: 0.78rem;
+}
+
+.sim-confirm-menu {
+	position: relative;
+
+	> summary {
+		list-style: none;
+		cursor: pointer;
+
+		&::-webkit-details-marker { display: none; }
+	}
+
+	.sim-confirm-options {
+		position: absolute;
+		top: calc(100% + 0.35rem);
+		right: 0;
+		z-index: 1100;
+		min-width: 190px;
+		padding: 0.65rem 0.75rem;
+		border: 1px solid #ffffff33;
+		border-radius: 6px;
+		background: #242a30;
+		box-shadow: 0 4px 14px #0009;
+
+		.form-check { margin-top: 0.3rem; }
+		.form-check-label { white-space: nowrap; font-size: 0.78rem; }
+	}
+}
+
 .gv {
 	.hr {
 		&:not(:first-child){
@@ -11,7 +71,8 @@
 		padding: 0.5rem 0;
 		border-bottom: #999999 1px dashed;
 
-		label {
+		> label,
+		.sim-group-title > label {
 			@include bg-gradient(#6daa2b);
 			border-radius: 6px;
 			border: #6daa2b;
@@ -20,8 +81,34 @@
 			box-shadow: 0 0 3px #6daa2b;
 		}
 
-		&:has(.ausl-log-tag) .ausl-log-tag { margin: auto 10px; }
-		&:not(:has(.ausl-log-tag)) button:first-of-type { margin-left: 12px; }
+		&:has(.ausl-log-tag) .ausl-log-tag { margin: 0; }
+	}
+
+	.sim-group-header {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.45rem 0.75rem;
+		position: relative;
+
+		button { margin: 0 !important; }
+	}
+
+	.sim-group-title {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.35rem;
+	}
+
+	.sim-group-title {
+		margin-right: auto;
+		white-space: nowrap;
+	}
+
+	@media (max-width: 900px) {
+		.sim-group-title,
+		.sim-controls { width: 100%; }
 	}
 }
 
@@ -159,6 +246,8 @@
 
 /*======================== Auto-Select Log Button ========================*/
 .ausl-log-tag {
+	display: inline-flex;
+	align-items: center;
 	padding: 2px 6px;
 	border-radius: 4px;
 	border: none;
@@ -258,4 +347,3 @@
 		}
 	}
 }
-

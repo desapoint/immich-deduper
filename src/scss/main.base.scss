@@ -480,33 +480,23 @@ $spac: ($pad * 2) + ($gx * 2) + $sideW + 10px;
 
 	.tab-acts {
 		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
 		justify-content: space-between;
+		gap: 0.5rem 0.75rem;
 
 		margin-bottom: 10px;
 
-		.left {
-			> button:not(:last-child) {
-				margin-right: 6px;
-			}
-
-			hr { margin: 6px auto 6px auto }
-
-			// > button:nth-child(n+3) {
-			// 	margin-top: 2px;
-			// }
-		}
-
-		.right {
-			display: flex;
-
-			> div {
-				margin: auto 6px auto auto;
-			}
-			padding-right:3px;
-		}
+		.sim-global-selection { flex: 0 1 auto; }
+		.sim-global-actions { flex: 1 1 auto; justify-content: flex-end; }
 
 		padding-bottom: 5px;
 		border-bottom: #cccccc 1px dotted;
+
+		@media (max-width: 1100px) {
+			.sim-controls { width: 100%; }
+			.sim-global-actions { justify-content: flex-start; }
+		}
 
 		&.floating {
 			position: fixed;
@@ -527,9 +517,6 @@ $spac: ($pad * 2) + ($gx * 2) + $sideW + 10px;
 				transform: translateY(0);
 			}
 
-			.left > button {
-				margin-top: 0;
-			}
 		}
 	}
 
@@ -759,4 +746,3 @@ $notify-colors: (
 		}
 	}
 }
-

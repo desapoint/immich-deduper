@@ -11,6 +11,8 @@ from util import log, err
 from mod import models
 from mod import bsh
 import rtm
+import api
+import sim_stack
 
 lg = log.get(__name__)
 
@@ -147,6 +149,180 @@ def trashByAssets(assets: List[models.Asset], cur):
 	if not assets: return 0
 	assetIds = [ass.id for ass in assets]
 	return trashBy(assetIds, cur)
+
+
+#------------------------------------------------------------------------
+# stack assets
+#
+# Reuses an existing stack when possible and consolidates every stack referenced
+# by the selected assets into that target stack.
+#------------------------------------------------------------------------
+def stackByAssets(
+	assets: List[models.Asset],
+	cur,
+	preferredPrimaryId: Optional[str] = None,
+) -> Tuple[str, List[str], str]:
+	if not assets or len(assets) < 2: raise RuntimeError("A stack requires at least two assets")
+
+	assetIds = list(dict.fromkeys(asset.id for asset in assets))
+	ownerIds = {asset.ownerId for asset in assets}
+	if len(assetIds) < 2: raise RuntimeError("A stack requires at least two unique assets")
+	if len(ownerIds) != 1 or not next(iter(ownerIds), None):
+		raise RuntimeError("All assets in an Immich stack must have the same owner")
+
+	ownerId = next(iter(ownerIds))
+	if preferredPrimaryId is not None and preferredPrimaryId not in assetIds:
+		raise RuntimeError("The selected stack cover is not one of the selected assets")
+	primaryId = preferredPrimaryId or assetIds[0]
+	sch = psql.getSchema()
+
+	cur.execute(psql.Q(f'''
+		Select id, "ownerId", status, "deletedAt", "stackId"
+		From {sch.asset}
+		Where id = ANY(%s)
+		For Update
+	'''), (assetIds,))
+	rows = cur.fetchall()
+	if len(rows) != len(assetIds): raise RuntimeError("One or more selected Immich assets no longer exist")
+	stackByAsset = {}
+	for assetId, rowOwnerId, status, deletedAt, stackId in rows:
+		assetId = str(assetId)
+		if str(rowOwnerId) != ownerId:
+			raise RuntimeError(f"Asset {assetId} belongs to a different Immich owner")
+		if deletedAt is not None or status != ks.db.status.active:
+			raise RuntimeError(f"Asset {assetId} is not active and cannot be stacked")
+		if stackId: stackByAsset[assetId] = str(stackId)
+
+	cur.execute(psql.Q(f'''
+		Select id, "primaryAssetId", "ownerId"
+		From {sch.stack}
+		Where id = ANY(%s) Or "primaryAssetId" = ANY(%s)
+		For Update
+	'''), (list(stackByAsset.values()), assetIds))
+	stackRows = cur.fetchall()
+	stackRowsById = {str(row[0]): row for row in stackRows}
+	missingStackIds = set(stackByAsset.values()) - set(stackRowsById)
+	if missingStackIds:
+		raise RuntimeError(f"Selected assets reference missing stacks: {sorted(missingStackIds)}")
+
+	primaryStacksByAsset: dict[str, List[str]] = {}
+	for stackId, stackPrimaryId, stackOwnerId in stackRows:
+		stackId = str(stackId)
+		stackPrimaryId = str(stackPrimaryId)
+		if str(stackOwnerId) != ownerId:
+			raise RuntimeError(f"Stack {stackId} belongs to a different Immich owner")
+		if stackPrimaryId in assetIds:
+			primaryStacksByAsset.setdefault(stackPrimaryId, []).append(stackId)
+
+	existingStackIds = sim_stack.orderExistingStackIds(assetIds, stackByAsset, primaryStacksByAsset)
+
+	allAssetIds = list(assetIds)
+	if existingStackIds:
+		cur.execute(psql.Q(f'''
+			Select id, "ownerId", status, "deletedAt"
+			From {sch.asset}
+			Where "stackId" = ANY(%s) And "deletedAt" Is Null
+			For Update
+		'''), (existingStackIds,))
+		for memberId, memberOwnerId, status, deletedAt in cur.fetchall():
+			memberId = str(memberId)
+			if str(memberOwnerId) != ownerId:
+				raise RuntimeError(f"Stack member {memberId} belongs to a different Immich owner")
+			if deletedAt is not None or status != ks.db.status.active:
+				raise RuntimeError(f"Stack member {memberId} is not active")
+			if memberId not in allAssetIds: allAssetIds.append(memberId)
+
+		stackId = existingStackIds[0]
+		existingPrimaryId = str(stackRowsById[stackId][1])
+		if preferredPrimaryId is not None: primaryId = preferredPrimaryId
+		elif existingPrimaryId in allAssetIds: primaryId = existingPrimaryId
+		else:
+			lg.warning(f"[stack] existing stack[{stackId}] has an inactive primary; replacing it with [{primaryId}]")
+
+		if len(existingStackIds) > 1:
+			lg.warning(f"[stack] consolidating stackIds[{', '.join(existingStackIds)}] into existing stack[{stackId}]")
+	else:
+		cur.execute(psql.Q(f'''
+			Insert Into {sch.stack} ("primaryAssetId", "ownerId")
+			Values (%s, %s)
+			Returning id
+		'''), (primaryId, ownerId))
+		row = cur.fetchone()
+		if not row: raise RuntimeError("Immich did not create the stack")
+		stackId = str(row[0])
+
+	cur.execute(psql.Q(f'''
+		Update {sch.asset}
+		Set "stackId" = %s, "updatedAt" = Now()
+		Where id = ANY(%s) And "ownerId" = %s And "deletedAt" Is Null
+	'''), (stackId, allAssetIds, ownerId))
+	if cur.rowcount != len(allAssetIds):
+		raise RuntimeError(f"Immich stack update affected {cur.rowcount}/{len(allAssetIds)} assets")
+
+	otherStackIds = [oldStackId for oldStackId in existingStackIds if oldStackId != stackId]
+	if otherStackIds:
+		cur.execute(psql.Q(f'Delete From {sch.stack} Where id = ANY(%s)'), (otherStackIds,))
+		if cur.rowcount != len(otherStackIds):
+			raise RuntimeError(f"Immich removed {cur.rowcount}/{len(otherStackIds)} superseded stacks")
+
+	if existingStackIds:
+		cur.execute(psql.Q(f'''
+			Update {sch.stack}
+			Set "primaryAssetId" = %s
+			Where id = %s And "ownerId" = %s
+		'''), (primaryId, stackId, ownerId))
+		if cur.rowcount != 1: raise RuntimeError(f"Immich could not update reused stack {stackId}")
+
+	lg.info(
+		f"[stack] id[{stackId}] primary[{primaryId}] assets[{len(allAssetIds)}] "
+		f"reused[{len(existingStackIds)}] owner[{ownerId}]"
+	)
+	return stackId, allAssetIds, primaryId
+
+
+def _hasExistingStack(assetIds: List[str], ownerId: str, cur) -> bool:
+	sch = psql.getSchema()
+	cur.execute(psql.Q(f'''
+		Select Exists (
+			Select 1 From {sch.asset}
+			Where id = ANY(%s) And "ownerId" = %s And "stackId" Is Not Null
+			Union All
+			Select 1 From {sch.stack}
+			Where "ownerId" = %s And "primaryAssetId" = ANY(%s)
+		)
+	'''), (assetIds, ownerId, ownerId, assetIds))
+	row = cur.fetchone()
+	return bool(row and row[0])
+
+
+def _stackMemberIds(stackId: str, cur) -> List[str]:
+	sch = psql.getSchema()
+	cur.execute(psql.Q(f'''
+		Select id From {sch.asset}
+		Where "stackId" = %s And "deletedAt" Is Null
+	'''), (stackId,))
+	return [str(row[0]) for row in cur.fetchall()]
+
+
+def stackByAssetsPreferApi(
+	assets: List[models.Asset],
+	cur,
+	preferredPrimaryId: Optional[str] = None,
+) -> Tuple[str, str, List[str], str]:
+	ownerId = assets[0].ownerId if assets else ''
+	assetIds = [asset.id for asset in assets]
+	if preferredPrimaryId is not None:
+		if preferredPrimaryId not in assetIds:
+			raise RuntimeError("The selected stack cover is not one of the selected assets")
+		assetIds = [preferredPrimaryId] + [assetId for assetId in assetIds if assetId != preferredPrimaryId]
+	if not _hasExistingStack(assetIds, ownerId, cur):
+		stackId = api.stackAssets(assetIds, ownerId)
+		if stackId:
+			memberIds = list(dict.fromkeys(assetIds + _stackMemberIds(stackId, cur)))
+			return stackId, 'api', memberIds, assetIds[0]
+
+	stackId, memberIds, primaryId = stackByAssets(assets, cur, preferredPrimaryId=preferredPrimaryId)
+	return stackId, 'database', memberIds, primaryId
 
 
 #------------------------------------------------------------------------
