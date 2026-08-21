@@ -1101,3 +1101,79 @@ body { background: radial-gradient(circle at 15% -10%, rgba(14, 165, 233, 0.12),
 @media (max-width: 900px) { .page-similar .similar-search-actions { grid-template-columns: 1fr; } .similar-workspace .sim-controls { width: 100%; } .similar-workspace .card.sim .sim-card-select { flex-basis: 100%; } }
 
 @media (max-width: 680px) { .page-similar .similar-intro { align-items: flex-start; flex-wrap: wrap; } .page-similar .similar-runtime-badge { margin-left: 3.75rem; } .page-similar .similar-config-primary { grid-template-columns: 1fr; } .page-similar .similar-section-heading { align-items: flex-start; flex-direction: column; gap: 0.12rem; } .page-similar .similar-section-heading > small { text-align: left; } .similar-workspace .tab-content { padding: 0.55rem; } .similar-workspace .sim-controls { align-items: flex-start; } .modal-footer { flex-direction: column-reverse; } .modal-footer .btn { width: 100%; } }
+
+.page-view .view-intro { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; padding: 1rem 1.1rem; border: 1px solid rgba(45, 212, 191, 0.24); border-radius: var(--ui-radius); background: linear-gradient(120deg, rgba(13, 148, 136, 0.11), rgba(17, 29, 46, 0.58)); }
+
+.page-view .view-intro h4 { margin: 0.08rem 0 0.2rem; color: var(--ui-text); font-size: 1rem; font-weight: 680; }
+
+.page-view .view-intro p { margin: 0; color: var(--ui-text-soft); font-size: 0.82rem; }
+
+.page-view .view-intro-icon { display: grid; place-items: center; flex: 0 0 2.75rem; width: 2.75rem; height: 2.75rem; border: 1px solid rgba(94, 234, 212, 0.34); border-radius: 0.8rem; background: rgba(13, 148, 136, 0.14); color: #5eead4; font-size: 1.25rem; }
+
+.page-view .view-eyebrow, .page-view .view-filter-label { font-size: 0.68rem; font-weight: 720; letter-spacing: 0.075em; text-transform: uppercase; }
+
+.page-view .view-eyebrow { color: #5eead4; }
+
+.page-view .view-library-badge { margin-left: auto; padding: 0.34rem 0.62rem; border: 1px solid rgba(94, 234, 212, 0.26); border-radius: 999px; background: rgba(13, 148, 136, 0.1); color: #99f6e4; font-size: 0.68rem; font-weight: 650; white-space: nowrap; }
+
+.page-view .view-filter-card { border-color: var(--ui-border); box-shadow: var(--ui-shadow-sm); }
+
+.page-view .view-filter-card .card-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+
+.page-view .view-filter-card .card-header small { font-size: 0.7rem; font-weight: 520; }
+
+.page-view .view-filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; }
+
+.page-view .view-filter-field { display: grid; align-content: start; gap: 0.32rem; min-width: 0; }
+
+.page-view .view-filter-field label { margin: 0; color: var(--ui-text); font-size: 0.76rem; font-weight: 650; }
+
+.page-view .view-filter-field > small { color: var(--ui-text-muted); font-size: 0.67rem; line-height: 1.35; }
+
+.page-view .view-filter-actions { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-top: 0.85rem; padding-top: 0.8rem; border-top: 1px solid var(--ui-border); }
+
+.page-view .view-trait-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem 0.85rem; }
+
+.page-view .view-trait-filters .form-check { margin: 0; padding: 0.28rem 0.55rem 0.28rem 1.85rem; border: 1px solid var(--ui-border); border-radius: 999px; background: rgba(8, 17, 31, 0.36); }
+
+.page-view .view-trait-filters .form-check-input { margin-top: 0.16rem; }
+
+.page-view .view-trait-filters .form-check-label { color: var(--ui-text-soft); font-size: 0.72rem; }
+
+.page-view .view-filter-label { color: var(--ui-text-muted); }
+
+.page-view .view-export-action { display: grid; justify-items: end; gap: 0.25rem; white-space: nowrap; }
+
+.page-view .view-export-action .btn { display: flex; align-items: center; gap: 0.42rem; }
+
+.page-view .view-filter-note { display: flex; align-items: center; gap: 0.45rem; margin-top: 0.75rem; padding: 0.62rem 0.7rem; border: 1px solid rgba(56, 189, 248, 0.18); border-radius: var(--ui-radius-sm); background: rgba(14, 165, 233, 0.06); color: var(--ui-text-muted); font-size: 0.7rem; }
+
+.page-view .view-filter-note i { color: var(--ui-accent); }
+
+.view-results-shell { width: 100%; min-width: 0; padding: 0.9rem; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-lg); background: rgba(8, 17, 31, 0.44); box-shadow: var(--ui-shadow-sm); }
+
+.view-results-shell .view-results-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 0.65rem; }
+
+.view-results-shell .view-results-heading h4 { margin: 0; color: var(--ui-text); font-size: 1rem; font-weight: 680; }
+
+.view-results-shell .view-results-heading > small { font-size: 0.7rem; text-align: right; }
+
+.view-results-shell .view-results-eyebrow { color: #5eead4; font-size: 0.65rem; font-weight: 720; letter-spacing: 0.075em; text-transform: uppercase; }
+
+.view-results-shell .view-results-pager { margin-block: 0.7rem !important; }
+
+.view-results-shell .gv { gap: 0.8rem !important; }
+
+.view-results-shell .card.sim.view { overflow: hidden; border: 1px solid var(--ui-border); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-shadow-sm); transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease; }
+
+.view-results-shell .card.sim.view:hover { border-color: rgba(94, 234, 212, 0.34); transform: translateY(-1px); box-shadow: 0 14px 32px rgba(0, 0, 0, 0.24); }
+
+.view-results-shell .card.sim.view.has-stack { border-color: var(--sim-stack-color); box-shadow: inset 4px 0 0 var(--sim-stack-color), var(--ui-shadow-sm); }
+
+.view-results-shell .card.sim.view .viewer .view { height: 205px; background: #050b14; }
+
+.view-results-shell .card.sim.view .card-body { background: rgba(8, 17, 31, 0.24); }
+
+@media (max-width: 1100px) { .page-view .view-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+@media (max-width: 700px) { .page-view .view-intro { align-items: flex-start; flex-wrap: wrap; } .page-view .view-library-badge { margin-left: 3.75rem; } .page-view .view-filter-card .card-header { align-items: flex-start; flex-direction: column; gap: 0.15rem; } .page-view .view-filter-grid { grid-template-columns: 1fr; } .page-view .view-filter-actions { align-items: stretch; flex-direction: column; } .page-view .view-export-action { justify-items: stretch; } .view-results-shell .view-results-heading { align-items: flex-start; flex-direction: column; } .view-results-shell .view-results-heading > small { text-align: left; } }

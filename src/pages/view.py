@@ -48,6 +48,13 @@ def layout():
 	try: total = db.pics.count()
 	except: total = 0
 
+	def filterField(label, detail, control, className=""):
+		return htm.Div([
+			dbc.Label(label),
+			control,
+			htm.Small(detail),
+		], className=f"view-filter-field {className}".strip())
+
 	return ui.renderBody([
 		#====== top start =======================================================
 
@@ -56,84 +63,104 @@ def layout():
 			htm.Small(f"{ks.pg.view.desc}", className="text-muted")
 		], className="body-header"),
 
+		htm.Div([
+			htm.Div(htm.I(className="bi bi-grid-3x3-gap"), className="view-intro-icon"),
+			htm.Div([
+				htm.Small("Library explorer", className="view-eyebrow"),
+				htm.H4("Find the exact assets you want to inspect"),
+				htm.P("Narrow the local library by owner, vector state, filename, path, or asset traits. Filters update the result set automatically."),
+			]),
+			htm.Div(f"{total:,} assets indexed", className="view-library-badge"),
+		], className="view-intro"),
+
 		dbc.Card([
-			dbc.CardHeader("View Settings"),
+			dbc.CardHeader([
+				htm.Span("Browse filters"),
+				htm.Small("Scoped to the local Deduper index", className="text-muted"),
+			]),
 			dbc.CardBody([
-				dbc.Row([
-					dbc.Col([
-						dbc.Label("User"),
-						dbc.Select(id=k.selUsrId, options=[{"label": "All Users", "value": ""}], value="", className="mb-2"),
-					], width=4),
-					dbc.Col([
-						dbc.Label("Filter"),
-						dbc.Select(id=k.selFilter, options=optFileters, value="all", className="mb-2"), #type:ignore
-					], width=4),
-					dbc.Col([
-						dbc.Label("Export"),
-						dbc.Button("Export Current IDs", id=k.btnExportIds, color="info", className="w-100"),
-					])
-				]),
+				htm.Div([
+					filterField(
+						"Owner",
+						"Show every owner or focus on one Immich library.",
+						dbc.Select(id=k.selUsrId, options=[{"label": "All Users", "value": ""}], value=""),
+					),
+					filterField(
+						"Vector status",
+						"Separate ready assets from images still needing vectors.",
+						dbc.Select(id=k.selFilter, options=optFileters, value="all"), #type:ignore
+					),
+					filterField(
+						"Filename",
+						"Press Enter or leave the field to apply the search.",
+						dbc.Input(id=k.schKeyword, type="text", placeholder="Search by filename…", debounce=True),
+					),
+					filterField(
+						"Path contains",
+						"Match any asset whose original path contains this text.",
+						dbc.Input(id=k.schPath, type="text", placeholder="e.g. /store/user/folder", debounce=True),
+					),
+				], className="view-filter-grid"),
 
-				dbc.Row([
-					dbc.Col([
-						dbc.Label("Filename"),
-						dbc.Input(id=k.schKeyword, type="text", placeholder="Search by filename...", className="mb-2"),
-					], width=4),
-					dbc.Col([
-						dbc.Label("Path Contains"),
-						dbc.Input(id=k.schPath, type="text", placeholder="e.g. /store/user/folder", className="mb-2"),
-					], width=4),
-					dbc.Col([
-						dbc.Checkbox(id=k.cbxFav, label="Favorites", value=False, className="mt-4"),
-						dbc.Checkbox(id=k.cbxArc, label="Archived", value=False, className="mt-2"),
-						dbc.Checkbox(id=k.cbxLive, label="LivePhoto", value=False, className="mt-2"),
-						dbc.Checkbox(id=k.cbxGridInfo, label="Show Grid Info", value=db.dto.showGridInfo, className="mt-2"),
+				htm.Div([
+					htm.Div([
+						htm.Small("Asset traits", className="view-filter-label"),
+						dbc.Checkbox(id=k.cbxFav, label="Favorites", value=False),
+						dbc.Checkbox(id=k.cbxArc, label="Archived", value=False),
+						dbc.Checkbox(id=k.cbxLive, label="Live photos", value=False),
+						dbc.Checkbox(id=k.cbxGridInfo, label="Show details", value=db.dto.showGridInfo),
 						htm.Div(id={"type": "dummy", "id": "grid-info-view"}, style={"display": "none"}),
-					], width=4),
-				]),
+					], className="view-trait-filters"),
+					htm.Div([
+						htm.Small("Current page", className="view-filter-label"),
+						dbc.Button([
+							htm.I(className="bi bi-download"),
+							"Export visible IDs",
+						], id=k.btnExportIds, color="info", outline=True),
+					], className="view-export-action"),
+				], className="view-filter-actions"),
 
-				dbc.Row([
-					dbc.Col([
-						htm.Ul([
-							htm.Li(["Searching with 'Find similar #number' follows your Similar configurations"]),
-						])
-					], width=12),
-				]),
-
-				dbc.Row([
-					dbc.Col([
-					], width=2, className="ms-auto"),
-				], className="mt-2"),
+				htm.Div([
+					htm.I(className="bi bi-info-circle"),
+					"Find similar on an asset uses the configuration currently set on the Similar page.",
+				], className="view-filter-note"),
 			])
-		], className="mb-4"),
+		], className="view-filter-card"),
 		#====== top end =========================================================
 	], [
 		#====== bottom start=====================================================
 
 		htm.Div([
+			htm.Div([
+				htm.Div([
+					htm.Small("Filtered library", className="view-results-eyebrow"),
+					htm.H4("Assets"),
+				]),
+				htm.Small("Open an image for details or start a similarity search from its card.", className="text-muted"),
+			], className="view-results-heading"),
 			# Top pager
-			*pager.createPager(pgId=k.pagerMain, idx=0, className="mb-3 text-center", btnSize=9),
+			*pager.createPager(pgId=k.pagerMain, idx=0, className="view-results-pager mb-3 text-center", btnSize=9),
 
 			# Grid
 			dbc.Spinner(
-				htm.Div(id=k.grid, className="mb-4"),
+				htm.Div(id=k.grid, className="view-card-grid mb-4"),
 				color="primary",
 				type="border",
 				spinner_style={"width": "3rem", "height": "3rem"}
 			),
 
 			# Bottom pager
-			*pager.createPager(pgId=k.pagerMain, idx=1, className="mt-3 text-center", btnSize=9),
+			*pager.createPager(pgId=k.pagerMain, idx=1, className="view-results-pager mt-3 text-center", btnSize=9),
 
 			# Main pager store
 			*pager.createStore(pgId=k.pagerMain, page=1, total=total)
-		]),
+		], className="view-results-shell"),
 
 		# Init store
 		dcc.Store(id=k.initView),
 
 		#====== bottom end ======================================================
-	])
+	], pageClass="page-view")
 
 #========================================================================
 # Register pager callbacks

@@ -3,6 +3,7 @@
 import os
 import sys
 import unittest
+from unittest.mock import patch
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
@@ -10,7 +11,7 @@ import dash
 
 dash.Dash(__name__, use_pages=True, pages_folder='')
 
-from pages import fetch, settings, vector
+from pages import fetch, settings, vector, view
 
 
 def walk(node):
@@ -57,6 +58,22 @@ class TestPageLayouts(unittest.TestCase):
 		self.assertEqual(sum('vector-action-unit' in value for value in classes), 3)
 		self.assertTrue(any('vector-action-danger' in value for value in classes))
 		self.assertTrue(any('vector-repair-note' == value for value in classes))
+
+	def test_view_page_groups_filters_and_results_clearly(self):
+		with patch.object(view.db.pics, 'count', return_value=24):
+			nodes = list(walk(view.layout()))
+		classes = [str(props(node).get('className', '')) for node in nodes]
+
+		self.assertTrue(any('main page-view' in value for value in classes))
+		self.assertTrue(any('view-intro' == value for value in classes))
+		self.assertEqual(sum('view-filter-field' in value for value in classes), 4)
+		self.assertTrue(any('view-trait-filters' == value for value in classes))
+		self.assertTrue(any('view-results-shell' == value for value in classes))
+
+		filename = next(node for node in nodes if props(node).get('id') == view.k.schKeyword)
+		path = next(node for node in nodes if props(node).get('id') == view.k.schPath)
+		self.assertTrue(props(filename).get('debounce'))
+		self.assertTrue(props(path).get('debounce'))
 
 
 if __name__ == '__main__':
