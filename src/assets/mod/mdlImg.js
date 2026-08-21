@@ -78,8 +78,12 @@ const MdlImg = window.MdlImg = {
 
 			if (ass) {
 				htms.push(
-					R.mk('div', {className: 'acts B'},
-						R.mk('span', {className: 'tag xl'}, `#${ass.autoId} @${ass.simGIDs?.join(',') || ''}`)
+					R.mk('div', {className: 'acts B viewer-asset-status'},
+						R.mk('span', {className: 'viewer-asset-id'}, `Asset #${ass.autoId}`),
+						R.mk('span', {className: 'viewer-position'}, `${mdl.curIdx + 1} of ${this.state.now.sim.assCur.length}`),
+						ass.simGIDs?.length
+							? R.mk('span', {className: 'viewer-groups'}, `Groups ${ass.simGIDs.join(', ')}`)
+							: null
 					)
 				)
 			}
@@ -92,26 +96,30 @@ const MdlImg = window.MdlImg = {
 	getPrevButtonStyle(mdl){
 		if (!mdl.isMulti || !this.state.now?.sim?.assCur || this.state.now.sim.assCur.length <= 1) return {display: 'none'}
 
+		const disabled = mdl.curIdx <= 0
 		return {
 			display: 'block',
-			opacity: mdl.curIdx <= 0 ? '0.3' : '1'
+			opacity: disabled ? '0.28' : '1',
+			pointerEvents: disabled ? 'none' : 'auto'
 		}
 	},
 
 	getNextButtonStyle(mdl){
 		if (!mdl.isMulti || !this.state.now?.sim?.assCur || this.state.now.sim.assCur.length <= 1) return {display: 'none'}
 
+		const disabled = mdl.curIdx >= this.state.now.sim.assCur.length - 1
 		return {
 			display: 'block',
-			opacity: mdl.curIdx >= this.state.now.sim.assCur.length - 1 ? '0.3' : '1'
+			opacity: disabled ? '0.28' : '1',
+			pointerEvents: disabled ? 'none' : 'auto'
 		}
 	},
 
 	getSelectButtonText(mdl, curAss){
-		if (!mdl.isMulti || !curAss) return '◻️ Select'
+		if (!mdl.isMulti || !curAss) return 'Select image'
 
 		const isSelected = this.state.ste?.selectedIds?.includes(curAss.autoId)
-		return isSelected ? '✅ Selected' : '◻️ Select'
+		return isSelected ? 'Selected' : 'Select image'
 	},
 
 	getSelectButtonColor(mdl, curAss){
@@ -165,14 +173,14 @@ const MdlImg = window.MdlImg = {
 
 		const assetRows = [
 			R.mk('tr', {},
-				R.mk('td', {}, 'autoId'),
+				R.mk('td', {}, 'Local ID'),
 				R.mk('td', {},
 					R.mk('span', {className: 'tag'}, `#${ass.autoId}`),
 					R.mk('span', {className: 'tag'}, `@${ass.simGIDs?.join(',') || ''}`)
 				)
 			),
 			R.mk('tr', {},
-				R.mk('td', {}, 'id'),
+				R.mk('td', {}, 'Immich ID'),
 				R.mk('td', {}, R.mk('span', {className: 'tag sm second'}, ass.id))
 			),
 			R.mk('tr', {},
@@ -287,13 +295,13 @@ const MdlImg = window.MdlImg = {
 		if (!mdl.isMulti) return 'hide'
 		return mdl.hideHelp ? 'help collapsed' : 'help'
 	},
-	getHelpButtonText(mdl){return mdl.hideHelp ? '❔' : '❎'},
+	getHelpButtonText(mdl){return mdl.hideHelp ? 'Shortcuts' : 'Hide shortcuts'},
 	getInfoClassName(mdl){
 		if (!mdl.isMulti) return 'hide'
 		return mdl.hideInfo ? 'info collapsed' : 'info'
 	},
-	getInfoButtonText(mdl){return mdl.hideInfo ? 'ℹ️' : '❎'},
-	getModeTxt(mdl){return mdl.modeH ?'Fit Screen' : 'Full Height'},
+	getInfoButtonText(mdl){return mdl.hideInfo ? 'Details' : 'Hide details'},
+	getModeTxt(mdl){return mdl.modeH ? 'Actual size' : 'Fit screen'},
 	getModeCss(mdl){return mdl.modeH ?'img-pop auto' : 'img-pop'},
 
 	toggleHelp(){
@@ -429,6 +437,7 @@ window.dash_clientside.mdlImg = {
 	onModeToggle(nclk, mdl){
 		if (!nclk) return Array(3).fill(dash_clientside.no_update)
 
+		MdlImg.init(mdl, null, null)
 		return MdlImg.toggleMode()
 	},
 
@@ -459,12 +468,12 @@ document.addEventListener('keydown', function(ev){
 	if (ev.key == 'ArrowLeft' || ev.key == 'h') {
 		ev.preventDefault()
 		const btn = document.querySelector('#btn-img-prev')
-		if (btn && btn.style.opacity != '0.3') btn.click()
+		if (btn && btn.style.pointerEvents != 'none') btn.click()
 	}
 	else if (ev.key == 'ArrowRight' || ev.key == 'l') {
 		ev.preventDefault()
 		const btn = document.querySelector('#btn-img-next')
-		if (btn && btn.style.opacity != '0.3') btn.click()
+		if (btn && btn.style.pointerEvents != 'none') btn.click()
 	}
 	else if (ev.key == ' ') {
 		ev.preventDefault()
@@ -501,4 +510,3 @@ document.addEventListener('keydown', function(ev){
 		if (btn) btn.click()
 	}
 })
-

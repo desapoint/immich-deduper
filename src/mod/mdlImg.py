@@ -45,10 +45,13 @@ layoutHelp = htm.Div([
 
 	htm.Div([
 		dbc.Button(
+			"Shortcuts",
 			id=k.btnHelp,
-			color="link",
+			color="secondary",
+			outline=True,
 			size="sm",
-			className="float-end p-0",
+			className="img-viewer-panel-toggle",
+			title="Show or hide keyboard shortcuts",
 		),
 		htm.Div([
 			htm.H6("Keyboard Shortcuts", className="mb-2"),
@@ -91,10 +94,13 @@ layoutHelp = htm.Div([
 layoutInfo = htm.Div([
 	htm.Div([
 		dbc.Button(
+			"Details",
 			id=k.btnInfo,
-			color="link",
+			color="secondary",
+			outline=True,
 			size="sm",
-			className="float-end p-0",
+			className="img-viewer-panel-toggle",
+			title="Show or hide image details",
 		),
 		htm.Div([
 			htm.H6("Image Information", className="mb-2"),
@@ -111,43 +117,52 @@ def render():
 
 		dbc.Modal([
 			dbc.ModalHeader([
-				htm.Span("Image Preview", className="me-auto"),
+				htm.Div([
+					htm.I(className="bi bi-image"),
+					htm.Div([
+						htm.Small("Asset preview"),
+						htm.Span("Image viewer"),
+					]),
+				], className="img-viewer-title me-auto"),
 				dbc.Button(
-					"mode",
+					"Fit screen",
 					id=k.btnMode,
 					color="secondary",
+					outline=True,
 					size="sm",
+					className="img-viewer-mode",
+					title="Toggle between fit-to-screen and actual-size viewing",
 				),
 			], close_button=True),
 			dbc.ModalBody([
 				htm.Div(id=k.content, className="img"),
 				htm.Div([
 					dbc.Button(
-						"Select",
+						"Select image",
 						id=k.btnSelect,
 						color="info",
-						className="",
+						className="img-viewer-select",
 						style={"display": "none"}
 					),
 				], className="acts"),
 				htm.Div([layoutInfo], id=k.floatL, className="acts L"),
 				htm.Div(id=k.floatR, className="acts R"),
 				layoutHelp,
-				dbc.Button(
-					"←",
+				htm.Button(
+					htm.I(className="bi bi-chevron-left"),
 					id=k.btnPrev,
-					color="secondary",
-					size="lg",
-					className="position-fixed start-0 top-50 translate-middle-y ms-3",
-					style={"zIndex": 1000, "display": "none"}
+					className="btn btn-secondary btn-lg position-fixed start-0 top-50 translate-middle-y ms-3",
+					style={"zIndex": 1000, "display": "none"},
+					title="Previous image",
+					**{"aria-label": "Previous image"},
 				),
-				dbc.Button(
-					"→",
+				htm.Button(
+					htm.I(className="bi bi-chevron-right"),
 					id=k.btnNext,
-					color="secondary",
-					size="lg",
-					className="position-fixed end-0 top-50 translate-middle-y me-3",
-					style={"zIndex": 1000, "display": "none"}
+					className="btn btn-secondary btn-lg position-fixed end-0 top-50 translate-middle-y me-3",
+					style={"zIndex": 1000, "display": "none"},
+					title="Next image",
+					**{"aria-label": "Next image"},
 				),
 			]),
 		],
