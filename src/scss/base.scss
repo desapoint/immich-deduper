@@ -82,6 +82,29 @@
 	--bs-pagination-focus-box-shadow:0 0 0 0.2rem rgba(49, 130, 206, 0.25);
 
 	--shadow-box-white:0 0px 2px rgba(255, 255, 255, 0.67);
+
+	/* Modern application surfaces */
+	--ui-bg:#08111f;
+	--ui-bg-soft:#0d1727;
+	--ui-surface:#111d2e;
+	--ui-surface-raised:#17253a;
+	--ui-surface-hover:#1c2d45;
+	--ui-border:rgba(148, 163, 184, 0.20);
+	--ui-border-strong:rgba(125, 211, 252, 0.34);
+	--ui-text:#e8eef7;
+	--ui-text-soft:#b4c0d0;
+	--ui-text-muted:#8492a6;
+	--ui-accent:#38bdf8;
+	--ui-accent-strong:#0ea5e9;
+	--ui-success:#65d48a;
+	--ui-warning:#f6c760;
+	--ui-danger:#f07070;
+	--ui-radius-sm:0.5rem;
+	--ui-radius:0.75rem;
+	--ui-radius-lg:1rem;
+	--ui-shadow-sm:0 8px 20px rgba(0, 0, 0, 0.16);
+	--ui-shadow:0 18px 45px rgba(0, 0, 0, 0.24);
+	--ui-focus:0 0 0 3px rgba(56, 189, 248, 0.22);
 }
 
 .txt-c { text-align:center }
