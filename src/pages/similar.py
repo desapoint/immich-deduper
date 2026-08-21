@@ -531,6 +531,13 @@ ccbk(
 	prevent_initial_call=True
 )
 
+ccbk(
+	cbkFn("similar", "onStackCoverClicked"),
+	out(ks.sto.ste, "data", allow_duplicate=True),
+	[inp({"type": gv.STACK_COVER_BUTTON, "id": ALL, "group": ALL, "owner": ALL}, "n_clicks")],
+	prevent_initial_call=True,
+)
+
 
 #------------------------------------------------------------------------
 # Initialize client-side selection state when assets load
@@ -559,6 +566,11 @@ ccbk(
 		out(k.btnOkSel, "disabled"),
 		out(k.btnStack, "disabled"),
 		out(k.btnExportIds, "disabled"),
+		out({"type": gv.STACK_GROUP_BUTTON, "id": ALL}, "disabled"),
+		out({"type": gv.GROUP_ACTION_BUTTON, "action": ALL, "id": ALL}, "disabled"),
+		out({"type": gv.STACK_COVER_BUTTON, "id": ALL, "group": ALL, "owner": ALL}, "outline"),
+		out({"type": gv.STACK_COVER_BUTTON, "id": ALL, "group": ALL, "owner": ALL}, "children"),
+		out({"type": gv.STACK_COVER_BUTTON, "id": ALL, "group": ALL, "owner": ALL}, "disabled"),
 	],
 	[
 		inp(ks.sto.now, "data"),
@@ -566,9 +578,17 @@ ccbk(
 		inp(ks.sto.cnt, "data"),
 		inp(ks.sto.tsk, "data"),
 	],
+	[
+		ste({"type": gv.STACK_GROUP_BUTTON, "id": ALL}, "id"),
+		ste({"type": gv.GROUP_ACTION_BUTTON, "action": ALL, "id": ALL}, "id"),
+		ste({"type": gv.STACK_COVER_BUTTON, "id": ALL, "group": ALL, "owner": ALL}, "id"),
+	],
 	prevent_initial_call="initial_duplicate"
 )
-def sim_UpdateButtons(dta_now, dta_ste, dta_cnt, dta_tsk):
+def sim_UpdateButtons(
+	dta_now, dta_ste, dta_cnt, dta_tsk,
+	groupButtonIds, groupActionButtonIds, coverButtonIds,
+):
 	now = Now.fromDic(dta_now)
 	ste = Ste.fromDic(dta_ste) if dta_ste else Ste()
 	cnt = Cnt.fromDic(dta_cnt)
@@ -600,16 +620,54 @@ def sim_UpdateButtons(dta_now, dta_ste, dta_cnt, dta_tsk):
 	cntSel = len(ste.selectedIds) if ste.selectedIds else 0
 	disRm = cntSel == 0
 	disRS = cntSel == 0
-	disStack = isTaskRunning
-	if not disStack:
-		try: sim_stack.buildPlan(now.sim.assCur, ste.selectedIds, db.dto.muod.on)
-		except ValueError: disStack = True
+	disStack = isTaskRunning or cntSel == 0
+
+	groupStackDisabled = []
+	for buttonId in groupButtonIds or []:
+		disabled = isTaskRunning
+		if not disabled:
+			try:
+				groupAssets = sim_stack.assetsForGroup(
+					now.sim.assCur,
+					db.dto.muod.on,
+					buttonId.get('id'),
+				)
+				disabled = not any(asset.autoId in set(ste.selectedIds) for asset in groupAssets)
+			except ValueError: disabled = True
+		groupStackDisabled.append(disabled)
+
+	groupActionDisabled = []
+	selectedIds = set(ste.selectedIds)
+	for buttonId in groupActionButtonIds or []:
+		disabled = isTaskRunning
+		if not disabled and buttonId.get('action') in {gv.GROUP_KEEP_SELECTED, gv.GROUP_DELETE_SELECTED}:
+			try:
+				groupAssets = sim_stack.assetsForGroup(
+					now.sim.assCur,
+					db.dto.muod.on,
+					buttonId.get('id'),
+				)
+				disabled = not any(asset.autoId in selectedIds for asset in groupAssets)
+			except ValueError: disabled = True
+		groupActionDisabled.append(disabled)
+
+	stackCoverIds = set(ste.stackCoverIds)
+	coverOutline = [buttonId.get('id') not in stackCoverIds for buttonId in coverButtonIds or []]
+	coverChildren = [
+		"☆ Stack cover" if buttonId.get('id') not in stackCoverIds else "★ Stack cover"
+		for buttonId in coverButtonIds or []
+	]
+	coverDisabled = [isTaskRunning for _ in coverButtonIds or []]
 
 	disExport = cntAssets <= 0
 
 	# lg.info(f"[sim:UpdBtns] disFind[{disFind}]")
 
-	return disFind, disClear, disReset, disOk, disDel, disRm, disRS, disStack, disExport
+	return (
+		disFind, disClear, disReset, disOk, disDel, disRm, disRS, disStack,
+		disExport, groupStackDisabled, groupActionDisabled,
+		coverOutline, coverChildren, coverDisabled,
+	)
 
 
 #------------------------------------------------------------------------
@@ -674,6 +732,7 @@ def sim_OnSwitchViewGroup(clks, dta_now):
 		inp(k.btnOkAll, "n_clicks"),
 		inp(k.btnRmAll, "n_clicks"),
 		inp({"type": gv.STACK_GROUP_BUTTON, "id": ALL}, "n_clicks"),
+		inp({"type": gv.GROUP_ACTION_BUTTON, "action": ALL, "id": ALL}, "n_clicks"),
 	],
 	[
 		ste(ks.sto.now, "data"),
@@ -693,7 +752,7 @@ def sim_OnSwitchViewGroup(clks, dta_now):
 	prevent_initial_call=True
 )
 def sim_RunModal(
-	clk_fnd, clk_clr, clk_rst, clk_rm, clk_rs, clk_stack, clk_ok, clk_ra, clk_stack_groups,
+	clk_fnd, clk_clr, clk_rst, clk_rm, clk_rs, clk_stack, clk_ok, clk_ra, clk_stack_groups, clk_group_actions,
 	dta_now, dta_cnt, dta_mdl, dta_tsk, dta_nfy, dta_ste,
 	nchkOkAll, nchkRmSel, ncRS, ncRA, stackDelete, groupDeleteValues, groupDeleteIds
 ):
@@ -713,6 +772,9 @@ def sim_RunModal(
 	tsk = Tsk.fromDic(dta_tsk)
 	nfy = Nfy.fromDic(dta_nfy)
 	ste = Ste.fromDic(dta_ste)
+	isGroupAction = trgId.get('type') == gv.GROUP_ACTION_BUTTON
+	groupAction = trgId.get('action') if isGroupAction else None
+	groupTargetId = trgId.get('id') if isGroupAction else None
 
 	retNow, retTsk, retSte = noUpd, noUpd, noUpd
 
@@ -770,9 +832,12 @@ def sim_RunModal(
 			"You may need to perform all similarity searches again."
 		]
 	#------------------------------------------------------------------------
-	elif trgId == k.btnRmSel:
-		ass = ste.getSelected(now.sim.assCur)
-		assAll = now.sim.assCur
+	elif trgId == k.btnRmSel or groupAction == gv.GROUP_DELETE_SELECTED:
+		try: assAll = sim_stack.assetsForGroup(now.sim.assCur, db.dto.muod.on, groupTargetId)
+		except ValueError as e:
+			nfy.warn(str(e))
+			return noUpd.by(5).upd(0, nfy)
+		ass = ste.getSelected(assAll)
 		assKeep = [a for a in assAll if a.autoId not in {s.autoId for s in ass}]
 		cnt = len(ass)
 
@@ -788,20 +853,25 @@ def sim_RunModal(
 			mdl.reset()
 			mdl.id = ks.pg.similar
 			mdl.cmd = ks.cmd.sim.selRm
+			mdl.args = {'targetGroupId': groupTargetId}
 			mdl.msg = [
-				f"Are you sure you want to Delete select images( {cnt} ) and Keep others( {len(assKeep)} )?", htm.Br(),
+				f"Are you sure you want to Delete selected images( {cnt} ) and Keep others( {len(assKeep)} )"
+				f" in {'group ' + str(groupTargetId) if groupTargetId is not None else 'the current results'}?", htm.Br(),
 				htm.B("This operation cannot be undone"),
 			]
 
 			if db.dto.mrg.on: mdl.msg.extend(_mkMrgMsg(assKeep))
 
-			if nchkRmSel:
+			if groupTargetId is None and nchkRmSel:
 				retTsk = mdl.mkTsk()
 				mdl.reset()
 	#------------------------------------------------------------------------
-	elif trgId == k.btnOkSel:
-		ass = ste.getSelected(now.sim.assCur)
-		assAll = now.sim.assCur
+	elif trgId == k.btnOkSel or groupAction == gv.GROUP_KEEP_SELECTED:
+		try: assAll = sim_stack.assetsForGroup(now.sim.assCur, db.dto.muod.on, groupTargetId)
+		except ValueError as e:
+			nfy.warn(str(e))
+			return noUpd.by(5).upd(0, nfy)
+		ass = ste.getSelected(assAll)
 		assOthers = [a for a in assAll if a.autoId not in {s.autoId for s in ass}]
 		cnt = len(ass)
 
@@ -817,14 +887,16 @@ def sim_RunModal(
 			mdl.reset()
 			mdl.id = ks.pg.similar
 			mdl.cmd = ks.cmd.sim.selOk
+			mdl.args = {'targetGroupId': groupTargetId}
 			mdl.msg = [
-				f"Are you sure you want to Resolve selected images( {cnt} ) and Delete others( {len(assOthers)} )?", htm.Br(),
+				f"Are you sure you want to Keep selected images( {cnt} ) and Delete others( {len(assOthers)} )"
+				f" in {'group ' + str(groupTargetId) if groupTargetId is not None else 'the current results'}?", htm.Br(),
 				htm.B("This operation cannot be undone"),
 			]
 
 			if db.dto.mrg.on: mdl.msg.extend(_mkMrgMsg(ass))
 
-			if ncRS:
+			if groupTargetId is None and ncRS:
 				retTsk = mdl.mkTsk()
 				mdl.reset()
 	#------------------------------------------------------------------------
@@ -844,6 +916,7 @@ def sim_RunModal(
 				ste.selectedIds,
 				db.dto.muod.on,
 				targetGroupId=targetGroupId,
+				coverIds=ste.stackCoverIds,
 			)
 		except ValueError as e:
 			nfy.warn(str(e))
@@ -860,13 +933,14 @@ def sim_RunModal(
 		mdl.cmd = ks.cmd.sim.stack
 		mdl.args = {
 			'selectedIds': [asset.autoId for asset in plan.selected],
+			'coverIds': plan.coverIds,
 			'targetGroupId': targetGroupId,
 			'deleteOthers': deleteOthers,
 		}
 		mdl.msg = [
-			f"Create {len(plan.stacks)} Immich stack(s) from {len(plan.selected)} selected assets across {len(plan.groups)} group(s)?",
+			f"Finalize {len(plan.stacks)} Immich stack(s) from {len(plan.selected)} selected assets across {len(plan.groups)} group(s)?",
 			htm.Br(),
-			"The first displayed selected asset for each owner will be the stack cover.",
+			"A chosen cover is used; otherwise existing stacks keep their cover and new stacks use the first displayed selection.",
 			htm.Br(),
 			f"{'Delete' if deleteOthers else 'Keep'} the {len(plan.others)} unselected assets in those groups.",
 		]
@@ -874,8 +948,11 @@ def sim_RunModal(
 			mdl.msg.extend([htm.Br(), htm.B("Deleting unselected assets cannot be undone here.")])
 			if db.dto.mrg.on: mdl.msg.extend(_mkMrgMsg(plan.selected))
 	#------------------------------------------------------------------------
-	elif trgId == k.btnRmAll:
-		ass = now.sim.assCur
+	elif trgId == k.btnRmAll or groupAction == gv.GROUP_DELETE_ALL:
+		try: ass = sim_stack.assetsForGroup(now.sim.assCur, db.dto.muod.on, groupTargetId)
+		except ValueError as e:
+			nfy.warn(str(e))
+			return noUpd.by(5).upd(0, nfy)
 		cnt = len(ass)
 
 		lg.info(f"[sim:delAll] {cnt} assets to delete")
@@ -884,17 +961,22 @@ def sim_RunModal(
 			mdl.reset()
 			mdl.id = ks.pg.similar
 			mdl.cmd = ks.cmd.sim.allRm
+			mdl.args = {'targetGroupId': groupTargetId}
 			mdl.msg = [
-				f"Are you sure you want to Delete ALL current images( {cnt} )?", htm.Br(),
+				f"Are you sure you want to Delete all {cnt} images"
+				f" in {'group ' + str(groupTargetId) if groupTargetId is not None else 'the current results'}?", htm.Br(),
 				htm.B("This operation cannot be undone"),
 			]
 
-			if ncRA:
+			if groupTargetId is None and ncRA:
 				retTsk = mdl.mkTsk()
 				mdl.reset()
 	#------------------------------------------------------------------------
-	elif trgId == k.btnOkAll:
-		ass = now.sim.assCur
+	elif trgId == k.btnOkAll or groupAction == gv.GROUP_KEEP_ALL:
+		try: ass = sim_stack.assetsForGroup(now.sim.assCur, db.dto.muod.on, groupTargetId)
+		except ValueError as e:
+			nfy.warn(str(e))
+			return noUpd.by(5).upd(0, nfy)
 		cnt = len(ass)
 
 		lg.info(f"[sim:resolve] {cnt} assets")
@@ -903,9 +985,13 @@ def sim_RunModal(
 			mdl.reset()
 			mdl.id = ks.pg.similar
 			mdl.cmd = ks.cmd.sim.allOk
-			mdl.msg = f"Are you sure mark resolved current images( {cnt} )?"
+			mdl.args = {'targetGroupId': groupTargetId}
+			mdl.msg = (
+				f"Are you sure you want to Keep all {cnt} images"
+				f" in {'group ' + str(groupTargetId) if groupTargetId is not None else 'the current results'}?"
+			)
 
-			if nchkOkAll:
+			if groupTargetId is None and nchkOkAll:
 				retTsk = mdl.mkTsk()
 				mdl.reset()
 	#------------------------------------------------------------------------
@@ -1134,11 +1220,35 @@ def sim_ClearSims(doReport: IFnProg, sto: models.ITaskStore):
 
 
 
+def _actionAssets(sto: models.ITaskStore) -> tuple[list[models.Asset], Optional[int]]:
+	targetGroupId = sto.tsk.args.get('targetGroupId')
+	assets = sim_stack.assetsForGroup(sto.now.sim.assCur, db.dto.muod.on, targetGroupId)
+	return assets, targetGroupId
+
+
+def _removeHandledAssets(sto: models.ITaskStore, handledAssets: list[models.Asset]):
+	handledIds = {asset.autoId for asset in handledAssets}
+	sto.now.sim.assCur, sto.ste.selectedIds = sim_stack.removeHandled(
+		sto.now.sim.assCur,
+		sto.ste.selectedIds,
+		handledAssets,
+	)
+	sto.ste.stackCoverIds = [autoId for autoId in sto.ste.stackCoverIds if autoId not in handledIds]
+	sto.now.sim.assAid = sto.now.sim.assCur[0].autoId if sto.now.sim.assCur else 0
+	sto.ste.cntTotal = len(sto.now.sim.assCur)
+
+	if not sto.now.sim.assCur:
+		sto.now.sim.assPend.clear()
+		if not db.dto.autoNext: sto.now.sim.activeTab = k.tabPnd
+		else: queueAutoNext(sto)
+
+
 def sim_SelectedDelete(doReport: IFnProg, sto: models.ITaskStore):
 	nfy, now, ste = sto.nfy, sto.now, sto.ste
+	targetGroupId = sto.tsk.args.get('targetGroupId')
 	xmpInfos = []
 	try:
-		assAlls = now.sim.assCur
+		assAlls, targetGroupId = _actionAssets(sto)
 		assSels = ste.getSelected(assAlls) if ste else []
 		assLefts = [a for a in assAlls if a.autoId not in {s.autoId for s in assSels}]
 
@@ -1172,11 +1282,7 @@ def sim_SelectedDelete(doReport: IFnProg, sto: models.ITaskStore):
 
 		if xmpInfos: immich.cleanupXmpBak(xmpInfos)
 
-		now.sim.clearAll()
-		sto.ste.clear()
-
-		if not db.dto.autoNext: now.sim.activeTab = k.tabPnd
-		else: queueAutoNext(sto)
+		_removeHandledAssets(sto, assAlls)
 
 		nfy.success(msg)
 
@@ -1186,17 +1292,19 @@ def sim_SelectedDelete(doReport: IFnProg, sto: models.ITaskStore):
 		msg = f"[sim] Delete selected failed: {str(e)}"
 		nfy.error(msg)
 		lg.error(traceback.format_exc())
-		now.sim.clearAll()
-		sto.ste.clear()
+		if targetGroupId is None:
+			now.sim.clearAll()
+			sto.ste.clear()
 
 		raise RuntimeError(msg)
 
 
 def sim_SelectedResolve(doReport: IFnProg, sto: models.ITaskStore):
 	nfy, now, ste = sto.nfy, sto.now, sto.ste
+	targetGroupId = sto.tsk.args.get('targetGroupId')
 	xmpInfos = []
 	try:
-		assAlls = now.sim.assCur
+		assAlls, targetGroupId = _actionAssets(sto)
 		assSels = ste.getSelected(assAlls) if ste else []
 		assOthers = [a for a in assAlls if a.autoId not in {s.autoId for s in assSels}]
 
@@ -1231,11 +1339,7 @@ def sim_SelectedResolve(doReport: IFnProg, sto: models.ITaskStore):
 
 		if xmpInfos: immich.cleanupXmpBak(xmpInfos)
 
-		now.sim.clearAll()
-		sto.ste.clear()
-
-		if not db.dto.autoNext: now.sim.activeTab = k.tabPnd
-		else: queueAutoNext(sto)
+		_removeHandledAssets(sto, assAlls)
 
 		return sto, msg
 	except Exception as e:
@@ -1243,8 +1347,9 @@ def sim_SelectedResolve(doReport: IFnProg, sto: models.ITaskStore):
 		msg = f"[sim] Resolve selected failed: {str(e)}"
 		nfy.error(msg)
 		lg.error(traceback.format_exc())
-		now.sim.clearAll()
-		sto.ste.clear()
+		if targetGroupId is None:
+			now.sim.clearAll()
+			sto.ste.clear()
 
 		raise RuntimeError(msg)
 
@@ -1254,6 +1359,7 @@ def sim_StackSelected(doReport: IFnProg, sto: models.ITaskStore):
 	xmpInfos = []
 	try:
 		selectedIds = [int(autoId) for autoId in tsk.args.get('selectedIds', [])]
+		coverIds = [int(autoId) for autoId in tsk.args.get('coverIds', [])]
 		targetGroupId = tsk.args.get('targetGroupId')
 		deleteOthers = bool(tsk.args.get('deleteOthers', False))
 		plan = sim_stack.buildPlan(
@@ -1261,24 +1367,41 @@ def sim_StackSelected(doReport: IFnProg, sto: models.ITaskStore):
 			selectedIds,
 			db.dto.muod.on,
 			targetGroupId=targetGroupId,
+			coverIds=coverIds,
 		)
 
 		doReport(5, f"Preparing {len(plan.stacks)} stack(s) across {len(plan.groups)} group(s)")
-		apiStacks = 0
-		dbStacks = 0
+		stackMethods = {}
+		protectedStackAssetIds = set()
+		deleteAssets = []
+		resolvedAssets = plan.assets
 
 		with psql.mkConn() as conn:
 			with conn.cursor() as cur:
 				for idx, stack in enumerate(plan.stacks):
 					doReport(10 + int(45 * idx / len(plan.stacks)), f"Stacking group {stack.groupId}")
-					_, method = immich.stackByAssetsPreferApi(stack.assets, cur)
-					if method == 'api': apiStacks += 1
-					else: dbStacks += 1
+					stackId, method, memberIds = immich.stackByAssetsPreferApi(
+						stack.assets,
+						cur,
+						preferredPrimaryId=stack.primary.id if stack.coverAutoId is not None else None,
+					)
+					stackMethods[stackId] = method
+					protectedStackAssetIds.update(memberIds)
+
+				if deleteOthers:
+					deleteAssets, _ = sim_stack.splitUnselectedByStackMembership(
+						plan.others,
+						protectedStackAssetIds,
+					)
+					deleteIds = {asset.autoId for asset in deleteAssets}
+					resolvedAssets = [asset for asset in plan.assets if asset.autoId not in deleteIds]
 
 				if deleteOthers and db.dto.mrg.on:
 					for group in plan.groups:
-						if not group.others: continue
-						result = immich.mergeMetadata(group.selected, group.others, immich.MergeOpts(
+						groupDeleteAssets = [asset for asset in group.others if asset.autoId in deleteIds]
+						if not groupDeleteAssets: continue
+						groupKeepAssets = [asset for asset in group.assets if asset.autoId not in deleteIds]
+						result = immich.mergeMetadata(groupKeepAssets, groupDeleteAssets, immich.MergeOpts(
 							albums=db.dto.mrg.albums,
 							favorites=db.dto.mrg.favs,
 							tags=db.dto.mrg.tags,
@@ -1289,32 +1412,30 @@ def sim_StackSelected(doReport: IFnProg, sto: models.ITaskStore):
 						), cur)
 						xmpInfos.extend(result.get('xmpInfos', []))
 
-				if deleteOthers and plan.others:
-					doReport(70, f"Moving {len(plan.others)} unselected asset(s) to trash")
-					immich.trashByAssets(plan.others, cur)
+				if deleteAssets:
+					doReport(70, f"Moving {len(deleteAssets)} unselected asset(s) to trash")
+					immich.trashByAssets(deleteAssets, cur)
 				conn.commit()
 
-		if deleteOthers and plan.others: db.pics.deleteBy(plan.others)
-		db.pics.setResolveBy(plan.selected if deleteOthers else plan.assets)
+		if deleteAssets: db.pics.deleteBy(deleteAssets)
+		db.pics.setResolveBy(resolvedAssets)
 
 		if xmpInfos: immich.cleanupXmpBak(xmpInfos)
 
-		affectedIds = {asset.autoId for asset in plan.assets}
-		now.sim.assCur = [asset for asset in now.sim.assCur if asset.autoId not in affectedIds]
-		now.sim.assAid = now.sim.assCur[0].autoId if now.sim.assCur else 0
-		ste.selectedIds = [autoId for autoId in ste.selectedIds if autoId not in affectedIds]
-		ste.cntTotal = len(now.sim.assCur)
+		_removeHandledAssets(sto, plan.assets)
 
-		if not now.sim.assCur:
-			if not db.dto.autoNext: now.sim.activeTab = k.tabPnd
-			else: queueAutoNext(sto)
-
-		doReport(100, f"Created {len(plan.stacks)} stack(s)")
-		keptOrDeleted = "deleted" if deleteOthers else "kept"
+		apiStacks = sum(method == 'api' for method in stackMethods.values())
+		dbStacks = sum(method == 'database' for method in stackMethods.values())
+		doReport(100, f"Finalized {len(stackMethods)} stack(s)")
+		if deleteOthers:
+			protectedOthers = len(plan.others) - len(deleteAssets)
+			assetResult = f"deleted {len(deleteAssets)} unselected asset(s)"
+			if protectedOthers:
+				assetResult += f" and preserved {protectedOthers} existing stack member(s)"
+		else: assetResult = f"kept {len(plan.others)} unselected asset(s)"
 		msg = (
-			f"Created {len(plan.stacks)} Immich stack(s) across {len(plan.groups)} group(s); "
-			f"{keptOrDeleted} {len(plan.others)} unselected asset(s) "
-			f"(API: {apiStacks}, database: {dbStacks})."
+			f"Finalized {len(stackMethods)} Immich stack(s) across {len(plan.groups)} group(s); "
+			f"{assetResult} (API: {apiStacks}, database: {dbStacks})."
 		)
 		nfy.success(msg)
 		return sto, msg
@@ -1327,38 +1448,37 @@ def sim_StackSelected(doReport: IFnProg, sto: models.ITaskStore):
 
 
 def sim_AllResolve(doReport: IFnProg, sto: models.ITaskStore):
-	nfy, now, cnt = sto.nfy, sto.now, sto.cnt
+	nfy, now = sto.nfy, sto.now
+	targetGroupId = sto.tsk.args.get('targetGroupId')
 	try:
-		assets = now.sim.assCur
+		assets, targetGroupId = _actionAssets(sto)
 		cntAll = len(assets)
 		msg = f"[sim] set Resolved Assets( {cntAll} ) Success!"
 
-		if not assets or cnt == 0: raise RuntimeError("Current Assets not found")
+		if not assets or cntAll == 0: raise RuntimeError("Current Assets not found")
 		lg.info(f"[sim:allResolve] resolve assets[{cntAll}] ")
 
 		db.pics.setResolveBy(assets)
 
-		now.sim.clearAll()
-		sto.ste.clear()
-
-		if not db.dto.autoNext: now.sim.activeTab = k.tabPnd
-		else: queueAutoNext(sto)
+		_removeHandledAssets(sto, assets)
 
 		return sto, msg
 	except Exception as e:
 		msg = f"[sim] Resolved All failed: {str(e)}"
 		nfy.error(msg)
 		lg.error(traceback.format_exc())
-		now.sim.clearAll()
-		sto.ste.clear()
+		if targetGroupId is None:
+			now.sim.clearAll()
+			sto.ste.clear()
 
 		raise RuntimeError(msg)
 
 
 def sim_AllDelete(doReport: IFnProg, sto: models.ITaskStore):
 	nfy, now = sto.nfy, sto.now
+	targetGroupId = sto.tsk.args.get('targetGroupId')
 	try:
-		assets = now.sim.assCur
+		assets, targetGroupId = _actionAssets(sto)
 		cntAll = len(assets)
 		msg = f"[sim] Delete All Assets( {cntAll} ) Success!"
 
@@ -1373,19 +1493,16 @@ def sim_AllDelete(doReport: IFnProg, sto: models.ITaskStore):
 
 		db.pics.deleteBy(assets)
 
-		now.sim.clearAll()
-		sto.ste.clear()
-
-		if not db.dto.autoNext: now.sim.activeTab = k.tabPnd
-		else: queueAutoNext(sto)
+		_removeHandledAssets(sto, assets)
 
 		return sto, msg
 	except Exception as e:
 		msg = f"[sim] Delete all failed: {str(e)}"
 		nfy.error(msg)
 		lg.error(traceback.format_exc())
-		now.sim.clearAll()
-		sto.ste.clear()
+		if targetGroupId is None:
+			now.sim.clearAll()
+			sto.ste.clear()
 
 		raise RuntimeError(msg)
 

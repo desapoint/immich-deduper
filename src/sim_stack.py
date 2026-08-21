@@ -7,9 +7,12 @@ class StackUnit:
 	groupId: int
 	ownerId: str
 	assets: List[Any] = field(default_factory=list)
+	coverAutoId: Optional[int] = None
 
 	@property
 	def primary(self) -> Any:
+		if self.coverAutoId is not None:
+			return next(asset for asset in self.assets if asset.autoId == self.coverAutoId)
 		return self.assets[0]
 
 
@@ -42,6 +45,10 @@ class StackPlan:
 	def others(self) -> List[Any]:
 		return [asset for group in self.groups for asset in group.others]
 
+	@property
+	def coverIds(self) -> List[int]:
+		return [stack.coverAutoId for stack in self.stacks if stack.coverAutoId is not None]
+
 
 def _singleGroupId(assets: List[Any]) -> int:
 	first = assets[0]
@@ -59,20 +66,69 @@ def groupAssets(assets: List[Any], multiMode: bool) -> dict[int, List[Any]]:
 	return groups
 
 
+def _matchingGroupId(grouped: dict[int, List[Any]], targetGroupId: int) -> Optional[int]:
+	return next((groupId for groupId in grouped if str(groupId) == str(targetGroupId)), None)
+
+
+def assetsForGroup(assets: List[Any], multiMode: bool, targetGroupId: Optional[int] = None) -> List[Any]:
+	if targetGroupId is None: return list(assets)
+
+	grouped = groupAssets(assets, multiMode)
+	matchingId = _matchingGroupId(grouped, targetGroupId)
+	if matchingId is None: raise ValueError(f"Group {targetGroupId} is no longer available")
+	return grouped[matchingId]
+
+
+def removeHandled(
+	assets: List[Any],
+	selectedIds: List[int],
+	handledAssets: List[Any],
+) -> tuple[List[Any], List[int]]:
+	handledIds = {asset.autoId for asset in handledAssets}
+	remainingAssets = [asset for asset in assets if asset.autoId not in handledIds]
+	remainingSelectedIds = [autoId for autoId in selectedIds if autoId not in handledIds]
+	return remainingAssets, remainingSelectedIds
+
+
+def orderExistingStackIds(
+	selectedAssetIds: List[str],
+	stackByAsset: dict[str, str],
+	primaryStacksByAsset: dict[str, List[str]],
+) -> List[str]:
+	ordered = []
+	for assetId in selectedAssetIds:
+		stackId = stackByAsset.get(assetId)
+		if stackId and stackId not in ordered: ordered.append(stackId)
+		for primaryStackId in sorted(primaryStacksByAsset.get(assetId, [])):
+			if primaryStackId not in ordered: ordered.append(primaryStackId)
+	return ordered
+
+
+def splitUnselectedByStackMembership(
+	assets: List[Any],
+	stackMemberIds: set[str],
+) -> tuple[List[Any], List[Any]]:
+	deletable = [asset for asset in assets if asset.id not in stackMemberIds]
+	protected = [asset for asset in assets if asset.id in stackMemberIds]
+	return deletable, protected
+
+
 def buildPlan(
 	assets: List[Any],
 	selectedIds: List[int],
 	multiMode: bool,
 	targetGroupId: Optional[int] = None,
+	coverIds: Optional[List[int]] = None,
 ) -> StackPlan:
 	if not assets: raise ValueError("No current assets to stack")
 
 	selectedSet = set(selectedIds or [])
+	coverSet = set(coverIds or [])
 	if not selectedSet: raise ValueError("Select at least two assets in a group")
 
 	grouped = groupAssets(assets, multiMode)
 	if targetGroupId is not None:
-		matchingId = next((groupId for groupId in grouped if str(groupId) == str(targetGroupId)), None)
+		matchingId = _matchingGroupId(grouped, targetGroupId)
 		if matchingId is None: raise ValueError(f"Group {targetGroupId} is no longer available")
 		grouped = {matchingId: grouped[matchingId]}
 	else:
@@ -95,9 +151,17 @@ def buildPlan(
 		for ownerId, ownerAssets in ownerGroups.items():
 			if len(ownerAssets) < 2:
 				raise ValueError(
-					f"Group {groupId} needs at least two selected assets for each Immich owner"
+					f"Stacking requires at least two selected images for owner {ownerId} in group {groupId}"
 				)
-			stacks.append(StackUnit(groupId=groupId, ownerId=ownerId, assets=ownerAssets))
+			chosenCovers = [asset.autoId for asset in ownerAssets if asset.autoId in coverSet]
+			if len(chosenCovers) > 1:
+				raise ValueError(f"Choose only one stack cover for owner {ownerId} in group {groupId}")
+			stacks.append(StackUnit(
+				groupId=groupId,
+				ownerId=ownerId,
+				assets=ownerAssets,
+				coverAutoId=chosenCovers[0] if chosenCovers else None,
+			))
 
 		selectedAutoIds = {asset.autoId for asset in selected}
 		plan.groups.append(StackVisualGroup(

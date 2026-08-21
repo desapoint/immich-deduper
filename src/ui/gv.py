@@ -11,6 +11,23 @@ from ui import gvEx, cards
 
 STACK_GROUP_BUTTON = "sim-stack-group"
 STACK_GROUP_DELETE = "sim-stack-group-delete"
+STACK_COVER_BUTTON = "sim-stack-cover"
+GROUP_ACTION_BUTTON = "sim-group-action"
+GROUP_KEEP_SELECTED = "keep-selected"
+GROUP_DELETE_SELECTED = "delete-selected"
+GROUP_KEEP_ALL = "keep-all"
+GROUP_DELETE_ALL = "delete-all"
+
+
+def _mkGroupAction(label: str, groupId: int, action: str, color: str, disabled: bool = False):
+	return dbc.Button(
+		label,
+		id={"type": GROUP_ACTION_BUTTON, "action": action, "id": groupId},
+		size="sm",
+		color=color,
+		className="txt-sm ms-1",
+		disabled=disabled,
+	)
 
 
 def _mkGroupHeader(groupId: int, count: int):
@@ -18,6 +35,8 @@ def _mkGroupHeader(groupId: int, count: int):
 		htm.Label(f"Group {groupId} ( {count} items )"),
 		dbc.Button([htm.Span(className="fake-checkbox checked"), "select this group all"], size="sm", color="secondary", id=f"cbx-sel-grp-all-{groupId}", className="txt-sm me-1"),
 		dbc.Button([htm.Span(className="fake-checkbox"), "deselect this group All"], size="sm", color="secondary", id=f"cbx-sel-grp-non-{groupId}", className="txt-sm"),
+		_mkGroupAction("Keep selected, delete others", groupId, GROUP_KEEP_SELECTED, "success", disabled=True),
+		_mkGroupAction("Delete selected, keep others", groupId, GROUP_DELETE_SELECTED, "danger", disabled=True),
 		dbc.Checkbox(
 			id={"type": STACK_GROUP_DELETE, "id": groupId},
 			label="Delete unselected",
@@ -31,8 +50,10 @@ def _mkGroupHeader(groupId: int, count: int):
 			color="info",
 			className="txt-sm ms-1",
 			disabled=True,
-			title="Stack selected assets in this group; the first displayed selection becomes the cover",
+			title="Stack selected assets in this group; existing stacks are reused, otherwise the first displayed selection becomes the cover",
 		),
+		_mkGroupAction("Keep all", groupId, GROUP_KEEP_ALL, "success"),
+		_mkGroupAction("Delete all", groupId, GROUP_DELETE_ALL, "danger"),
 	], className="hr", **{"data-group-id": str(groupId)})
 
 
@@ -69,7 +90,7 @@ def mkGrd(assets: list[models.Asset], minW=230, onEmpty=None, maker=cards.mk):
 	rows.append(_mkGroupHeader(gid, len(assets)))
 
 	for idx, a in enumerate(assets):
-		card = maker(a)
+		card = cards.mk(a, stackGroupId=gid) if maker is cards.mk else maker(a)
 
 		if a.vw.isRelats and not firstRels:
 			firstRels = True
@@ -122,7 +143,7 @@ def mkGrdGrps(assets: List[models.Asset], minW=250, maxW=300, onEmpty=None):
 		rows.append(_mkGroupHeader(grpId, grpCount))
 
 		for asset in grpAssets:
-			card = cards.mk(asset)
+			card = cards.mk(asset, stackGroupId=grpId)
 			rows.append(htm.Div(card, style=styItem))
 
 	lg.info(f"[fsp:gv] assets[{len(assets)}] groups[{len(groups)}] rows[{len(rows)}]")

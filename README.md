@@ -77,15 +77,20 @@ Re-running Fetch reconciles the local database with Immich's current state. Newl
 - `Find Similar`
   - Starts searching for the next photo that matches your `Threshold Min` settings and shows it in the `current` tab
   - When photo groups appear in the `current` tab, click a photo's header to select it and enable the available actions. After using an action, the handled photos are marked as resolved
+  - Each group header provides `Keep selected`, `Delete selected`, `Stack selected`, `Keep all`, and `Delete all`; a completed group disappears while the other groups remain available
   - If you don't do anything with a searched group, it'll show up in the `pending` tab waiting for you to handle it later
   - `Auto Find Next`: When enabled, resolving or deleting the current group automatically triggers a search for the next unprocessed photo. When disabled, the system switches to the `pending` tab after each action, letting you work through all found groups before searching again
   - You can always manually switch to the `pending` tab to review and process previously found groups
 
 - `Stack selected`
   - Select at least two photos from a similarity group, then use that group's `Stack selected` button
+  - Use an image's `Stack cover` button to choose the photo Immich displays for that stack; choosing a cover also selects the image
+  - With only one selected photo, `Stack selected` remains available and shows a warning that stacking requires at least two photos
   - Use `Stack selected per group` at the top to process every represented group without combining unrelated groups
-  - The first displayed selected photo for each Immich owner becomes the stack cover
+  - For a new stack, the first displayed selected photo for each Immich owner becomes the stack cover
+  - If a selected photo already belongs to a stack, that stack and its existing cover are reused unless you choose a different cover. If the selection references multiple stacks, all of their current members are consolidated into the first existing stack encountered in displayed selection order
   - Leave `Delete unselected` off to keep every other photo in the handled group, or enable it to move the unselected photos to Immich trash
+  - `Delete unselected` never deletes a current member inherited from a reused stack
   - Stacks cannot span Immich owners. Cross-user selections are safely split into a separate stack for each owner
   - When `IMMICH_URL` and an applicable API key are configured, stacking uses Immich's API first. If the API is not configured or the request fails, Deduper uses its direct PostgreSQL-compatible implementation
 

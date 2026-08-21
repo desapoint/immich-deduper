@@ -563,10 +563,27 @@ window.dash_clientside.similar = {
 				let steData = {
 					cntTotal: Ste.cntTotal,
 					selectedIds: Array.from(Ste.selectedIds),
+					stackCoverIds: Array.from(Ste.stackCoverIds),
 				}
 
 				console.log('[Ste] Syncing to ste store on selection:', steData)
 				return steData
+			}
+		}
+		return dash_clientside.no_update
+	},
+
+	onStackCoverClicked(){
+		if (dash_clientside.callback_context.triggered.length > 0) {
+			const triggered = dash_clientside.callback_context.triggered[0]
+			if (triggered.prop_id && triggered.value > 0) {
+				const triggeredId = JSON.parse(triggered.prop_id.split('.')[0])
+				Ste.setStackCover(triggeredId.id, triggeredId.group, triggeredId.owner)
+				return {
+					cntTotal: Ste.cntTotal,
+					selectedIds: Array.from(Ste.selectedIds),
+					stackCoverIds: Array.from(Ste.stackCoverIds),
+				}
 			}
 		}
 		return dash_clientside.no_update

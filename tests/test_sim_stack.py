@@ -7,7 +7,13 @@ from types import SimpleNamespace
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
-from sim_stack import buildPlan
+from sim_stack import (
+	assetsForGroup,
+	buildPlan,
+	orderExistingStackIds,
+	removeHandled,
+	splitUnselectedByStackMembership,
+)
 
 
 def asset(autoId: int, groupId: int, ownerId: str = 'owner-a'):
@@ -42,6 +48,53 @@ class TestStackPlan(unittest.TestCase):
 		self.assertEqual(len(plan.groups), 1)
 		self.assertEqual([a.autoId for a in plan.selected], [1, 2])
 
+	def test_group_actions_scope_assets_to_the_requested_group(self):
+		assets = [asset(1, 1), asset(2, 1), asset(3, 2), asset(4, 2)]
+
+		group = assetsForGroup(assets, multiMode=True, targetGroupId='2')
+
+		self.assertEqual([a.autoId for a in group], [3, 4])
+
+	def test_group_actions_reject_a_stale_group(self):
+		with self.assertRaisesRegex(ValueError, 'no longer available'):
+			assetsForGroup([asset(1, 1), asset(2, 1)], multiMode=True, targetGroupId=2)
+
+	def test_handled_group_is_removed_without_clearing_other_groups(self):
+		assets = [asset(1, 1), asset(2, 1), asset(3, 2), asset(4, 2)]
+		remaining, selected = removeHandled(assets, [1, 3, 4], assetsForGroup(assets, True, 1))
+
+		self.assertEqual([a.autoId for a in remaining], [3, 4])
+		self.assertEqual(selected, [3, 4])
+
+	def test_existing_stack_of_first_selected_asset_is_reused(self):
+		ordered = orderExistingStackIds(
+			['asset-1', 'asset-2'],
+			{'asset-1': 'stack-b', 'asset-2': 'stack-a'},
+			{},
+		)
+
+		self.assertEqual(ordered, ['stack-b', 'stack-a'])
+
+	def test_primary_stack_references_are_also_consolidated(self):
+		ordered = orderExistingStackIds(
+			['asset-1', 'asset-2'],
+			{'asset-2': 'stack-c'},
+			{'asset-1': ['stack-b', 'stack-a']},
+		)
+
+		self.assertEqual(ordered, ['stack-a', 'stack-b', 'stack-c'])
+
+	def test_delete_others_preserves_inherited_stack_members(self):
+		unselected = [asset(1, 1), asset(2, 1), asset(3, 1)]
+
+		deletable, protected = splitUnselectedByStackMembership(
+			unselected,
+			{'asset-2'},
+		)
+
+		self.assertEqual([a.autoId for a in deletable], [1, 3])
+		self.assertEqual([a.autoId for a in protected], [2])
+
 	def test_selected_assets_are_partitioned_by_owner(self):
 		assets = [
 			asset(1, 1, 'owner-a'), asset(2, 1, 'owner-a'),
@@ -57,8 +110,23 @@ class TestStackPlan(unittest.TestCase):
 	def test_each_owner_needs_two_selected_assets(self):
 		assets = [asset(1, 1, 'owner-a'), asset(2, 1, 'owner-b')]
 
-		with self.assertRaisesRegex(ValueError, 'at least two selected assets'):
+		with self.assertRaisesRegex(ValueError, 'at least two selected images'):
 			buildPlan(assets, [1, 2], multiMode=True)
+
+	def test_single_selection_reports_that_stacking_requires_two_images(self):
+		with self.assertRaisesRegex(ValueError, 'Stacking requires at least two selected images'):
+			buildPlan([asset(1, 1), asset(2, 1)], [1], multiMode=True)
+
+	def test_chosen_cover_becomes_stack_primary(self):
+		plan = buildPlan(
+			[asset(1, 1), asset(2, 1)],
+			[1, 2],
+			multiMode=True,
+			coverIds=[2],
+		)
+
+		self.assertEqual(plan.coverIds, [2])
+		self.assertEqual(plan.stacks[0].primary.autoId, 2)
 
 	def test_single_mode_keeps_the_display_as_one_group(self):
 		assets = [asset(1, 10), asset(2, 20), asset(3, 30)]

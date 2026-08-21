@@ -2,12 +2,14 @@
 const Ste = window.Ste = {
 	cntTotal: 0,
 	selectedIds: new Set(),
+	stackCoverIds: new Set(),
 	_lastSyncHash: null,
 
 	init( cnt )
 	{
 		this.cntTotal = cnt
 		this.selectedIds.clear()
+		this.stackCoverIds.clear()
 		console.log( `[Ste] Initialized with ${ cnt } assets, selected[ ${ this.selectedIds.size } ]` )
 
 		dsh.syncSte( this.cntTotal, this.selectedIds )
@@ -17,12 +19,18 @@ const Ste = window.Ste = {
 	{
 		this.cntTotal = cnt
 		this.selectedIds.clear()
+		this.stackCoverIds.clear()
 		console.log( `[Ste] Silent init with ${ cnt } assets, selected[ ${ this.selectedIds.size } ]` )
 	},
 
 	toggle( aid )
 	{
-		this.selectedIds.has( aid ) ? this.selectedIds.delete( aid ) : this.selectedIds.add( aid )
+		if ( this.selectedIds.has( aid ) )
+		{
+			this.selectedIds.delete( aid )
+			this.stackCoverIds.delete( aid )
+		}
+		else this.selectedIds.add( aid )
 
 		console.log( `[Ste] Toggled ${ aid }, selected count: ${ this.selectedIds.size }` )
 
@@ -87,7 +95,6 @@ const Ste = window.Ste = {
 		const btnAllSelect = document.getElementById( 'sim-btn-AllSelect' )
 		const btnAllCancel = document.getElementById( 'sim-btn-AllCancel' )
 		const btnSelMns = document.getElementById( 'sim-btn-SelectMns' )
-		const btnStack = document.getElementById( 'sim-btn-Stack' )
 
 		if ( btnRm ) btnRm.textContent = `❌ Delete selected ( ${ cntSel } ) and ✅ Keep others( ${ cntDiff } )`
 		if ( btnRS ) btnRS.textContent = `✅ Keep selected ( ${ cntSel } ) and ❌ delete others( ${ cntDiff } )`
@@ -99,9 +106,6 @@ const Ste = window.Ste = {
 			btnSelMns.disabled = ( cntAll == 0 )
 			this.updBtnMns()
 		}
-
-		const stackableGroups = this.updGroupStackBtns()
-		if ( btnStack ) btnStack.disabled = stackableGroups == 0
 
 		console.log( `[Ste] updBtns - selected[ ${ cntSel } / ${ cntAll } ]` )
 	},
@@ -160,6 +164,7 @@ const Ste = window.Ste = {
 	async clearAll()
 	{
 		this.selectedIds.clear()
+		this.stackCoverIds.clear()
 		await this.updAllCss()
 		this.updBtns()
 		console.log( `[Ste] Cleared all selections` )
@@ -223,25 +228,24 @@ const Ste = window.Ste = {
 		return cards
 	},
 
-	updGroupStackBtns()
+	setStackCover( aid, groupId, ownerId )
 	{
-		let stackableGroups = 0
-		const buttons = document.querySelectorAll( '[id*=\'"type":"sim-stack-group"\']' )
+		const buttons = document.querySelectorAll( '[id*=\'"type":"sim-stack-cover"\']' )
 		buttons.forEach( button => {
 			try
 			{
 				const patternId = JSON.parse( button.id )
-				const cards = this.getGroupCards( patternId.id )
-				const selectedCount = cards.reduce( ( count, card ) => {
-					const assetId = this.extractAssetIdBy( card )
-					return count + ( assetId && this.selectedIds.has( assetId ) ? 1 : 0 )
-				}, 0 )
-				button.disabled = selectedCount < 2
-				if ( selectedCount >= 2 ) stackableGroups++
+				if ( String( patternId.group ) === String( groupId ) && patternId.owner === ownerId )
+					this.stackCoverIds.delete( patternId.id )
 			}
-			catch ( e ) { console.error( '[Ste] Invalid stack group button id:', e ) }
+			catch ( e ) { console.error( '[Ste] Invalid stack cover button id:', e ) }
 		} )
-		return stackableGroups
+
+		this.stackCoverIds.add( aid )
+		this.selectedIds.add( aid )
+		this.updCss( aid )
+		this.updBtns()
+		console.log( `[Ste] Stack cover set to ${ aid } for group ${ groupId }, owner ${ ownerId }` )
 	},
 
 	selectGroup( groupId )
@@ -274,6 +278,7 @@ const Ste = window.Ste = {
 			if ( assetId )
 			{
 				this.selectedIds.delete( assetId )
+				this.stackCoverIds.delete( assetId )
 				this.updCss( assetId )
 				deselectedCount++
 			}

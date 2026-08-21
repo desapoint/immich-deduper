@@ -12,7 +12,7 @@ from ui import gvEx
 
 lg = log.get(__name__)
 
-def mk(ass: models.Asset, modSim=True):
+def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 
 	imgSrc = f"/api/img/{ass.autoId}" if ass.id else None
 
@@ -97,7 +97,7 @@ def mk(ass: models.Asset, modSim=True):
 		]),
 		#------------------------------------------------------------------------
 		dbc.Card([
-			dbc.CardHeader(
+			dbc.CardHeader([
 				htm.Div([
 					dbc.Row([
 						dbc.Col(
@@ -115,8 +115,19 @@ def mk(ass: models.Asset, modSim=True):
 							]
 						)
 					])
-				], id={"type": "card-select", "id": ass.autoId}),
-				className=f"p-2 curP"
+				], id={"type": "card-select", "id": ass.autoId}, className="flex-grow-1 curP"),
+				dbc.Button(
+					[htm.I(className="bi bi-star"), " Stack cover"],
+					id={"type": "sim-stack-cover", "id": ass.autoId, "group": stackGroupId, "owner": ass.ownerId},
+					n_clicks=0,
+					size="sm",
+					color="warning",
+					outline=True,
+					className="ms-2 text-nowrap",
+					title="Use this image as the stack cover; it will also be selected",
+				),
+			],
+				className="p-2 d-flex align-items-center"
 			) if modSim else None,
 
 			#------------------------------------------------------------------------

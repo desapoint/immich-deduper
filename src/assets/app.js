@@ -94,9 +94,11 @@ const dsh = {
 		return layout && layout.props && layout.props.data
 	},
 
-	syncSte(cnt, selectedIds){
+	syncSte(cnt, selectedIds, stackCoverIds){
 		if (!Array.isArray(selectedIds)) selectedIds = Array.from(selectedIds)
-		this.syncStore('store-state', {cntTotal: cnt, selectedIds: selectedIds})
+		if (stackCoverIds === undefined) stackCoverIds = window.Ste?.stackCoverIds || []
+		if (!Array.isArray(stackCoverIds)) stackCoverIds = Array.from(stackCoverIds)
+		this.syncStore('store-state', {cntTotal: cnt, selectedIds: selectedIds, stackCoverIds: stackCoverIds})
 	}
 }
 
