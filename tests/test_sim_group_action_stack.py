@@ -14,6 +14,7 @@ dash.Dash(__name__, use_pages=True, pages_folder='')
 
 from mod import models
 from pages import similar
+from ui import gv
 
 
 def asset(autoId: int, groupId: int):
@@ -46,6 +47,32 @@ TEST_DTO = SimpleNamespace(
 
 
 class TestManualGroupResolution(unittest.TestCase):
+	def test_selection_update_avoids_db_count_and_scopes_group_buttons(self):
+		assets = [asset(1, 1), asset(2, 1), asset(3, 2)]
+		now = models.Now(sim=models.PgSim(assCur=assets))
+		ste = models.Ste(cntTotal=3, selectedIds=[1])
+		groupButtons = [{'type': gv.STACK_GROUP_BUTTON, 'id': 1}, {'type': gv.STACK_GROUP_BUTTON, 'id': 2}]
+		groupActions = [
+			{'type': gv.GROUP_ACTION_BUTTON, 'action': gv.GROUP_KEEP_SELECTED, 'id': 1},
+			{'type': gv.GROUP_ACTION_BUTTON, 'action': gv.GROUP_KEEP_SELECTED, 'id': 2},
+			{'type': gv.GROUP_ACTION_BUTTON, 'action': gv.GROUP_MARK_RESOLVED, 'id': 2},
+		]
+
+		with (
+			patch.object(similar, 'ctx', SimpleNamespace(triggered_id=similar.ks.sto.ste)),
+			patch.object(similar.db, 'dto', TEST_DTO),
+			patch.object(similar.db.pics, 'countHasSimIds') as countHasSimIds,
+		):
+			result = similar.sim_UpdateButtons(
+				now.toDict(), ste.toDict(), models.Cnt().toDict(), models.Tsk().toDict(),
+				groupButtons, groupActions, [],
+			)
+
+		countHasSimIds.assert_not_called()
+		self.assertIs(result[0], dash.no_update)
+		self.assertEqual(result[9], [False, True])
+		self.assertEqual(result[10], [False, True, False])
+
 	def test_group_delete_selected_keeps_survivors_open(self):
 		assets = [asset(1, 1), asset(2, 1), asset(3, 2)]
 		sto = store(assets, [1])

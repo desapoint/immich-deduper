@@ -11,7 +11,8 @@
 		padding: 0.5rem 0;
 		border-bottom: #999999 1px dashed;
 
-		label {
+		> label,
+		.sim-group-title > label {
 			@include bg-gradient(#6daa2b);
 			border-radius: 6px;
 			border: #6daa2b;
@@ -20,8 +21,55 @@
 			box-shadow: 0 0 3px #6daa2b;
 		}
 
-		&:has(.ausl-log-tag) .ausl-log-tag { margin: auto 10px; }
+		&:has(.ausl-log-tag) .ausl-log-tag { margin: 0; }
 		&:not(:has(.ausl-log-tag)) button:first-of-type { margin-left: 12px; }
+	}
+
+	.sim-group-header {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.45rem 0.75rem;
+		position: relative;
+
+		button { margin: 0 !important; }
+	}
+
+	.sim-group-title,
+	.sim-group-controls {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.35rem;
+	}
+
+	.sim-group-title {
+		margin-right: auto;
+		white-space: nowrap;
+	}
+
+	.sim-group-controls {
+		padding: 0.3rem 0.45rem;
+		border: 1px solid #ffffff22;
+		border-radius: 6px;
+		background: #00000018;
+	}
+
+	.sim-control-label {
+		color: #bbb;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+
+	.sim-stack-delete label {
+		white-space: nowrap;
+		font-size: 0.78rem;
+	}
+
+	@media (max-width: 900px) {
+		.sim-group-title,
+		.sim-group-controls { width: 100%; }
 	}
 }
 
@@ -159,6 +207,8 @@
 
 /*======================== Auto-Select Log Button ========================*/
 .ausl-log-tag {
+	display: inline-flex;
+	align-items: center;
 	padding: 2px 6px;
 	border-radius: 4px;
 	border: none;
@@ -258,4 +308,3 @@
 		}
 	}
 }
-

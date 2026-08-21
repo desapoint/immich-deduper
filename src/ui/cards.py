@@ -113,7 +113,7 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 						),
 						dbc.Col(
 							[
-								htm.Span(f"Main", className="tag info lg ms-1")
+								htm.Span("Source", className="sim-source-label", title="Source image used to find this similarity group")
 							] if isMain else [
 								htm.Span("score:", className="tag sm info no-border"),
 								htm.Span(f"{ass.vw.score:.5f}", className="tag lg ms-1")
@@ -123,23 +123,27 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 							]
 						)
 					])
-				], id={"type": "card-select", "id": ass.autoId}, className="flex-grow-1 curP", **{"data-stacked": "true" if stackId else "false"}),
+				], id={"type": "card-select", "id": ass.autoId}, className="flex-grow-1 curP sim-card-select", **{
+					"data-stacked": "true" if stackId else "false",
+					"data-stack-id": stackId or "",
+					"data-group-id": str(stackGroupId) if stackGroupId is not None else "",
+				}),
 				htm.Div([
 					htm.Span(stackLabel, className="badge", style={"backgroundColor": stackColor}, title=stackId),
 					htm.Span("★ Thumbnail", className="badge bg-warning text-dark") if isStackPrimary else None,
-				], className="d-flex flex-column gap-1 align-items-end") if stackId else None,
+				], className="sim-stack-status") if stackId else None,
 				dbc.Button(
-					[htm.I(className="bi bi-star"), " Stack cover"],
+					"☆ Cover",
 					id={"type": "sim-stack-cover", "id": ass.autoId, "group": stackGroupId, "owner": ass.ownerId},
 					n_clicks=0,
 					size="sm",
 					color="warning",
 					outline=True,
-					className="ms-2 text-nowrap",
+					className="sim-stack-cover-btn text-nowrap",
 					title="Use this image as the stack cover; it will also be selected",
 				),
 			],
-				className="p-2 d-flex align-items-center"
+				className="p-2 d-flex align-items-center sim-card-header"
 			) if modSim else None,
 
 			#------------------------------------------------------------------------

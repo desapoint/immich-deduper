@@ -179,61 +179,57 @@ def layout(autoId=None):
 
 								htm.Div([
 
-									dbc.Button([htm.Span(className="fake-checkbox checked"), "select All"], id=k.btnAllSelect, size="sm", color="secondary", disabled=True),
-									dbc.Button([htm.Span(className="fake-checkbox"),"Deselect All"], id=k.btnAllCancel, size="sm", color="secondary", disabled=True),
-									htm.Hr(),
-									dbc.Button([htm.Span(className="fake-checkbox"), "select Mains"], id=k.btnSelectMns, size="xs", color="secondary", disabled=True),
-									dbc.Button("Select stacked", id=k.btnSelectStacked, size="xs", color="secondary", disabled=True, title="Replace the current selection with stacked images"),
-									dbc.Button("Select non-stacked", id=k.btnSelectUnstacked, size="xs", color="secondary", disabled=True, title="Replace the current selection with non-stacked images"),
+									htm.Small("Select", className="sim-control-label"),
+									dbc.Button("All", id=k.btnAllSelect, size="sm", color="secondary", disabled=True, title="Select every visible image"),
+									dbc.Button("None", id=k.btnAllCancel, size="sm", color="secondary", disabled=True, title="Clear the current selection"),
+									dbc.Button([htm.Span(className="fake-checkbox"), "Sources"], id=k.btnSelectMns, size="xs", color="secondary", disabled=True, title="Toggle the source image in every group"),
+									dbc.Button("Stacked", id=k.btnSelectStacked, size="xs", color="secondary", disabled=True, title="Replace the current selection with stacked images"),
+									dbc.Button("Not stacked", id=k.btnSelectUnstacked, size="xs", color="secondary", disabled=True, title="Replace the current selection with non-stacked images"),
 									dbc.Button("Export IDs", id=k.btnExportIds, size="xs", color="info", disabled=True),
 
-								], className="left"),
+								], className="left sim-global-controls"),
 
 
 								htm.Div([
+									htm.Small("Actions", className="sim-control-label"),
 
 									htm.Div([
-										dbc.Checkbox(id=k.cbxNChkOkSel, label="No-Confirm", className="sm"),
-										htm.Br(),
-										dbc.Button("Keep Select, Delete others", id=k.btnOkSel, color="success", size="sm", disabled=True),
-									]),
+										dbc.Button("Keep selected · delete rest", id=k.btnOkSel, color="success", size="sm", disabled=True),
+										dbc.Checkbox(id=k.cbxNChkOkSel, label="Skip confirm", className="sm"),
+									], className="sim-action-unit"),
 
 									htm.Div([
-										dbc.Checkbox(id=k.cbxNChkRmSel, label="No-Confirm", className="sm"),
-										htm.Br(),
-										dbc.Button("Del Select, Keep others", id=k.btnRmSel, color="danger", size="sm", disabled=True),
-									]),
+										dbc.Button("Delete selected · keep rest", id=k.btnRmSel, color="danger", size="sm", disabled=True),
+										dbc.Checkbox(id=k.cbxNChkRmSel, label="Skip confirm", className="sm"),
+									], className="sim-action-unit"),
 
 									htm.Div([
-										dbc.Checkbox(
-											id=k.cbxStackDelete,
-											label="Delete remaining and finish groups",
-											className="sm",
-										),
-										htm.Br(),
 										dbc.Button(
-											"Stack selected per group",
+											"Stack selected by group",
 											id=k.btnStack,
 											color="info",
 											size="sm",
 											disabled=True,
 											title="Create one Immich stack per similarity group and owner",
 										),
-									]),
+										dbc.Checkbox(
+											id=k.cbxStackDelete,
+											label="Delete rest + finish",
+											className="sm sim-global-stack-option",
+										),
+									], className="sim-action-unit"),
 
 									htm.Div([
-										dbc.Checkbox(id=k.cbxNChkOkAll, label="No-Confirm", className="sm"),
-										htm.Br(),
-										dbc.Button("✅ Keep All", id=k.btnOkAll, color="success", size="sm", disabled=True),
-									]),
+										dbc.Button("Mark all resolved", id=k.btnOkAll, color="success", size="sm", disabled=True),
+										dbc.Checkbox(id=k.cbxNChkOkAll, label="Skip confirm", className="sm"),
+									], className="sim-action-unit"),
 
 									htm.Div([
-										dbc.Checkbox(id=k.cbxNChkRmAll, label="No-Confirm", className="sm"),
-										htm.Br(),
-										dbc.Button("❌ Delete All", id=k.btnRmAll, color="danger", size="sm", disabled=True),
-									]),
+										dbc.Button("Delete all", id=k.btnRmAll, color="danger", size="sm", disabled=True),
+										dbc.Checkbox(id=k.cbxNChkRmAll, label="Skip confirm", className="sm"),
+									], className="sim-action-unit"),
 
-								], className="right"),
+								], className="right sim-global-controls"),
 
 
 							],
@@ -601,6 +597,7 @@ def sim_UpdateButtons(
 	ste = Ste.fromDic(dta_ste) if dta_ste else Ste()
 	cnt = Cnt.fromDic(dta_cnt)
 	tsk = Tsk.fromDic(dta_tsk)
+	selectionOnly = ctx.triggered_id == ks.sto.ste
 
 	from mod.mgr.tskSvc import mgr
 	isTaskRunning = False
@@ -611,63 +608,51 @@ def sim_UpdateButtons(
 				break
 	if tsk.id and tsk.cmd: isTaskRunning = True
 
-	cntNo = cnt.ass - cnt.simOk if cnt else 0
-	cntPn = cnt.simPnd if cnt else 0
-	disFind = cntNo <= 0 or (cntPn >= cntNo) or isTaskRunning
-
-	cntSrchd = db.pics.countHasSimIds(isOk=0) if not isTaskRunning else 0
-	disClear = cntSrchd <= 0 or isTaskRunning
-
-	cntOk = cnt.simOk if cnt else 0
-	disReset = cntOk <= 0 and cntPn <= 0 or isTaskRunning
-
 	cntAssets = len(now.sim.assCur) if now.sim.assCur else 0
-	disOk = cntAssets <= 0
-	disDel = cntAssets <= 0
+	if selectionOnly:
+		disFind = disClear = disReset = disOk = disDel = disExport = dash.no_update
+	else:
+		cntNo = cnt.ass - cnt.simOk if cnt else 0
+		cntPn = cnt.simPnd if cnt else 0
+		disFind = cntNo <= 0 or (cntPn >= cntNo) or isTaskRunning
+		cntSrchd = db.pics.countHasSimIds(isOk=0) if not isTaskRunning else 0
+		disClear = cntSrchd <= 0 or isTaskRunning
+		cntOk = cnt.simOk if cnt else 0
+		disReset = cntOk <= 0 and cntPn <= 0 or isTaskRunning
+		disOk = cntAssets <= 0
+		disDel = cntAssets <= 0
+		disExport = cntAssets <= 0
 
 	cntSel = len(ste.selectedIds) if ste.selectedIds else 0
 	disRm = cntSel == 0
 	disRS = cntSel == 0
 	disStack = isTaskRunning or cntSel == 0
+	selectedIds = set(ste.selectedIds)
+	selectedGroupIds = {
+		str(groupId)
+		for groupId, groupAssets in sim_stack.groupAssets(now.sim.assCur, db.dto.muod.on).items()
+		if any(asset.autoId in selectedIds for asset in groupAssets)
+	}
 
 	groupStackDisabled = []
 	for buttonId in groupButtonIds or []:
-		disabled = isTaskRunning
-		if not disabled:
-			try:
-				groupAssets = sim_stack.assetsForGroup(
-					now.sim.assCur,
-					db.dto.muod.on,
-					buttonId.get('id'),
-				)
-				disabled = not any(asset.autoId in set(ste.selectedIds) for asset in groupAssets)
-			except ValueError: disabled = True
+		disabled = isTaskRunning or str(buttonId.get('id')) not in selectedGroupIds
 		groupStackDisabled.append(disabled)
 
 	groupActionDisabled = []
-	selectedIds = set(ste.selectedIds)
 	for buttonId in groupActionButtonIds or []:
 		disabled = isTaskRunning
 		if not disabled and buttonId.get('action') in {gv.GROUP_KEEP_SELECTED, gv.GROUP_DELETE_SELECTED}:
-			try:
-				groupAssets = sim_stack.assetsForGroup(
-					now.sim.assCur,
-					db.dto.muod.on,
-					buttonId.get('id'),
-				)
-				disabled = not any(asset.autoId in selectedIds for asset in groupAssets)
-			except ValueError: disabled = True
+			disabled = str(buttonId.get('id')) not in selectedGroupIds
 		groupActionDisabled.append(disabled)
 
 	stackCoverIds = set(ste.stackCoverIds)
 	coverOutline = [buttonId.get('id') not in stackCoverIds for buttonId in coverButtonIds or []]
 	coverChildren = [
-		"☆ Stack cover" if buttonId.get('id') not in stackCoverIds else "★ Stack cover"
+		"☆ Cover" if buttonId.get('id') not in stackCoverIds else "★ Cover choice"
 		for buttonId in coverButtonIds or []
 	]
 	coverDisabled = [isTaskRunning for _ in coverButtonIds or []]
-
-	disExport = cntAssets <= 0
 
 	# lg.info(f"[sim:UpdBtns] disFind[{disFind}]")
 

@@ -19,44 +19,54 @@ GROUP_MARK_RESOLVED = "mark-resolved"
 GROUP_DELETE_ALL = "delete-all"
 
 
-def _mkGroupAction(label: str, groupId: int, action: str, color: str, disabled: bool = False):
+def _mkGroupAction(label: str, groupId: int, action: str, color: str, disabled: bool = False, title: str = ""):
 	return dbc.Button(
 		label,
 		id={"type": GROUP_ACTION_BUTTON, "action": action, "id": groupId},
 		size="sm",
 		color=color,
-		className="txt-sm ms-1",
+		className="txt-sm",
 		disabled=disabled,
+		title=title,
 	)
 
 
 def _mkGroupHeader(groupId: int, count: int):
 	return htm.Div([
-		htm.Label(f"Group {groupId} ( {count} items )"),
-		dbc.Button([htm.Span(className="fake-checkbox checked"), "select this group all"], size="sm", color="secondary", id=f"cbx-sel-grp-all-{groupId}", className="txt-sm me-1"),
-		dbc.Button([htm.Span(className="fake-checkbox"), "deselect this group All"], size="sm", color="secondary", id=f"cbx-sel-grp-non-{groupId}", className="txt-sm"),
-		dbc.Button("Select stacked", size="sm", color="secondary", id=f"sel-grp-stacked-{groupId}", className="txt-sm ms-1", title="Replace this group's selection with its stacked images"),
-		dbc.Button("Select non-stacked", size="sm", color="secondary", id=f"sel-grp-unstacked-{groupId}", className="txt-sm ms-1", title="Replace this group's selection with its non-stacked images"),
-		_mkGroupAction("Keep selected, delete others", groupId, GROUP_KEEP_SELECTED, "success", disabled=True),
-		_mkGroupAction("Delete selected, keep others", groupId, GROUP_DELETE_SELECTED, "danger", disabled=True),
-		dbc.Checkbox(
-			id={"type": STACK_GROUP_DELETE, "id": groupId},
-			label="Delete remaining",
-			value=False,
-			className="d-inline-block ms-3 sm",
-		),
-		dbc.Button(
-			"Stack selected",
-			id={"type": STACK_GROUP_BUTTON, "id": groupId},
-			size="sm",
-			color="info",
-			className="txt-sm ms-1",
-			disabled=True,
-			title="Stack selected assets in this group; existing stacks are reused, otherwise the first displayed selection becomes the cover",
-		),
-		_mkGroupAction("Mark resolved", groupId, GROUP_MARK_RESOLVED, "primary"),
-		_mkGroupAction("Delete all", groupId, GROUP_DELETE_ALL, "danger"),
-	], className="hr", **{"data-group-id": str(groupId)})
+		htm.Div([
+			htm.Label(f"Group {groupId}"),
+			htm.Small(f"{count} images", className="text-muted"),
+		], className="sim-group-title", **{"data-group-id": str(groupId)}),
+		htm.Div([
+			htm.Small("Select", className="sim-control-label"),
+			dbc.Button("All", size="sm", color="secondary", id=f"cbx-sel-grp-all-{groupId}", className="txt-sm", title="Select every image in this group"),
+			dbc.Button("None", size="sm", color="secondary", id=f"cbx-sel-grp-non-{groupId}", className="txt-sm", title="Clear this group's selection"),
+			dbc.Button("Stacked", size="sm", color="secondary", id=f"sel-grp-stacked-{groupId}", className="txt-sm", title="Select only stacked images in this group"),
+			dbc.Button("Not stacked", size="sm", color="secondary", id=f"sel-grp-unstacked-{groupId}", className="txt-sm", title="Select only non-stacked images in this group"),
+		], className="sim-group-controls sim-group-selection"),
+		htm.Div([
+			htm.Small("Actions", className="sim-control-label"),
+			_mkGroupAction("Keep selected", groupId, GROUP_KEEP_SELECTED, "success", disabled=True, title="Keep selected images and delete the other images in this group"),
+			_mkGroupAction("Delete selected", groupId, GROUP_DELETE_SELECTED, "danger", disabled=True, title="Delete selected images and keep the other images in this group"),
+			dbc.Checkbox(
+				id={"type": STACK_GROUP_DELETE, "id": groupId},
+				label="Delete rest",
+				value=False,
+				className="sim-stack-delete sm",
+			),
+			dbc.Button(
+				"Stack selected",
+				id={"type": STACK_GROUP_BUTTON, "id": groupId},
+				size="sm",
+				color="info",
+				className="txt-sm",
+				disabled=True,
+				title="Stack selected images; reuse existing stacks and keep this group open",
+			),
+			_mkGroupAction("Mark resolved", groupId, GROUP_MARK_RESOLVED, "primary", title="Finish this group without deleting its remaining images"),
+			_mkGroupAction("Delete group", groupId, GROUP_DELETE_ALL, "danger", title="Delete every remaining image in this group"),
+		], className="sim-group-controls sim-group-actions"),
+	], className="hr sim-group-header", **{"data-group-id": str(groupId)})
 
 
 def mkGrd(assets: list[models.Asset], minW=230, onEmpty=None, maker=cards.mk):
@@ -87,12 +97,13 @@ def mkGrd(assets: list[models.Asset], minW=230, onEmpty=None, maker=cards.mk):
 	rows = []
 	firstRels = False
 	cntRelats = sum(1 for a in assets if a.vw.isRelats)
+	isSimGrid = maker is cards.mk
 
 	gid = assets[0].vw.muodId if assets[0].vw.muodId is not None else assets[0].autoId
-	rows.append(_mkGroupHeader(gid, len(assets)))
+	if isSimGrid: rows.append(_mkGroupHeader(gid, len(assets)))
 
 	for idx, a in enumerate(assets):
-		card = cards.mk(a, stackGroupId=gid) if maker is cards.mk else maker(a)
+		card = cards.mk(a, stackGroupId=gid) if isSimGrid else maker(a)
 
 		if a.vw.isRelats and not firstRels:
 			firstRels = True

@@ -16,6 +16,7 @@ function card(autoId, groupId, stacked) {
 		getAttribute(name) {
 			if (name === 'id') return this.id
 			if (name === 'data-stacked') return stacked ? 'true' : 'false'
+			if (name === 'data-group-id') return String(groupId)
 			return null
 		},
 		closest() { return parent },
@@ -37,7 +38,7 @@ async function main() {
 			getElementById() { return null },
 			querySelector() { return null },
 			querySelectorAll(selector) {
-				if (selector === '[id*="card-select"]') return cards
+				if (selector.startsWith('[id*="card-select"]')) return cards
 				return []
 			},
 		},
@@ -55,7 +56,6 @@ async function main() {
 	const ste = context.window.Ste
 	ste.cntTotal = cards.length
 	ste.selectedIds = new Set([3])
-	ste.getGroupCards = groupId => cards.filter(item => String(item.groupId) === String(groupId))
 
 	await ste.selectStackStatus(true, 1)
 	assert.deepEqual(Array.from(ste.selectedIds), [3, 1], 'group selection must preserve other groups')

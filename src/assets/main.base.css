@@ -513,15 +513,27 @@ h3 { font-size: 1.68rem; }
 
 .ITab .nav .nav-link.dis { opacity: 0.5; cursor: not-allowed !important; pointer-events: none; background: #444444; color: #999999; }
 
-.ITab .tab-acts { display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 5px; border-bottom: #cccccc 1px dotted; }
+.ITab .tab-acts { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 0.75rem; margin-bottom: 10px; padding-bottom: 5px; border-bottom: #cccccc 1px dotted; }
 
-.ITab .tab-acts .left > button:not(:last-child) { margin-right: 6px; }
+.ITab .tab-acts .left { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
 
-.ITab .tab-acts .left hr { margin: 6px auto 6px auto; }
+.ITab .tab-acts .left > button:not(:last-child) { margin-right: 0; }
 
-.ITab .tab-acts .right { display: flex; padding-right: 3px; }
+.ITab .tab-acts .left hr { flex-basis: 100%; width: 100%; margin: 2px 0; }
 
-.ITab .tab-acts .right > div { margin: auto 6px auto auto; }
+.ITab .tab-acts .right { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.45rem; padding-right: 3px; }
+
+.ITab .tab-acts .right > div { margin: 0; }
+
+.ITab .tab-acts .sim-global-controls { padding: 0.35rem 0.5rem; border: 1px solid #ffffff22; border-radius: 6px; background: #00000018; }
+
+.ITab .tab-acts .sim-action-unit { display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; }
+
+.ITab .tab-acts .sim-action-unit .form-check { margin: 0; min-height: auto; }
+
+.ITab .tab-acts .sim-action-unit .form-check-label { white-space: nowrap; font-size: 0.72rem; }
+
+@media (max-width: 1100px) { .ITab .tab-acts .left, .ITab .tab-acts .right { width: 100%; } }
 
 .ITab .tab-acts.floating { position: fixed; top: 0; left: 0; right: 0; z-index: 999; margin-bottom: 0; padding: 10px 15px 8px 15px; background: #2d4a69; backdrop-filter: blur(8px); border-bottom: 1px solid rgba(204, 204, 204, 0.3); box-shadow: 0 2px 20px 10px rgba(0, 0, 0, 0.5); transform: translateY(-100%); transition: transform 0.3s ease-in-out; }
 

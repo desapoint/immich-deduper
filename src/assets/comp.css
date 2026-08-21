@@ -378,11 +378,27 @@ button { text-decoration: none; }
 
 .gv .hr:not(:first-child) { border-top: #666999 1px solid; margin-top: 16px; }
 
-.gv .hr label { background: #6daa2b; border-radius: 6px; border: #6daa2b; padding: 5px 12px 7px 12px; text-shadow: 0 0 3px #4a4a4a; box-shadow: 0 0 3px #6daa2b; }
+.gv .hr > label, .gv .hr .sim-group-title > label { background: #6daa2b; border-radius: 6px; border: #6daa2b; padding: 5px 12px 7px 12px; text-shadow: 0 0 3px #4a4a4a; box-shadow: 0 0 3px #6daa2b; }
 
-.gv .hr:has(.ausl-log-tag) .ausl-log-tag { margin: auto 10px; }
+.gv .hr:has(.ausl-log-tag) .ausl-log-tag { margin: 0; }
 
 .gv .hr:not(:has(.ausl-log-tag)) button:first-of-type { margin-left: 12px; }
+
+.gv .sim-group-header { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem 0.75rem; position: relative; }
+
+.gv .sim-group-header button { margin: 0 !important; }
+
+.gv .sim-group-title, .gv .sim-group-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+
+.gv .sim-group-title { margin-right: auto; white-space: nowrap; }
+
+.gv .sim-group-controls { padding: 0.3rem 0.45rem; border: 1px solid #ffffff22; border-radius: 6px; background: #00000018; }
+
+.gv .sim-control-label { color: #bbb; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.gv .sim-stack-delete label { white-space: nowrap; font-size: 0.78rem; }
+
+@media (max-width: 900px) { .gv .sim-group-title, .gv .sim-group-controls { width: 100%; } }
 
 /*======================== task ========================*/
 .tskPanel { flex: inherit !important; width: 80vw; margin: 15px auto 15px auto; padding: 10px 30px 10px 30px; border-radius: 16px; border: 2px solid #4acdff99; box-shadow: 0 0 6px rgba(255, 255, 255, 0.5); background: #2d4a69; background: #264a69; }
@@ -421,7 +437,7 @@ button { text-decoration: none; }
 .ausl-tip:hover::after, .ausl-tip:hover::before { opacity: 1; visibility: visible; }
 
 /*======================== Auto-Select Log Button ========================*/
-.ausl-log-tag { padding: 2px 6px; border-radius: 4px; border: none; cursor: pointer; font-size: 11px; background: #4595ae; color: white; opacity: 0.8; }
+.ausl-log-tag { display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 4px; border: none; cursor: pointer; font-size: 11px; background: #4595ae; color: white; opacity: 0.8; }
 
 .ausl-log-tag:hover { opacity: 1; }
 

@@ -702,6 +702,37 @@
 	}
 
 	.card-header {
+		&.sim-card-header {
+			flex-wrap: wrap;
+			gap: 0.35rem;
+		}
+
+		.sim-card-select { min-width: 0; }
+
+		.sim-source-label {
+			color: #9ecbff;
+			font-size: 0.72rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+
+		.sim-stack-status {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.2rem;
+			margin-left: auto;
+			justify-content: flex-end;
+		}
+
+		.sim-stack-status .badge { font-size: 0.68rem; }
+
+		.sim-stack-cover-btn {
+			margin-left: 0;
+			padding: 0.2rem 0.4rem;
+			font-size: 0.72rem;
+		}
+
 		.row {
 			> div:first-child {
 				white-space: nowrap;

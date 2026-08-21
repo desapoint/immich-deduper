@@ -38,11 +38,11 @@ const Ste = window.Ste = {
 		this.updBtns()
 	},
 
-	async updCss( aid )
+	async updCss( aid, card = null )
 	{
 		// console.log( `[Ste] updCss called for aid: ${aid} (type: ${typeof aid})` )
 
-		let card = await getCardById( aid )
+		if ( !card ) card = await getCardById( aid )
 		if ( !card )
 		{
 			console.error( `[Ste] No cards found for ${ aid }` )
@@ -97,21 +97,53 @@ const Ste = window.Ste = {
 		const btnSelMns = document.getElementById( 'sim-btn-SelectMns' )
 		const btnSelStacked = document.getElementById( 'sim-btn-SelectStacked' )
 		const btnSelUnstacked = document.getElementById( 'sim-btn-SelectUnstacked' )
+		const btnStack = document.getElementById( 'sim-btn-Stack' )
+		const cards = Array.from( document.querySelectorAll( '[id*="card-select"]' ) )
+		const selectedGroups = new Set()
+		const stackedGroups = new Set()
+		const unstackedGroups = new Set()
 
-		if ( btnRm ) btnRm.textContent = `❌ Delete selected ( ${ cntSel } ) and ✅ Keep others( ${ cntDiff } )`
-		if ( btnRS ) btnRS.textContent = `✅ Keep selected ( ${ cntSel } ) and ❌ delete others( ${ cntDiff } )`
+		cards.forEach( card => {
+			const groupId = card.getAttribute( 'data-group-id' )
+			const assetId = this.extractAssetIdBy( card )
+			if ( groupId != null && assetId && this.selectedIds.has( assetId ) ) selectedGroups.add( String( groupId ) )
+			if ( groupId != null && card.getAttribute( 'data-stacked' ) === 'true' ) stackedGroups.add( String( groupId ) )
+			if ( groupId != null && card.getAttribute( 'data-stacked' ) === 'false' ) unstackedGroups.add( String( groupId ) )
+		} )
+
+		if ( btnRm ) {
+			btnRm.textContent = `Delete selected (${ cntSel }) · keep ${ cntDiff }`
+			btnRm.disabled = cntSel == 0
+		}
+		if ( btnRS ) {
+			btnRS.textContent = `Keep selected (${ cntSel }) · delete ${ cntDiff }`
+			btnRS.disabled = cntSel == 0
+		}
+		if ( btnStack ) btnStack.disabled = cntSel == 0
 
 		if ( btnAllSelect ) btnAllSelect.disabled = ( cntSel >= cntAll || cntAll == 0 )
 		if ( btnAllCancel ) btnAllCancel.disabled = ( cntSel == 0 )
-		if ( btnSelStacked ) btnSelStacked.disabled = this.getStackStatusCards( true ).length == 0
-		if ( btnSelUnstacked ) btnSelUnstacked.disabled = this.getStackStatusCards( false ).length == 0
+		if ( btnSelStacked ) btnSelStacked.disabled = !cards.some( card => card.getAttribute( 'data-stacked' ) === 'true' )
+		if ( btnSelUnstacked ) btnSelUnstacked.disabled = !cards.some( card => card.getAttribute( 'data-stacked' ) === 'false' )
 		document.querySelectorAll( '[id^="sel-grp-stacked-"]' ).forEach( btn => {
 			const groupId = btn.id.replace( 'sel-grp-stacked-', '' )
-			btn.disabled = this.getStackStatusCards( true, groupId ).length == 0
+			btn.disabled = !stackedGroups.has( String( groupId ) )
 		} )
 		document.querySelectorAll( '[id^="sel-grp-unstacked-"]' ).forEach( btn => {
 			const groupId = btn.id.replace( 'sel-grp-unstacked-', '' )
-			btn.disabled = this.getStackStatusCards( false, groupId ).length == 0
+			btn.disabled = !unstackedGroups.has( String( groupId ) )
+		} )
+		document.querySelectorAll( '[id*=\'"type":"sim-stack-group"\']' ).forEach( btn => {
+			try { btn.disabled = !selectedGroups.has( String( JSON.parse( btn.id ).id ) ) }
+			catch ( e ) { console.error( '[Ste] Invalid group stack button id:', e ) }
+		} )
+		document.querySelectorAll( '[id*=\'"type":"sim-group-action"\']' ).forEach( btn => {
+			try {
+				const patternId = JSON.parse( btn.id )
+				if ( ['keep-selected', 'delete-selected'].includes( patternId.action ) )
+					btn.disabled = !selectedGroups.has( String( patternId.id ) )
+			}
+			catch ( e ) { console.error( '[Ste] Invalid group action button id:', e ) }
 		} )
 		if ( btnSelMns )
 		{
@@ -170,7 +202,7 @@ const Ste = window.Ste = {
 		const allSel = this.isAllMainsSel()
 		const fcbx = btn.querySelector( '.fake-checkbox' )
 		if ( fcbx ) fcbx.classList[ allSel ? 'add' : 'remove' ]( 'checked' )
-		btn.childNodes.forEach( n => { if ( n.nodeType === 3 ) n.textContent = allSel ? 'deselect Mains' : 'select Mains' } )
+		btn.childNodes.forEach( n => { if ( n.nodeType === 3 ) n.textContent = allSel ? 'Deselect sources' : 'Sources' } )
 	},
 
 	async clearAll()
@@ -190,7 +222,7 @@ const Ste = window.Ste = {
 		const proms = []
 		cards.forEach( card => {
 			const assetId = this.extractAssetIdBy( card )
-			if ( assetId ) proms.push( this.updCss( assetId ) )
+			if ( assetId ) proms.push( this.updCss( assetId, card ) )
 		} )
 		const results = await Promise.all( proms )
 		return results.filter( r => r === true ).length
@@ -214,30 +246,8 @@ const Ste = window.Ste = {
 
 	getGroupCards( groupId )
 	{
-		const cards = []
-		const gv = document.querySelector( '.gv' )
-
-		if ( !gv )
-		{
-			console.warn( `[Ste] No .gv container found` )
-			return cards
-		}
-
-		const chs = Array.from( gv.children )
-		let collecting = false
-
-		chs.forEach( child => {
-			const childGroupId = child.getAttribute?.( 'data-group-id' )
-			if ( childGroupId != null ) collecting = String( childGroupId ) === String( groupId )
-			else if ( collecting )
-			{
-				const cardSelect = child.querySelector( '[id*="card-select"]' )
-				if ( cardSelect ) cards.push( cardSelect )
-			}
-		} )
-
-		console.log( `[Ste] Found ${ cards.length } cards for group ${ groupId }` )
-		return cards
+		return Array.from( document.querySelectorAll( '[id*="card-select"][data-group-id]' ) )
+			.filter( card => String( card.getAttribute( 'data-group-id' ) ) === String( groupId ) )
 	},
 
 	getStackStatusCards( isStacked, groupId = null )
@@ -305,7 +315,7 @@ const Ste = window.Ste = {
 			if ( assetId )
 			{
 				this.selectedIds.add( assetId )
-				this.updCss( assetId )
+				this.updCss( assetId, card )
 				cnt++
 			}
 		} )
@@ -326,7 +336,7 @@ const Ste = window.Ste = {
 			{
 				this.selectedIds.delete( assetId )
 				this.stackCoverIds.delete( assetId )
-				this.updCss( assetId )
+				this.updCss( assetId, card )
 				deselectedCount++
 			}
 		} )
