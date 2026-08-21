@@ -2,6 +2,9 @@
 //========================================================================
 // Auto Selection
 //========================================================================
+const AUSL_DEBUG = false
+function auslDebug(...args){if (AUSL_DEBUG) console.debug(...args)}
+
 function _groupByMuodId(assets){
 	const groups = {}
 	for ( const ass of assets){
@@ -79,9 +82,9 @@ function _selectBestAsset(grpAssets, ausl){
 
 	const metrics = grpAssets.map(ass => _extractMetric(ass))
 
-	console.log(`[ausl] Group comparison:`)
+	auslDebug(`[ausl] Group comparison:`)
 	for ( const m of metrics){
-		console.log(`[ausl]   #${m.aid}: date[${m.dt}] mdate[${m.mdt}] exif[${m.exfCnt}] fsize[${m.fileSz}] dim[${m.dim}] name[${m.nameLen}] type[${m.fileType}] fav[${m.isFav}] alb[${m.hasAlb}] owner[${m.ownerId?.slice(0, 8) || ''}] path[${m.path?.slice(-30) || ''}] dev[${m.deviceId}]`)
+		auslDebug(`[ausl]   #${m.aid}: date[${m.dt}] mdate[${m.mdt}] exif[${m.exfCnt}] fsize[${m.fileSz}] dim[${m.dim}] name[${m.nameLen}] type[${m.fileType}] fav[${m.isFav}] alb[${m.hasAlb}] owner[${m.ownerId?.slice(0, 8) || ''}] path[${m.path?.slice(-30) || ''}] dev[${m.deviceId}]`)
 	}
 
 	const add = (idx, vals, isMax, weight, label) =>{
@@ -202,7 +205,7 @@ function _selectBestAsset(grpAssets, ausl){
 
 		allScores[m.aid] = {score: scr, reasons, metrics: m}
 		scores.push({aid: m.aid, scr, reasons})
-		console.log(`[ausl] #${m.aid}: score[${scr}] (${reasons.length ? reasons.join(', ') : 'no matches'})`)
+		auslDebug(`[ausl] #${m.aid}: score[${scr}] (${reasons.length ? reasons.join(', ') : 'no matches'})`)
 	}
 
 	const maxScr = Math.max(...scores.map(s => s.scr))
@@ -211,19 +214,19 @@ function _selectBestAsset(grpAssets, ausl){
 	if (topScorers.length > 1) {
 		if (ausl.kpCands) {
 			const tiedAids = topScorers.map(s => s.aid)
-			console.log(`[ausl] Tie kept: ${topScorers.length} assets at score ${maxScr}, keeping all [${tiedAids.join(', ')}]`)
+			auslDebug(`[ausl] Tie kept: ${topScorers.length} assets at score ${maxScr}, keeping all [${tiedAids.join(', ')}]`)
 			for (const s of topScorers){
 				if (!s.reasons.includes('Tie')) s.reasons.push('Tie')
 				if (allScores[s.aid]) allScores[s.aid].reasons = s.reasons
 			}
 			return {aids: tiedAids, score: maxScr, reasons: ['Tie'], allScores, tied: true}
 		}
-		console.log(`[ausl] No winner: ${topScorers.length} assets tied at score ${maxScr}`)
+		auslDebug(`[ausl] No winner: ${topScorers.length} assets tied at score ${maxScr}`)
 		return {aids: [], score: maxScr, reasons: [], allScores}
 	}
 
 	const winner = topScorers[0]
-	console.log(`[ausl] Winner: #${winner.aid} score[${winner.scr}] (${winner.reasons.join(', ')})`)
+	auslDebug(`[ausl] Winner: #${winner.aid} score[${winner.scr}] (${winner.reasons.join(', ')})`)
 
 	return {aids: [winner.aid], score: winner.scr, reasons: winner.reasons, allScores}
 }
@@ -296,10 +299,11 @@ function waitForCardsAndUpdate(ids, assets, isAutoSelection){
 		if (updated) return
 		updated = true
 		cleanup()
-		const realCnt = await Ste.updAllCss()
+		Ste.refreshDomCache()
+		const realCnt = isAutoSelection ? await Ste.updAllCss() : Ste.selectedIds.size
 		Ste.updStackCoverButtons()
 		Ste.updBtns()
-		await updAuslTips()
+		await updAuslTips(isAutoSelection)
 		updAuslLog()
 		if (isAutoSelection) {
 			dsh.syncSte(Ste.cntTotal, Ste.selectedIds)
@@ -333,12 +337,17 @@ function waitForCardsAndUpdate(ids, assets, isAutoSelection){
 			doUpdate()
 		}
 	}, 2500)
-	_auslObserver.observe(gv, {childList: true, subtree: true, attributes: true})
+	_auslObserver.observe(gv, {
+		childList: true,
+		subtree: true,
+		attributes: true,
+		attributeFilter: ['data-stack-id', 'data-stacked', 'data-group-id'],
+	})
 }
 
 function getAutoSelectAuids(assets, ausl){
-	console.log(`[ausl] Starting auto-selection, ausl.on[${ausl?.on}], assets count=${assets?.length || 0}`)
-	console.log(`[ausl] Weights: Earlier[${ausl?.earlier}] Later[${ausl?.later}] MdEarly[${ausl?.mdEarly}] MdLate[${ausl?.mdLate}] ExifRich[${ausl?.exRich}] ExifPoor[${ausl?.exPoor}] BigSize[${ausl?.ofsBig}] SmallSize[${ausl?.ofsSml}] BigDim[${ausl?.dimBig}] SmallDim[${ausl?.dimSml}] SkipLow[${ausl?.skipLow}] AllLive[${ausl?.allLive}] KpEmpty[${ausl?.kpCands}] JPG[${ausl?.typJpg}] PNG[${ausl?.typPng}] HEIC[${ausl?.typHeic}] Fav[${ausl?.fav}] InAlb[${ausl?.inAlb}] User[${ausl?.usr?.k}:${ausl?.usr?.v}] Path[${ausl?.pth?.k}:${ausl?.pth?.v}] Dev[${ausl?.dev?.k}:${ausl?.dev?.v}]`)
+	auslDebug(`[ausl] Starting auto-selection, ausl.on[${ausl?.on}], assets count=${assets?.length || 0}`)
+	auslDebug(`[ausl] Weights: Earlier[${ausl?.earlier}] Later[${ausl?.later}] MdEarly[${ausl?.mdEarly}] MdLate[${ausl?.mdLate}] ExifRich[${ausl?.exRich}] ExifPoor[${ausl?.exPoor}] BigSize[${ausl?.ofsBig}] SmallSize[${ausl?.ofsSml}] BigDim[${ausl?.dimBig}] SmallDim[${ausl?.dimSml}] SkipLow[${ausl?.skipLow}] AllLive[${ausl?.allLive}] KpEmpty[${ausl?.kpCands}] JPG[${ausl?.typJpg}] PNG[${ausl?.typPng}] HEIC[${ausl?.typHeic}] Fav[${ausl?.fav}] InAlb[${ausl?.inAlb}] User[${ausl?.usr?.k}:${ausl?.usr?.v}] Path[${ausl?.pth?.k}:${ausl?.pth?.v}] Dev[${ausl?.dev?.k}:${ausl?.dev?.v}]`)
 
 	window.auslReasons = {}
 	window.auslLogs = {}
@@ -348,21 +357,21 @@ function getAutoSelectAuids(assets, ausl){
 	const hasActive=ausl.earlier>0||ausl.later>0||ausl.mdEarly>0||ausl.mdLate>0||ausl.exRich>0||ausl.exPoor>0||ausl.ofsBig>0||ausl.ofsSml>0||ausl.dimBig>0||ausl.dimSml>0||ausl.namLon>0||ausl.namSht>0||ausl.typJpg>0||ausl.typPng>0||ausl.typHeic>0||ausl.fav>0||ausl.inAlb>0||ausl.usr?.v>0||ausl.pth?.v>0||ausl.dev?.v>0
 
 	if (!hasActive) {
-		console.log(`[ausl] No active weights, skipping`)
+		auslDebug(`[ausl] No active weights, skipping`)
 		return []
 	}
 
 	const groups = _groupByMuodId(assets)
-	console.log(`[ausl] Grouped ${assets.length} assets into ${Object.keys(groups).length} groups`)
+	auslDebug(`[ausl] Grouped ${assets.length} assets into ${Object.keys(groups).length} groups`)
 
 	const selIds = []
 
 	for ( const [gid, grpAss] of Object.entries(groups) ){
-		console.log(`[ausl] Processing group ${gid} with ${grpAss.length} assets: [${grpAss.map(a => a.autoId).join(', ')}]`)
+		auslDebug(`[ausl] Processing group ${gid} with ${grpAss.length} assets: [${grpAss.map(a => a.autoId).join(', ')}]`)
 
 		const liveIds = _checkLivePhoto(grpAss, ausl)
 		if (liveIds.length) {
-			console.log(`[ausl] Group ${gid}: Selected ALL LivePhoto assets [${liveIds.join(', ')}]`)
+			auslDebug(`[ausl] Group ${gid}: Selected ALL LivePhoto assets [${liveIds.join(', ')}]`)
 			for ( const lid of liveIds ) window.auslReasons[lid] = ['LivePhoto']
 			window.auslLogs[gid] = {status: 'livephoto', selectedAids: liveIds, reason: 'All LivePhotos selected', details: []}
 			selIds.push(...liveIds)
@@ -381,13 +390,13 @@ function getAutoSelectAuids(assets, ausl){
 			})
 			if (ausl.kpCands) {
 				const keepAids = grpAss.map(a => a.autoId)
-				console.log(`[ausl] Group ${gid}: Low sim kept (${lowList}), keeping all [${keepAids.join(', ')}]`)
+				auslDebug(`[ausl] Group ${gid}: Low sim kept (${lowList}), keeping all [${keepAids.join(', ')}]`)
 				selIds.push(...keepAids)
 				for (const aid of keepAids) window.auslReasons[aid] = ['LowSimKept']
 				window.auslLogs[gid] = {status: 'low_sim_kept', selectedAids: keepAids, reason: `Selected all ${keepAids.length} (low similarity, disable "Keep candidates, not empty" to skip this group)`, details}
 				continue
 			}
-			console.log(`[ausl] Group ${gid}: SKIPPING due to low similarity: ${lowList}`)
+			auslDebug(`[ausl] Group ${gid}: SKIPPING due to low similarity: ${lowList}`)
 			window.auslLogs[gid] = {status: 'skipped', selectedAids: [], reason: `Skipped: low similarity (<0.96)`, details}
 			continue
 		}
@@ -414,7 +423,7 @@ function getAutoSelectAuids(assets, ausl){
 				reasonText = `Selected #${rst.aids[0]} (score: ${rst.score})`
 			}
 			window.auslLogs[gid]={status:rst.tied ? 'tied_kept' :'selected',selectedAids:rst.aids,reason:reasonText,details:Object.entries(rst.allScores).map(([aid,d])=>({aid:parseInt(aid),score:d.score,reasons:d.reasons,metrics:d.metrics}))}
-			console.log(`[ausl] Group ${gid}: ${reasonText}`)
+			auslDebug(`[ausl] Group ${gid}: ${reasonText}`)
 		} else {
 			let reason = rst?.score>0 ?
 				`No winner: tied at score ${rst.score}.<br/>Adjust ausl weights to break the tie,<br/>or enable "Keep candidates, not empty" to keep all.` :
@@ -423,7 +432,7 @@ function getAutoSelectAuids(assets, ausl){
 		}
 	}
 
-	console.log(`[ausl] Final selection: ${selIds.length} assets: [${selIds.join(', ')}]`)
+	auslDebug(`[ausl] Final selection: ${selIds.length} assets: [${selIds.join(', ')}]`)
 
 	try{
 		fetch('/api/log/ausl',{
@@ -440,7 +449,7 @@ function getAutoSelectAuids(assets, ausl){
 //========================================================================
 // Auto-Select Tooltip UI
 //========================================================================
-async function updAuslTips(){
+async function updAuslTips(applySelection = true){
 	document.querySelectorAll('.ausl-tip').forEach(el => el.remove())
 
 	const reasons = window.auslReasons || {}
@@ -448,20 +457,20 @@ async function updAuslTips(){
 
 	let selCnt = 0
 	for (const [aid, reasonList] of Object.entries(reasons)){
-		const card = await getCardById(aid)
+		const card = Ste.getCard(aid) || await getCardById(aid)
 		if (!card) continue
 
-		const cbx = card.querySelector('input[type="checkbox"]')
-		if (cbx) {
-			cbx.checked = true
-			selCnt++
-		}
-		else{
-			console.error( `item not found checkbox` )
-		}
+		if (applySelection) {
+			const cbx = card.querySelector('input[type="checkbox"]')
+			if (cbx) {
+				cbx.checked = true
+				selCnt++
+			}
+			else console.error( `item not found checkbox` )
 
-		const par = card.closest('.card')
-		if (par) par.classList.add('checked')
+			const par = card.closest('.card')
+			if (par) par.classList.add('checked')
+		}
 
 		const label = card.querySelector('label')
 		if (!label) continue
@@ -476,7 +485,7 @@ async function updAuslTips(){
 		label.appendChild(tip)
 	}
 
-	console.log(`[ausl] Updated ${Object.keys(reasons).length} tooltip(s), checked ${selCnt} cbx`)
+	auslDebug(`[ausl] Updated ${Object.keys(reasons).length} tooltip(s), checked ${selCnt} cbx`)
 }
 
 //========================================================================
@@ -488,7 +497,7 @@ function updAuslLog(){
 
 	const logs = window.auslLogs || {}
 	if (!Object.keys(logs).length){
-		console.debug( `[ausl] no logs ...` )
+		auslDebug( `[ausl] no logs ...` )
 		return
 	}
 
@@ -526,7 +535,7 @@ function updAuslLog(){
 			header.appendChild(tip)
 		})
 
-		console.log(`[ausl] Positioned logs in ${titles.length} group header(s)`)
+		auslDebug(`[ausl] Positioned logs in ${titles.length} group header(s)`)
 	})
 }
 
@@ -631,8 +640,8 @@ window.dash_clientside.similar = {
 			Ste.stackCoverIds = new Set(ste_data.stackCoverIds || [])
 		}
 		if (stateOnly) {
-			Ste.updStackCoverButtons()
-			console.log('[Ste] Accepted state already rendered by the originating client action')
+			// The originating client action already updated its card, cover, and buttons.
+			// Persisting the store must not trigger a second visual pass.
 			return dash_clientside.no_update
 		}
 
@@ -650,7 +659,7 @@ window.dash_clientside.similar = {
 			if (existingResultUpdate) {
 				pruneAuslState(assets)
 				waitForCardsAndUpdate(Array.from(Ste.selectedIds), assets, false)
-				console.log('[ausl] Preserved selection after existing-result update')
+				auslDebug('[ausl] Preserved selection after existing-result update')
 				return dash_clientside.no_update
 			}
 

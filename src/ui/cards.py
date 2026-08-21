@@ -151,7 +151,7 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 			htm.Div([
 				htm.Div([
 					htm.Video(
-						src=f"/api/livephoto/{ass.autoId}", loop=True, muted=True, autoPlay=True,
+						src=f"/api/livephoto/{ass.autoId}", loop=True, muted=True, preload="metadata",
 						id=imgPopId,
 						className="livephoto",
 					) if isLive else None,

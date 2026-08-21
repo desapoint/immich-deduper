@@ -4,9 +4,75 @@ const Ste = window.Ste = {
 	selectedIds: new Set(),
 	stackCoverIds: new Set(),
 	_lastSyncHash: null,
+	_domCache: null,
+
+	invalidateDomCache()
+	{
+		this._domCache = null
+	},
+
+	refreshDomCache()
+	{
+		const cards = Array.from( document.querySelectorAll( '[id*="card-select"]' ) )
+		const byAid = new Map()
+		const groups = new Map()
+		const stackedGroups = new Set()
+		const unstackedGroups = new Set()
+
+		cards.forEach( card => {
+			const aid = this.extractAssetIdBy( card )
+			if ( !aid ) return
+			const groupId = String( card.getAttribute( 'data-group-id' ) || '' )
+			const stacked = card.getAttribute( 'data-stacked' ) === 'true'
+			byAid.set( aid, {card, groupId, stacked} )
+			if ( groupId ) {
+				if ( !groups.has( groupId ) ) groups.set( groupId, [] )
+				groups.get( groupId ).push( card )
+				stacked ? stackedGroups.add( groupId ) : unstackedGroups.add( groupId )
+			}
+		} )
+
+		const mainIds = Array.from( document.querySelectorAll( '.sim.main [id*="card-select"]' ) )
+			.map( card => this.extractAssetIdBy( card ) )
+			.filter( aid => aid )
+		const coverButtons = Array.from( document.querySelectorAll( '[id*=\'"type":"sim-stack-cover"\']' ) )
+		const groupStackButtons = new Map()
+		const groupActionButtons = new Map()
+
+		document.querySelectorAll( '[id*=\'"type":"sim-stack-group"\']' ).forEach( button => {
+			try { groupStackButtons.set( String( JSON.parse( button.id ).id ), button ) }
+			catch ( e ) { console.error( '[Ste] Invalid group stack button id:', e ) }
+		} )
+		document.querySelectorAll( '[id*=\'"type":"sim-group-action"\']' ).forEach( button => {
+			try {
+				const patternId = JSON.parse( button.id )
+				const groupId = String( patternId.id )
+				if ( !groupActionButtons.has( groupId ) ) groupActionButtons.set( groupId, [] )
+				groupActionButtons.get( groupId ).push( {button, action: patternId.action} )
+			}
+			catch ( e ) { console.error( '[Ste] Invalid group action button id:', e ) }
+		} )
+
+		this._domCache = {
+			cards, byAid, groups, mainIds, coverButtons,
+			stackedGroups, unstackedGroups, groupStackButtons, groupActionButtons,
+		}
+		return this._domCache
+	},
+
+	getDomCache()
+	{
+		return this._domCache || this.refreshDomCache()
+	},
+
+	getCard( aid )
+	{
+		return this.getDomCache().byAid.get( Number( aid ) )?.card || null
+	},
 
 	init( cnt )
 	{
+		this.invalidateDomCache()
 		this.cntTotal = cnt
 		this.selectedIds.clear()
 		this.stackCoverIds.clear()
@@ -17,6 +83,7 @@ const Ste = window.Ste = {
 
 	initSilent( cnt )
 	{
+		this.invalidateDomCache()
 		this.cntTotal = cnt
 		this.selectedIds.clear()
 		this.stackCoverIds.clear()
@@ -25,6 +92,8 @@ const Ste = window.Ste = {
 
 	toggle( aid, card = null )
 	{
+		if ( !card ) card = this.getCard( aid )
+		const groupId = card?.getAttribute( 'data-group-id' ) || null
 		const clearedCover = this.stackCoverIds.has( aid )
 		if ( this.selectedIds.has( aid ) )
 		{
@@ -33,18 +102,16 @@ const Ste = window.Ste = {
 		}
 		else this.selectedIds.add( aid )
 
-		console.log( `[Ste] Toggled ${ aid }, selected count: ${ this.selectedIds.size }` )
-
 		this.updCss( aid, card )
-		if ( clearedCover ) this.updStackCoverButtons()
-		this.updBtns()
+		if ( clearedCover ) this.updStackCoverButtons( groupId )
+		this.updBtns( groupId )
 	},
 
 	async updCss( aid, card = null )
 	{
 		// console.log( `[Ste] updCss called for aid: ${aid} (type: ${typeof aid})` )
 
-		if ( !card ) card = await getCardById( aid )
+		if ( !card ) card = this.getCard( aid ) || await getCardById( aid )
 		if ( !card )
 		{
 			console.error( `[Ste] No cards found for ${ aid }` )
@@ -86,11 +153,12 @@ const Ste = window.Ste = {
 		return isSelected && !!cbx
 	},
 
-	updBtns()
+	updBtns( groupId = null )
 	{
 		const cntSel = this.selectedIds.size
 		const cntAll = this.cntTotal
 		const cntDiff = Math.max(0, cntAll - cntSel)
+		const cache = this.getDomCache()
 
 		const btnRm = document.getElementById( 'sim-btn-RmSel' )
 		const btnRS = document.getElementById( 'sim-btn-OkSel' )
@@ -101,17 +169,10 @@ const Ste = window.Ste = {
 		const btnSelUnstacked = document.getElementById( 'sim-btn-SelectUnstacked' )
 		const btnStack = document.getElementById( 'sim-btn-Stack' )
 		const txtCntSel = document.getElementById( 'sim-txt-cnt-sel' )
-		const cards = Array.from( document.querySelectorAll( '[id*="card-select"]' ) )
 		const selectedGroups = new Set()
-		const stackedGroups = new Set()
-		const unstackedGroups = new Set()
-
-		cards.forEach( card => {
-			const groupId = card.getAttribute( 'data-group-id' )
-			const assetId = this.extractAssetIdBy( card )
-			if ( groupId != null && assetId && this.selectedIds.has( assetId ) ) selectedGroups.add( String( groupId ) )
-			if ( groupId != null && card.getAttribute( 'data-stacked' ) === 'true' ) stackedGroups.add( String( groupId ) )
-			if ( groupId != null && card.getAttribute( 'data-stacked' ) === 'false' ) unstackedGroups.add( String( groupId ) )
+		this.selectedIds.forEach( aid => {
+			const selectedGroupId = cache.byAid.get( Number( aid ) )?.groupId
+			if ( selectedGroupId ) selectedGroups.add( selectedGroupId )
 		} )
 
 		if ( btnRm ) {
@@ -129,40 +190,33 @@ const Ste = window.Ste = {
 
 		if ( btnAllSelect ) btnAllSelect.disabled = ( cntSel >= cntAll || cntAll == 0 )
 		if ( btnAllCancel ) btnAllCancel.disabled = ( cntSel == 0 )
-		if ( btnSelStacked ) btnSelStacked.disabled = !cards.some( card => card.getAttribute( 'data-stacked' ) === 'true' )
-		if ( btnSelUnstacked ) btnSelUnstacked.disabled = !cards.some( card => card.getAttribute( 'data-stacked' ) === 'false' )
-		document.querySelectorAll( '[id^="sel-grp-stacked-"]' ).forEach( btn => {
-			const groupId = btn.id.replace( 'sel-grp-stacked-', '' )
-			btn.disabled = !stackedGroups.has( String( groupId ) )
-		} )
-		document.querySelectorAll( '[id^="sel-grp-unstacked-"]' ).forEach( btn => {
-			const groupId = btn.id.replace( 'sel-grp-unstacked-', '' )
-			btn.disabled = !unstackedGroups.has( String( groupId ) )
-		} )
-		document.querySelectorAll( '[id*=\'"type":"sim-stack-group"\']' ).forEach( btn => {
-			try { btn.disabled = !selectedGroups.has( String( JSON.parse( btn.id ).id ) ) }
-			catch ( e ) { console.error( '[Ste] Invalid group stack button id:', e ) }
-		} )
-		document.querySelectorAll( '[id*=\'"type":"sim-group-action"\']' ).forEach( btn => {
-			try {
-				const patternId = JSON.parse( btn.id )
-				if ( ['keep-selected', 'delete-selected'].includes( patternId.action ) )
-					btn.disabled = !selectedGroups.has( String( patternId.id ) )
-			}
-			catch ( e ) { console.error( '[Ste] Invalid group action button id:', e ) }
+		if ( btnSelStacked ) btnSelStacked.disabled = cache.stackedGroups.size === 0
+		if ( btnSelUnstacked ) btnSelUnstacked.disabled = cache.unstackedGroups.size === 0
+
+		const groupIds = groupId == null ? Array.from( cache.groups.keys() ) : [String( groupId )]
+		groupIds.forEach( currentGroupId => {
+			const stackSelect = document.getElementById( `sel-grp-stacked-${ currentGroupId }` )
+			const unstackSelect = document.getElementById( `sel-grp-unstacked-${ currentGroupId }` )
+			if ( stackSelect ) stackSelect.disabled = !cache.stackedGroups.has( currentGroupId )
+			if ( unstackSelect ) unstackSelect.disabled = !cache.unstackedGroups.has( currentGroupId )
+
+			const hasSelection = selectedGroups.has( currentGroupId )
+			const stackButton = cache.groupStackButtons.get( currentGroupId )
+			if ( stackButton ) stackButton.disabled = !hasSelection
+			;( cache.groupActionButtons.get( currentGroupId ) || [] ).forEach( item => {
+				if ( ['keep-selected', 'delete-selected'].includes( item.action ) ) item.button.disabled = !hasSelection
+			} )
 		} )
 		if ( btnSelMns )
 		{
 			btnSelMns.disabled = ( cntAll == 0 )
 			this.updBtnMns()
 		}
-
-		console.log( `[Ste] updBtns - selected[ ${ cntSel } / ${ cntAll } ]` )
 	},
 
 	async selectAll()
 	{
-		const cards = document.querySelectorAll( '[id*="card-select"]' )
+		const cards = this.getDomCache().cards
 		cards.forEach( card => {
 			const assetId = this.extractAssetIdBy( card )
 			if ( assetId ) this.selectedIds.add( assetId )
@@ -175,13 +229,7 @@ const Ste = window.Ste = {
 
 	getMainIds()
 	{
-		const cards = document.querySelectorAll( '.sim.main [id*="card-select"]' )
-		const ids = []
-		cards.forEach( card => {
-			const aid = this.extractAssetIdBy( card )
-			if ( aid ) ids.push( aid )
-		} )
-		return ids
+		return this.getDomCache().mainIds
 	},
 
 	isAllMainsSel()
@@ -223,7 +271,7 @@ const Ste = window.Ste = {
 
 	async updAllCss()
 	{
-		const cards = document.querySelectorAll( '[id*="card-select"]' )
+		const cards = this.getDomCache().cards
 		// console.log( `[Ste] updAllCss cards[ ${ cards.length } ]` )
 		const proms = []
 		cards.forEach( card => {
@@ -252,14 +300,13 @@ const Ste = window.Ste = {
 
 	getGroupCards( groupId )
 	{
-		return Array.from( document.querySelectorAll( '[id*="card-select"][data-group-id]' ) )
-			.filter( card => String( card.getAttribute( 'data-group-id' ) ) === String( groupId ) )
+		return this.getDomCache().groups.get( String( groupId ) ) || []
 	},
 
 	getStackStatusCards( isStacked, groupId = null )
 	{
 		const cards = groupId == null
-			? Array.from( document.querySelectorAll( '[id*="card-select"]' ) )
+			? this.getDomCache().cards
 			: this.getGroupCards( groupId )
 		const expected = isStacked ? 'true' : 'false'
 		return cards.filter( card => card.getAttribute( 'data-stacked' ) === expected )
@@ -268,7 +315,7 @@ const Ste = window.Ste = {
 	async selectStackStatus( isStacked, groupId = null )
 	{
 		const scopeCards = groupId == null
-			? Array.from( document.querySelectorAll( '[id*="card-select"]' ) )
+			? this.getDomCache().cards
 			: this.getGroupCards( groupId )
 		const matchingCards = this.getStackStatusCards( isStacked, groupId )
 		if ( matchingCards.length == 0 ) return
@@ -287,14 +334,14 @@ const Ste = window.Ste = {
 
 		await this.updAllCss()
 		this.updStackCoverButtons( groupId )
-		this.updBtns()
+		this.updBtns( groupId )
 		console.log( `[Ste] Selected ${ matchingCards.length } ${ isStacked ? 'stacked' : 'non-stacked' } items${ groupId == null ? '' : ` in group ${ groupId }` }` )
 		dsh.syncSte( this.cntTotal, this.selectedIds )
 	},
 
 	updStackCoverButtons( groupId = null, ownerId = null )
 	{
-		const buttons = document.querySelectorAll( '[id*=\'"type":"sim-stack-cover"\']' )
+		const buttons = this.getDomCache().coverButtons
 		buttons.forEach( button => {
 			try
 			{
@@ -316,7 +363,7 @@ const Ste = window.Ste = {
 	setStackCover( aid, groupId, ownerId, card = null )
 	{
 		const wasChosen = this.stackCoverIds.has( aid )
-		const buttons = document.querySelectorAll( '[id*=\'"type":"sim-stack-cover"\']' )
+		const buttons = this.getDomCache().coverButtons
 		buttons.forEach( button => {
 			try
 			{
@@ -334,14 +381,12 @@ const Ste = window.Ste = {
 			this.updCss( aid, card )
 		}
 		this.updStackCoverButtons( groupId, ownerId )
-		this.updBtns()
-		console.log( `[Ste] Stack cover ${ wasChosen ? 'cleared' : `set to ${ aid }` } for group ${ groupId }, owner ${ ownerId }` )
+		this.updBtns( groupId )
 	},
 
 	selectGroup( groupId )
 	{
 		const grps = this.getGroupCards( groupId )
-		let cnt = 0
 
 		grps.forEach( card => {
 			const assetId = this.extractAssetIdBy( card )
@@ -349,19 +394,16 @@ const Ste = window.Ste = {
 			{
 				this.selectedIds.add( assetId )
 				this.updCss( assetId, card )
-				cnt++
 			}
 		} )
 
-		this.updBtns()
-		console.log( `[Ste] Selected ${ cnt } items in group ${ groupId }` )
+		this.updBtns( groupId )
 		dsh.syncSte( this.cntTotal, this.selectedIds )
 	},
 
 	clearGroup( groupId )
 	{
 		const cards = this.getGroupCards( groupId )
-		let deselectedCount = 0
 
 		cards.forEach( card => {
 			const assetId = this.extractAssetIdBy( card )
@@ -370,13 +412,11 @@ const Ste = window.Ste = {
 				this.selectedIds.delete( assetId )
 				this.stackCoverIds.delete( assetId )
 				this.updCss( assetId, card )
-				deselectedCount++
 			}
 		} )
 
 		this.updStackCoverButtons( groupId )
-		this.updBtns()
-		console.log( `[Ste] Deselected ${ deselectedCount } items in group ${ groupId }` )
+		this.updBtns( groupId )
 		dsh.syncSte( this.cntTotal, this.selectedIds )
 	},
 }

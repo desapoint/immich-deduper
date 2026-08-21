@@ -2838,3 +2838,42 @@ textarea {
 		.not-found-actions .btn { width: 100%; justify-content: center; }
 	}
 }
+
+
+//========================================================================
+// Final rendering and motion polish
+//========================================================================
+.similar-workspace #sim-gvSim .gv > div:not(.sim-group-header),
+.view-card-grid .gv > div {
+	content-visibility: auto;
+	contain-intrinsic-size: auto 31rem;
+}
+
+.similar-workspace,
+.view-results-shell {
+	img.card-img { background: #050b14; }
+}
+
+@media (max-width: 520px) {
+	.similar-workspace {
+		.sim-controls .btn { flex: 1 1 auto; }
+		.sim-control-label { flex: 0 0 100%; }
+		.sim-selection-count { margin-bottom: 0.1rem; }
+		.sim-stack-delete { flex: 1 1 auto; }
+	}
+
+	.pager .lnk { padding-inline: 0.55rem; }
+	.pager-info,
+	.pager-size { margin-left: 0.35rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		scroll-behavior: auto !important;
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}

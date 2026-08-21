@@ -6,7 +6,7 @@ const path = require('node:path')
 const vm = require('node:vm')
 
 
-function main() {
+async function main() {
 	const titleChildren = []
 	const headerChildren = []
 	const cardChildren = []
@@ -14,6 +14,9 @@ function main() {
 	let coverUpdates = 0
 	let fullCssUpdates = 0
 	let buttonUpdates = 0
+	let cacheRefreshes = 0
+	let renderedCards = []
+	const grid = {}
 	const header = {appendChild(child) { headerChildren.push(child) }}
 	const title = {
 		getAttribute(name) { return name === 'data-group-id' ? '7' : null },
@@ -33,6 +36,8 @@ function main() {
 			selectedIds: new Set(),
 			stackCoverIds: new Set(),
 			extractAssetIdBy() { return null },
+			refreshDomCache() { cacheRefreshes++ },
+			getCard() { return null },
 			updStackCoverButtons() { coverUpdates++ },
 			updAllCss() { fullCssUpdates++; return Promise.resolve(0) },
 			updBtns() { buttonUpdates++ },
@@ -50,8 +55,9 @@ function main() {
 		document: {
 			body: {},
 			addEventListener() {},
-			querySelector() { return null },
+			querySelector(selector) { return selector === '#sim-gvSim' && renderedCards.length ? grid : null },
 			querySelectorAll(selector) {
+				if (selector === '#sim-gvSim [id*="card-select"]') return renderedCards
 				if (selector === '.card') return [card]
 				return []
 			},
@@ -102,16 +108,29 @@ function main() {
 		{cntTotal: 3, selectedIds: [1], stackCoverIds: [1]},
 		{},
 	)
-	assert.equal(coverUpdates, 1, 'store persistence must refresh only cover controls')
+	assert.equal(coverUpdates, 0, 'store persistence must not repaint cover controls a second time')
 	assert.equal(fullCssUpdates, 0, 'store persistence must not rescan every card')
 	assert.equal(buttonUpdates, 0, 'store persistence must not repaint buttons a second time')
+
+	const renderedCard = {
+		getAttribute(name) { return name === 'data-stack-id' ? '' : null },
+	}
+	renderedCards = [renderedCard]
+	context.Ste.extractAssetIdBy = item => item === renderedCard ? 1 : null
+	context.window.auslLogs = {}
+	context.window.auslReasons = {}
+	const coversBeforePatch = coverUpdates
+	vm.runInContext('waitForCardsAndUpdate([], [{autoId: 1, ex: {stackId: null}}], false)', context)
+	await new Promise(resolve => setTimeout(resolve, 10))
+
+	assert.equal(cacheRefreshes, 1, 'a card patch should refresh the DOM cache exactly once')
+	assert.equal(fullCssUpdates, 0, 'an existing-result patch must preserve card state without repainting the whole grid')
+	assert.equal(buttonUpdates, 1, 'an existing-result patch should update controls once')
+	assert.equal(coverUpdates, coversBeforePatch + 1, 'an existing-result patch should refresh cover controls once')
 }
 
 
-try {
-	main()
-}
-catch (error) {
+main().catch(error => {
 	console.error(error)
 	process.exitCode = 1
-}
+})

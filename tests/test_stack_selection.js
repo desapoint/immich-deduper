@@ -43,6 +43,7 @@ async function main() {
 	const coverButtons = [coverButton(1, 1, 'owner-a'), coverButton(2, 1, 'owner-a')]
 	const syncs = []
 	const sourceClasses = new Set()
+	let selectorScans = 0
 	const sourceButton = {
 		attributes: {},
 		classList: {toggle(name, enabled) { enabled ? sourceClasses.add(name) : sourceClasses.delete(name) }},
@@ -58,6 +59,7 @@ async function main() {
 			getElementById(id) { return id === 'sim-btn-SelectMns' ? sourceButton : null },
 			querySelector() { return null },
 			querySelectorAll(selector) {
+				selectorScans++
 				if (selector === '.sim.main [id*="card-select"]') return [cards[0], cards[2]]
 				if (selector.includes('"type":"sim-stack-cover"')) return coverButtons
 				if (selector.startsWith('[id*="card-select"]')) return cards
@@ -94,6 +96,10 @@ async function main() {
 	ste.updBtnMns()
 	assert.equal(sourceClasses.has('active'), false)
 	assert.equal(sourceButton.attributes['aria-pressed'], 'false')
+
+	const scansAfterCache = selectorScans
+	ste.toggle(2, cards[1])
+	assert.equal(selectorScans, scansAfterCache, 'a card toggle must reuse the DOM cache instead of rescanning the grid')
 
 	ste.setStackCover(1, 1, 'owner-a')
 	assert.deepEqual(Array.from(ste.stackCoverIds), [1])

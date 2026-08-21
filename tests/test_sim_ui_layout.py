@@ -25,11 +25,12 @@ def props(node):
 	return node.to_plotly_json().get('props', {})
 
 
-def asset(autoId, groupId, *, source=False, stackId=None, primary=False):
+def asset(autoId, groupId, *, source=False, stackId=None, primary=False, live=False):
 	item = models.Asset(
 		autoId=autoId,
 		id=f'asset-{autoId}',
 		ownerId='owner-a',
+		vdoId=f'video-{autoId}' if live else None,
 		originalFileName=f'{autoId}.jpg',
 		originalPath=f'/library/{autoId}.jpg',
 		jsonExif=models.AssetExif(exifImageWidth=100, exifImageHeight=100),
@@ -85,6 +86,17 @@ class TestSimilarUiLayout(unittest.TestCase):
 		self.assertTrue(all('--sim-stack-color' in props(card).get('style', {}) for card in stackCards))
 		self.assertTrue(any(getattr(node, 'children', None) == 'Source' for node in nodes))
 		self.assertTrue(any(getattr(node, 'children', None) == '★ Thumbnail' for node in nodes))
+
+	def test_card_media_defers_offscreen_work(self):
+		with patch('ui.cards.db.psql.getUsrName', return_value='Owner'):
+			card = gv.cards.mk(asset(1, 7, live=True), stackGroupId=7)
+
+		nodes = list(walk(card))
+		videos = [node for node in nodes if props(node).get('className') == 'livephoto']
+
+		self.assertEqual(len(videos), 1)
+		self.assertEqual(props(videos[0]).get('preload'), 'metadata')
+		self.assertFalse(props(videos[0]).get('autoPlay', False))
 
 
 if __name__ == '__main__':
