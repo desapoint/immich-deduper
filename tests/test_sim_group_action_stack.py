@@ -47,6 +47,20 @@ TEST_DTO = SimpleNamespace(
 
 
 class TestManualGroupResolution(unittest.TestCase):
+	def button_states(self, assets, selectedIds=(), *, cnt=None, task=None, groupButtons=None, groupActions=None, coverButtons=None, triggeredId='store-now'):
+		with (
+			patch.object(similar, 'ctx', SimpleNamespace(triggered_id=triggeredId)),
+			patch.object(similar.db, 'dto', TEST_DTO),
+			patch.object(similar.db.pics, 'countHasSimIds', return_value=0),
+		):
+			return similar.sim_UpdateButtons(
+				models.Now(sim=models.PgSim(assCur=list(assets))).toDict(),
+				models.Ste(cntTotal=len(assets), selectedIds=list(selectedIds)).toDict(),
+				(cnt or models.Cnt()).toDict(),
+				(task or models.Tsk()).toDict(),
+				groupButtons or [], groupActions or [], coverButtons or [],
+			)
+
 	def test_group_action_confirmation_offers_mark_resolved(self):
 		assets = [asset(1, 1), asset(2, 1), asset(3, 2)]
 		now = models.Now(sim=models.PgSim(assCur=assets))
@@ -69,7 +83,7 @@ class TestManualGroupResolution(unittest.TestCase):
 		self.assertTrue(modal.args['allowMarkResolved'])
 		self.assertEqual(modal.args['targetGroupId'], 1)
 
-	def test_selection_update_avoids_db_count_and_scopes_group_buttons(self):
+	def test_selection_update_avoids_db_count_and_reconciles_group_buttons(self):
 		assets = [asset(1, 1), asset(2, 1), asset(3, 2)]
 		now = models.Now(sim=models.PgSim(assCur=assets))
 		ste = models.Ste(cntTotal=3, selectedIds=[1])
@@ -92,7 +106,50 @@ class TestManualGroupResolution(unittest.TestCase):
 
 		countHasSimIds.assert_not_called()
 		self.assertEqual(len(result), 14)
-		self.assertTrue(all(item is dash.no_update for item in result))
+		self.assertTrue(all(item is dash.no_update for item in result[:5]))
+		self.assertEqual(result[5:9], (False, False, False, dash.no_update))
+		self.assertEqual(result[9], [False, True])
+		self.assertEqual(result[10], [False, True, False])
+		self.assertEqual(result[11:14], ([], [], []))
+
+	def test_action_buttons_follow_empty_partial_and_running_states(self):
+		assets = [asset(1, 1), asset(2, 1), asset(3, 2)]
+		groupButtons = [
+			{'type': gv.STACK_GROUP_BUTTON, 'id': 1},
+			{'type': gv.STACK_GROUP_BUTTON, 'id': 2},
+		]
+		groupActions = [
+			{'type': gv.GROUP_ACTION_BUTTON, 'action': gv.GROUP_KEEP_SELECTED, 'id': 1},
+			{'type': gv.GROUP_ACTION_BUTTON, 'action': gv.GROUP_DELETE_SELECTED, 'id': 2},
+			{'type': gv.GROUP_ACTION_BUTTON, 'action': gv.GROUP_MARK_RESOLVED, 'id': 2},
+		]
+		coverButtons = [
+			{'type': gv.STACK_COVER_BUTTON, 'id': 1, 'group': 1, 'owner': 'owner-a'},
+		]
+
+		empty = self.button_states(
+			assets, groupButtons=groupButtons, groupActions=groupActions, coverButtons=coverButtons,
+		)
+		self.assertEqual(empty[3:9], (False, False, True, True, True, False))
+		self.assertEqual(empty[9], [True, True])
+		self.assertEqual(empty[10], [True, True, False])
+		self.assertEqual(empty[11:14], ([True], ['Set cover'], [False]))
+
+		partial = self.button_states(
+			assets, [1], groupButtons=groupButtons, groupActions=groupActions, coverButtons=coverButtons,
+		)
+		self.assertEqual(partial[3:9], (False, False, False, False, False, False))
+		self.assertEqual(partial[9], [False, True])
+		self.assertEqual(partial[10], [False, True, False])
+
+		running = self.button_states(
+			assets, [1], task=models.Tsk(id='task-1', cmd='running'),
+			groupButtons=groupButtons, groupActions=groupActions, coverButtons=coverButtons,
+		)
+		self.assertEqual(running[3:8], (True, True, True, True, True))
+		self.assertEqual(running[9], [True, True])
+		self.assertEqual(running[10], [True, True, True])
+		self.assertEqual(running[13], [True])
 
 	def test_group_delete_selected_keeps_survivors_open(self):
 		assets = [asset(1, 1), asset(2, 1), asset(3, 2)]

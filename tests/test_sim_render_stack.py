@@ -50,6 +50,16 @@ def props(node):
 
 
 class TestSimilarPartialRendering(unittest.TestCase):
+	@classmethod
+	def setUpClass(cls):
+		for page in dash.page_registry.values():
+			module = sys.modules.get(page['module'])
+			if module is not None and hasattr(module, 'layout'):
+				page['layout'] = module.layout
+		testApp.layout = dash.html.Div()
+		testApp._setup_server()
+		cls.client = testApp.server.test_client()
+
 	def test_similar_page_has_guided_review_hierarchy(self):
 		with (
 			patch.object(similar.immich, 'isMergeAvailable', return_value=(True, None)),
@@ -65,9 +75,37 @@ class TestSimilarPartialRendering(unittest.TestCase):
 		self.assertTrue(any('similar-workspace' in value for value in classes))
 
 	def test_render_state_callback_is_registered(self):
-		testApp.layout = dash.html.Div()
-		testApp._setup_server()
 		self.assertTrue(any('sim-render-state.data' in key for key in testApp.callback_map))
+
+	def test_empty_similar_store_updates_do_not_return_http_500(self):
+		key = next(key for key in testApp.callback_map if 'sim-btn-fnd.disabled' in key)
+		callback = testApp.callback_map[key]
+		now = models.Now(sim=models.PgSim(
+			pagerPnd=models.Pager(idx=1, size=25, cnt=0),
+			activeTab=similar.k.tabCur,
+		)).toDict()
+		outputs = [output.to_dict() for output in callback['output'][:9]] + [[], [], [], [], []]
+		payload = {
+			'output': key,
+			'outputs': outputs,
+			'changedPropIds': ['store-now.data'],
+			'inputs': [
+				{'id': 'store-now', 'property': 'data', 'value': now},
+				{'id': 'store-state', 'property': 'data', 'value': models.Ste().toDict()},
+				{'id': 'store-count', 'property': 'data', 'value': models.Cnt().toDict()},
+				{'id': 'store-tsk', 'property': 'data', 'value': models.Tsk().toDict()},
+			],
+			'state': [
+				{'id': callback['state'][0]['id'], 'property': 'id', 'value': []},
+				{'id': callback['state'][1]['id'], 'property': 'id', 'value': []},
+				{'id': callback['state'][2]['id'], 'property': 'id', 'value': []},
+			],
+		}
+
+		with patch.object(similar.db.pics, 'countHasSimIds', return_value=0):
+			response = self.client.post('/_dash-update-component', json=payload)
+
+		self.assertEqual(response.status_code, 200, response.get_data(as_text=True))
 
 	def test_unchanged_store_update_does_not_replace_grid(self):
 		assets = [asset(1, 1), asset(2, 1), asset(3, 2), asset(4, 2)]

@@ -692,16 +692,11 @@ def sim_UpdateButtons(
 	dta_now, dta_ste, dta_cnt, dta_tsk,
 	groupButtonIds, groupActionButtonIds, coverButtonIds,
 ):
-	# Selection and cover changes are already rendered synchronously by the
-	# client-side state manager. A server response here only repaints those
-	# controls later with potentially stale state.
-	if ctx.triggered_id == ks.sto.ste:
-		return noUpd.by(14)
-
 	now = Now.fromDic(dta_now)
 	ste = Ste.fromDic(dta_ste) if dta_ste else Ste()
 	cnt = Cnt.fromDic(dta_cnt)
 	tsk = Tsk.fromDic(dta_tsk)
+	selectionOnly = ctx.triggered_id == ks.sto.ste
 
 	from mod.mgr.tskSvc import mgr
 	isTaskRunning = False
@@ -713,20 +708,23 @@ def sim_UpdateButtons(
 	if tsk.id and tsk.cmd: isTaskRunning = True
 
 	cntAssets = len(now.sim.assCur) if now.sim.assCur else 0
-	cntNo = cnt.ass - cnt.simOk if cnt else 0
-	cntPn = cnt.simPnd if cnt else 0
-	disFind = cntNo <= 0 or (cntPn >= cntNo) or isTaskRunning
-	cntSrchd = db.pics.countHasSimIds(isOk=0) if not isTaskRunning else 0
-	disClear = cntSrchd <= 0 or isTaskRunning
-	cntOk = cnt.simOk if cnt else 0
-	disReset = cntOk <= 0 and cntPn <= 0 or isTaskRunning
-	disOk = cntAssets <= 0
-	disDel = cntAssets <= 0
-	disExport = cntAssets <= 0
+	if selectionOnly:
+		disFind = disClear = disReset = disOk = disDel = disExport = dash.no_update
+	else:
+		cntNo = cnt.ass - cnt.simOk if cnt else 0
+		cntPn = cnt.simPnd if cnt else 0
+		disFind = cntNo <= 0 or (cntPn >= cntNo) or isTaskRunning
+		cntSrchd = db.pics.countHasSimIds(isOk=0) if not isTaskRunning else 0
+		disClear = cntSrchd <= 0 or isTaskRunning
+		cntOk = cnt.simOk if cnt else 0
+		disReset = (cntOk <= 0 and cntPn <= 0) or isTaskRunning
+		disOk = cntAssets <= 0 or isTaskRunning
+		disDel = cntAssets <= 0 or isTaskRunning
+		disExport = cntAssets <= 0
 
 	cntSel = len(ste.selectedIds) if ste.selectedIds else 0
-	disRm = cntSel == 0
-	disRS = cntSel == 0
+	disRm = isTaskRunning or cntSel == 0
+	disRS = isTaskRunning or cntSel == 0
 	disStack = isTaskRunning or cntSel == 0
 	selectedIds = set(ste.selectedIds)
 	selectedGroupIds = {
@@ -747,10 +745,15 @@ def sim_UpdateButtons(
 			disabled = str(buttonId.get('id')) not in selectedGroupIds
 		groupActionDisabled.append(disabled)
 
-	# The browser owns cover labels and active styling so they never lag behind
-	# the click or get restored by an older callback response.
-	coverOutline = dash.no_update
-	coverChildren = dash.no_update
+	# Wildcard outputs must always return one value per rendered component.
+	# Returning a scalar no_update here causes Dash 3.4 to respond with HTTP 500
+	# when a page has no group or cover buttons.
+	stackCoverIds = set(ste.stackCoverIds)
+	coverOutline = [buttonId.get('id') not in stackCoverIds for buttonId in coverButtonIds or []]
+	coverChildren = [
+		"Cover choice" if buttonId.get('id') in stackCoverIds else "Set cover"
+		for buttonId in coverButtonIds or []
+	]
 	coverDisabled = [isTaskRunning for _ in coverButtonIds or []]
 
 	# lg.info(f"[sim:UpdBtns] disFind[{disFind}]")
