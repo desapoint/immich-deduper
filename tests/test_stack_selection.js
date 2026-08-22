@@ -32,8 +32,12 @@ function coverButton(autoId, groupId, ownerId) {
 		textContent: 'Set cover',
 		attributes: {},
 		classes,
-		classList: {toggle(name, enabled) { enabled ? classes.add(name) : classes.delete(name) }},
+		classList: {
+			toggle(name, enabled) { enabled ? classes.add(name) : classes.delete(name) },
+			contains(name) { return classes.has(name) },
+		},
 		setAttribute(name, value) { this.attributes[name] = value },
+		closest() { return {querySelector() { return null }} },
 	}
 }
 
@@ -80,7 +84,7 @@ async function main() {
 		},
 		dsh: {
 			getStore(id) { return id === 'store-tsk' ? currentTask : null },
-			syncSte(cnt, ids) { syncs.push([cnt, Array.from(ids)]) },
+		syncSte(cnt, ids, covers) { syncs.push([cnt, Array.from(ids), Array.from(covers || [])]) },
 		},
 		document: {
 			addEventListener() {},
@@ -163,6 +167,13 @@ async function main() {
 	assert.equal(coverButtons[0].classes.has('btn-info'), true)
 	assert.equal(coverButtons[0].classes.has('btn-outline-info'), false)
 	assert.equal(coverButtons[0].attributes['aria-pressed'], 'true')
+	assert.ok(
+		setPropsCalls.some(call => call.id?.type === 'sim-stack-cover'
+			&& call.id.id === 1
+			&& call.props.children === 'Cover choice'
+			&& call.props.outline === false),
+		'cover choice must update the Dash component props so React cannot revert it',
+	)
 
 	ste.setStackCover(1, 1, 'owner-a')
 	assert.deepEqual(Array.from(ste.stackCoverIds), [], 'clicking the active cover must clear it')
@@ -171,6 +182,12 @@ async function main() {
 	assert.equal(coverButtons[0].classes.has('btn-info'), false)
 	assert.equal(coverButtons[0].classes.has('btn-outline-info'), true)
 	assert.equal(coverButtons[0].attributes['aria-pressed'], 'false')
+
+	const syncCount = syncs.length
+	assert.equal(ste.handleCardSelect(cards[1]), true)
+	assert.equal(syncs.length, syncCount + 1, 'a delegated card click must persist its local state once')
+	assert.equal(ste.handleStackCover(coverButtons[0]), true)
+	assert.deepEqual(syncs.at(-1)[2], [1], 'a delegated cover click must persist the chosen cover')
 }
 
 

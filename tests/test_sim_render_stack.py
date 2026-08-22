@@ -90,6 +90,19 @@ class TestSimilarPartialRendering(unittest.TestCase):
 		self.assertNotIn(similar.ks.sto.ste, inputIds)
 		self.assertIn(similar.ks.sto.ste, stateIds)
 
+	def test_local_selection_does_not_use_dash_callback_scheduler(self):
+		inputs = [
+			item
+			for callback in testApp.callback_map.values()
+			for item in callback['inputs']
+		]
+		self.assertFalse(any('card-select' in str(item['id']) for item in inputs))
+		self.assertFalse(any('sim-stack-cover' in str(item['id']) for item in inputs))
+
+		initKey = next(key for key in testApp.callback_map if 'init-selection' in key)
+		initInputs = [item['id'] for item in testApp.callback_map[initKey]['inputs']]
+		self.assertNotIn(similar.ks.sto.ste, initInputs)
+
 	def test_empty_similar_store_updates_do_not_return_http_500(self):
 		key = next(key for key in testApp.callback_map if 'sim-btn-fnd.disabled' in key)
 		callback = testApp.callback_map[key]

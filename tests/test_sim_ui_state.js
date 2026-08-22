@@ -39,7 +39,14 @@ async function main() {
 		clearTimeout,
 		fetch() { return Promise.resolve() },
 		notify() {},
-		dsh: {syncSte() {}},
+		dsh: {
+			syncSte() {},
+			getStore(id) {
+				return id === 'store-state'
+					? {cntTotal: 3, selectedIds: [1], stackCoverIds: [1]}
+					: null
+			},
+		},
 		Ste: {
 			selectedIds: new Set(),
 			stackCoverIds: new Set(),
@@ -161,15 +168,13 @@ async function main() {
 	assert.equal(vm.runInContext('isExistingResultUpdate([1, 2, 3, 4], "same")', context), false)
 	assert.equal(vm.runInContext('isExistingResultUpdate([1, 2], "changed")', context), false)
 
-	context.dash_clientside.callback_context.triggered = [{prop_id: 'store-state.data', value: {}}]
+	context.dash_clientside.callback_context.triggered = []
 	context.window.dash_clientside.similar.onSimJs(
 		null,
-		{cntTotal: 3, selectedIds: [1], stackCoverIds: [1]},
 		{},
 	)
-	assert.equal(coverUpdates, 0, 'store persistence must not repaint cover controls a second time')
-	assert.equal(fullCssUpdates, 0, 'store persistence must not rescan every card')
-	assert.equal(buttonUpdates, 0, 'store persistence must not repaint buttons a second time')
+	assert.deepEqual(Array.from(context.Ste.selectedIds), [1], 'page initialization must hydrate persisted selection')
+	assert.deepEqual(Array.from(context.Ste.stackCoverIds), [1], 'page initialization must hydrate persisted cover choice')
 
 	const renderedCard = {
 		getAttribute(name) { return name === 'data-stack-id' ? '' : null },

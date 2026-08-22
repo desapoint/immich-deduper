@@ -102,6 +102,26 @@ const Ste = window.Ste = {
 		window.dash_clientside.set_props( componentId, {disabled: nextDisabled} )
 	},
 
+	setComponentProps( element, props )
+	{
+		if ( !element || typeof window.dash_clientside?.set_props !== 'function' ) return
+		let componentId = element.id
+		if ( !componentId ) return
+		if ( componentId.startsWith( '{' ) ) {
+			try { componentId = JSON.parse( componentId ) }
+			catch ( e ) {
+				console.error( '[Ste] Invalid pattern component id:', e )
+				return
+			}
+		}
+		window.dash_clientside.set_props( componentId, props )
+	},
+
+	sync()
+	{
+		return dsh.syncSte( this.cntTotal, this.selectedIds, this.stackCoverIds )
+	},
+
 	init( cnt )
 	{
 		this.invalidateDomCache()
@@ -137,6 +157,15 @@ const Ste = window.Ste = {
 		this.updCss( aid, card )
 		if ( clearedCover ) this.updStackCoverButtons( groupId )
 		this.updBtns( groupId )
+	},
+
+	handleCardSelect( card )
+	{
+		const aid = this.extractAssetIdBy( card )
+		if ( !aid ) return false
+		this.toggle( aid, card )
+		this.sync()
+		return true
 	},
 
 	async updCss( aid, card = null )
@@ -384,11 +413,15 @@ const Ste = window.Ste = {
 				if ( ownerId != null && patternId.owner !== ownerId ) return
 
 				const chosen = this.stackCoverIds.has( patternId.id )
-				button.textContent = chosen ? 'Cover choice' : 'Set cover'
+				const label = chosen ? 'Cover choice' : 'Set cover'
+				const changed = button.textContent !== label
+					|| button.classList.contains( 'btn-outline-info' ) === chosen
+				button.textContent = label
 				button.classList.toggle( 'active', chosen )
 				button.classList.toggle( 'btn-info', chosen )
 				button.classList.toggle( 'btn-outline-info', !chosen )
 				button.setAttribute( 'aria-pressed', String( chosen ) )
+				if ( changed ) this.setComponentProps( button, {children: label, outline: !chosen} )
 			}
 			catch ( e ) { console.error( '[Ste] Invalid stack cover button id:', e ) }
 		} )
@@ -416,6 +449,24 @@ const Ste = window.Ste = {
 		}
 		this.updStackCoverButtons( groupId, ownerId )
 		this.updBtns( groupId )
+	},
+
+	handleStackCover( button )
+	{
+		if ( !button ) return false
+		try
+		{
+			const patternId = JSON.parse( button.id )
+			const card = button.closest( '.card' )?.querySelector( '[id*="card-select"]' ) || null
+			this.setStackCover( patternId.id, patternId.group, patternId.owner, card )
+			this.sync()
+			return true
+		}
+		catch ( e )
+		{
+			console.error( '[Ste] Invalid stack cover button id:', e )
+			return false
+		}
 	},
 
 	selectGroup( groupId )
@@ -461,6 +512,22 @@ document.addEventListener( 'DOMContentLoaded', function(){
 	document.addEventListener( 'click', function( event ){
 
 		const ste = Ste
+		const coverButton = event.target.closest?.( '[id*=\'"type":"sim-stack-cover"\']' )
+		if ( coverButton )
+		{
+			event.preventDefault()
+			event.stopPropagation()
+			if ( ste ) ste.handleStackCover( coverButton )
+			return
+		}
+
+		const cardSelect = event.target.closest?.( '[id*=\'"type":"card-select"\']' )
+		if ( cardSelect )
+		{
+			event.preventDefault()
+			if ( ste ) ste.handleCardSelect( cardSelect )
+			return
+		}
 
 		//------------------------------------------------------
 		// acts: cbx select status

@@ -637,31 +637,12 @@ def sim_Load(dta_now, dta_cnt, oldRenderState):
 
 
 #------------------------------------------------------------------------
-# Update status counters - Using CLIENT-SIDE callbacks for performance
-#------------------------------------------------------------------------
-ccbk(
-	cbkFn("similar", "onCardSelectClicked"),
-	out(ks.sto.ste, "data"),
-	[inp({"type": "card-select", "id": ALL}, "n_clicks")],
-	prevent_initial_call=True
-)
-
-ccbk(
-	cbkFn("similar", "onStackCoverClicked"),
-	out(ks.sto.ste, "data", allow_duplicate=True),
-	[inp({"type": gv.STACK_COVER_BUTTON, "id": ALL, "group": ALL, "owner": ALL}, "n_clicks")],
-	prevent_initial_call=True,
-)
-
-
-#------------------------------------------------------------------------
 # Initialize client-side selection state when assets load
 #------------------------------------------------------------------------
 ccbk(
 	cbkFn("similar", "onSimJs"),
 	out({"type": "dummy-output", "id": "init-selection"}, "children"),
 	inp(ks.sto.now, "data"),
-	inp(ks.sto.ste, "data"),
 	inp(ks.sto.sets, "data"),
 	prevent_initial_call="initial_duplicate"
 )
