@@ -250,6 +250,7 @@ let _lastAutoSelAssetIds = null
 let _lastAutoSelConfigSig = null
 let _auslObserver = null
 let _auslTimeout = null
+let _auslFrame = null
 
 function getAssetIds(assets){
 	return (assets || []).map(a => parseInt(a.autoId)).sort((a,b) => a - b)
@@ -300,6 +301,11 @@ function cleanup(){
 		clearTimeout(_auslTimeout)
 		_auslTimeout = null
 	}
+	if (_auslFrame != null) {
+		if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(_auslFrame)
+		else clearTimeout(_auslFrame)
+		_auslFrame = null
+	}
 }
 
 function waitForCardsAndUpdate(ids, assets, isAutoSelection){
@@ -330,7 +336,7 @@ function waitForCardsAndUpdate(ids, assets, isAutoSelection){
 	}
 
 	if (isReady()) {
-		setTimeout(doUpdate, 0)
+		doUpdate()
 		return
 	}
 
@@ -341,7 +347,14 @@ function waitForCardsAndUpdate(ids, assets, isAutoSelection){
 	}
 
 	_auslObserver = new MutationObserver(() =>{
-		if (isReady() ) doUpdate()
+		if (_auslFrame != null || updated) return
+		const check = () =>{
+			_auslFrame = null
+			if (isReady()) doUpdate()
+		}
+		_auslFrame = typeof requestAnimationFrame === 'function'
+			? requestAnimationFrame(check)
+			: setTimeout(check, 0)
 	})
 	_auslTimeout = setTimeout(() =>{
 		if (_auslObserver) {
@@ -462,84 +475,84 @@ function getAutoSelectAuids(assets, ausl){
 // Auto-Select Tooltip UI
 //========================================================================
 async function updAuslTips(applySelection = true){
-	document.querySelectorAll('.ausl-tip').forEach(el => el.remove())
-
 	const reasons = window.auslReasons || {}
-	if (!Object.keys(reasons).length) return
+	const pending = new Map(Object.entries(reasons).map(([aid, reasonList]) => [
+		String(aid),
+		Array.isArray(reasonList) ? reasonList.join(', ') : String(reasonList || ''),
+	]))
 
-	let selCnt = 0
-	for (const [aid, reasonList] of Object.entries(reasons)){
+	document.querySelectorAll('.ausl-tip').forEach(tip => {
+		const aid = tip.getAttribute('data-aid')
+		const tipText = pending.get(String(aid))
+		if (tipText == null) {
+			tip.remove()
+			return
+		}
+		tip.setAttribute('aria-label', `Auto-selected: ${tipText}`)
+		tip.setAttribute('data-tip', tipText)
+		pending.delete(String(aid))
+	})
+
+	for (const [aid, tipText] of pending){
 		const card = Ste.getCard(aid) || await getCardById(aid)
 		if (!card) continue
-
-		if (applySelection) {
-			const cbx = card.querySelector('input[type="checkbox"]')
-			if (cbx) {
-				cbx.checked = true
-				selCnt++
-			}
-			else console.error( `item not found checkbox` )
-
-			const par = card.closest('.card')
-			if (par) par.classList.add('checked')
-		}
 
 		const label = card.querySelector('label')
 		if (!label) continue
 
 		if (label.querySelector('.ausl-tip')) continue
 
-		const tipText = reasonList.join(', ')
 		const tip = document.createElement('span')
 		tip.className = 'ausl-tip'
 		tip.textContent = 'Auto'
 		tip.tabIndex = 0
 		tip.setAttribute('role', 'note')
+		tip.setAttribute('data-aid', String(aid))
 		tip.setAttribute('aria-label', `Auto-selected: ${tipText}`)
 		tip.setAttribute('data-tip', tipText)
 		label.appendChild(tip)
 	}
 
-	auslDebug(`[ausl] Updated ${Object.keys(reasons).length} tooltip(s), checked ${selCnt} cbx`)
+	auslDebug(`[ausl] Reconciled ${Object.keys(reasons).length} auto-selection tooltip(s)`)
 }
 
 //========================================================================
 // Auto-Select Group Log Buttons
 //========================================================================
 function updAuslLog(){
-	document.querySelectorAll('.sim-group-auto-log').forEach(slot => slot.replaceChildren())
-
 	const logs = window.auslLogs || {}
-	if (!Object.keys(logs).length){
-		auslDebug( `[ausl] no logs ...` )
-		return
-	}
+	const slots = document.querySelectorAll('.gv.fsp .sim-group-auto-log[data-group-id]')
 
-	ui.mob.waitAll('.gv.fsp .sim-group-auto-log[data-group-id]', slots => {
+	slots.forEach(slot =>{
+		const gid = slot.getAttribute('data-group-id')
+		const log = logs[gid]
+		if (!log) {
+			if (slot.childElementCount) slot.replaceChildren()
+			slot.removeAttribute('data-log-signature')
+			return
+		}
 
-		slots.forEach(slot =>{
-			const gid = slot.getAttribute('data-group-id')
-			const log = logs[gid]
-			if (!log) return
+		const signature = JSON.stringify(log)
+		if (slot.getAttribute('data-log-signature') === signature && slot.querySelector('.ausl-log')) return
 
-			let detailsHtml = ''
-			if (log.details?.length) {
-				detailsHtml = '<table class="ausl-log-table"><thead><tr><th>#ID</th><th>Score</th><th>Reasons</th></tr></thead><tbody>'
-				for (const d of log.details){
-					const isWinner = log.selectedAids?.includes(d.aid)
-					detailsHtml += `<tr class="${isWinner ? 'winner' : ''}"><td>#${d.aid}</td><td>${d.score}</td><td>${d.reasons?.join(', ') || '-'}</td></tr>`
-				}
-				detailsHtml += '</tbody></table>'
+		let detailsHtml = ''
+		if (log.details?.length) {
+			detailsHtml = '<table class="ausl-log-table"><thead><tr><th>#ID</th><th>Score</th><th>Reasons</th></tr></thead><tbody>'
+			for (const d of log.details){
+				const isWinner = log.selectedAids?.includes(d.aid)
+				detailsHtml += `<tr class="${isWinner ? 'winner' : ''}"><td>#${d.aid}</td><td>${d.score}</td><td>${d.reasons?.join(', ') || '-'}</td></tr>`
 			}
+			detailsHtml += '</tbody></table>'
+		}
 
-			const details = document.createElement('details')
-			details.className = 'ausl-log'
-			details.innerHTML = `<summary class="ausl-log-summary">Auto-selection details</summary><div class="ausl-log-panel"><div class="ausl-log-title">Group ${gid}</div><div class="ausl-log-reason">${log.reason}</div><div class="ausl-log-table-wrap">${detailsHtml}</div></div>`
-			slot.appendChild(details)
-		})
-
-		auslDebug(`[ausl] Rendered logs in ${slots.length} group header(s)`)
+		const details = document.createElement('details')
+		details.className = 'ausl-log'
+		details.innerHTML = `<summary class="ausl-log-summary">Auto-selection details</summary><div class="ausl-log-panel"><div class="ausl-log-title">Group ${gid}</div><div class="ausl-log-reason">${log.reason}</div><div class="ausl-log-table-wrap">${detailsHtml}</div></div>`
+		slot.replaceChildren(details)
+		slot.setAttribute('data-log-signature', signature)
 	})
+
+	auslDebug(`[ausl] Reconciled logs in ${slots.length} group header(s)`)
 }
 
 //========================================================================

@@ -17,8 +17,13 @@ async function main() {
 	let buttonUpdates = 0
 	let cacheRefreshes = 0
 	let renderedCards = []
+	let renderedCardScans = 0
+	let gridPresent = false
 	let exportGrid = null
 	let autoCard = null
+	let mutationCallback = null
+	let animationFrame = null
+	let logReplacements = 0
 	const grid = {}
 	const header = {appendChild(child) { headerChildren.push(child) }}
 	const title = {
@@ -28,15 +33,29 @@ async function main() {
 	}
 	const card = {appendChild(child) { cardChildren.push(child) }}
 	const logSlot = {
-		getAttribute(name) { return name === 'data-group-id' ? '7' : null },
+		attributes: {},
+		get childElementCount() { return logChildren.length },
+		getAttribute(name) {
+			if (name === 'data-group-id') return '7'
+			return this.attributes[name] || null
+		},
+		setAttribute(name, value) { this.attributes[name] = value },
+		removeAttribute(name) { delete this.attributes[name] },
+		querySelector(selector) {
+			return selector === '.ausl-log'
+				? logChildren.find(child => child.className === 'ausl-log') || null
+				: null
+		},
 		appendChild(child) { logChildren.push(child) },
-		replaceChildren() { logChildren.length = 0 },
+		replaceChildren(...children) { logReplacements++; logChildren.splice(0, logChildren.length, ...children) },
 	}
 
 	const context = {
 		console,
 		setTimeout,
 		clearTimeout,
+		requestAnimationFrame(callback) { animationFrame = callback; return 1 },
+		cancelAnimationFrame() { animationFrame = null },
 		fetch() { return Promise.resolve() },
 		notify() {},
 		dsh: {
@@ -58,25 +77,22 @@ async function main() {
 			updBtns() { buttonUpdates++ },
 		},
 		dash_clientside: {callback_context: {triggered: []}, no_update: {}},
-		ui: {
-			mob: {
-				waitAll(selector, callback) {
-					selectors.push(selector)
-					callback([logSlot])
-				},
-				waitFor() {},
-			},
-		},
+		ui: {mob: {waitAll() {}, waitFor() {}}},
 		document: {
 			body: {},
 			addEventListener() {},
 			querySelector(selector) {
 				if (selector === '.gv.fsp') return exportGrid
-				return selector === '#sim-gvSim' && renderedCards.length ? grid : null
+				return selector === '#sim-gvSim' && (gridPresent || renderedCards.length) ? grid : null
 			},
 			querySelectorAll(selector) {
-				if (selector === '#sim-gvSim [id*="card-select"]') return renderedCards
+				if (selector === '#sim-gvSim [id*="card-select"]') {
+					renderedCardScans++
+					return renderedCards
+				}
+				if (selector === '.gv.fsp .sim-group-auto-log[data-group-id]') return [logSlot]
 				if (selector === '.sim-group-auto-log') return [logSlot]
+				if (selector === '.ausl-tip') return []
 				if (selector === '.card') return [card]
 				return []
 			},
@@ -87,10 +103,12 @@ async function main() {
 					innerHTML: '',
 					textContent: '',
 					setAttribute(name, value) { this[name] = value },
+					getAttribute(name) { return this[name] || null },
 				}
 			},
 		},
 		MutationObserver: class {
+			constructor(callback) { mutationCallback = callback }
 			disconnect() {}
 			observe() {}
 		},
@@ -109,13 +127,18 @@ async function main() {
 	}
 	vm.runInContext('updAuslLog()', context)
 
-	assert.deepEqual(selectors, ['.gv.fsp .sim-group-auto-log[data-group-id]'])
+	assert.deepEqual(selectors, [])
 	assert.equal(logChildren.length, 1, 'the Auto log must render in its dedicated group slot')
 	assert.equal(logChildren[0].className, 'ausl-log')
 	assert.match(logChildren[0].innerHTML, /Auto-selection details/)
 	assert.equal(titleChildren.length, 0, 'the Auto log must not alter the group title grid')
 	assert.equal(headerChildren.length, 0, 'the Auto log must not create a floating header popup')
 	assert.equal(cardChildren.length, 0, 'Auto log UI must never be inserted into an image card')
+	const firstLog = logChildren[0]
+	const replacementsAfterFirstLog = logReplacements
+	vm.runInContext('updAuslLog()', context)
+	assert.equal(logChildren[0], firstLog, 'an unchanged Auto log must preserve its existing DOM node')
+	assert.equal(logReplacements, replacementsAfterFirstLog, 'an unchanged Auto log must not rebuild its contents')
 
 	const autoLabelChildren = []
 	const autoLabel = {
@@ -191,6 +214,22 @@ async function main() {
 	assert.equal(fullCssUpdates, 0, 'an existing-result patch must preserve card state without repainting the whole grid')
 	assert.equal(buttonUpdates, 1, 'an existing-result patch should update controls once')
 	assert.equal(coverUpdates, coversBeforePatch + 1, 'an existing-result patch should refresh cover controls once')
+
+	renderedCards = []
+	gridPresent = true
+	const scansBeforeBurst = renderedCardScans
+	vm.runInContext('waitForCardsAndUpdate([], [{autoId: 1, ex: {stackId: null}}], false)', context)
+	assert.equal(typeof mutationCallback, 'function')
+	for (let index = 0; index < 20; index++) mutationCallback()
+	assert.equal(renderedCardScans, scansBeforeBurst + 1, 'mutation bursts must not rescan the grid before the next frame')
+	const readyCard = {
+		getAttribute(name) { return name === 'data-stack-id' ? '' : null },
+	}
+	renderedCards = [readyCard]
+	context.Ste.extractAssetIdBy = item => item === readyCard ? 1 : null
+	animationFrame()
+	await new Promise(resolve => setTimeout(resolve, 0))
+	assert.equal(renderedCardScans, scansBeforeBurst + 2, 'a mutation burst must perform one readiness scan per frame')
 
 	const pathRules = vm.runInContext('_pathRules(" /library/clean\\r\\n\\n/screenshots \\n/library/clean")', context)
 	assert.deepEqual(Array.from(pathRules), ['/library/clean', '/screenshots'], 'path rules should trim, ignore blanks, and deduplicate')
