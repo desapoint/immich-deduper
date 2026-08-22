@@ -402,8 +402,6 @@ button { text-decoration: none; }
 
 .gv .hr > label, .gv .hr .sim-group-title > label { background: #6daa2b; border-radius: 6px; border: #6daa2b; padding: 5px 12px 7px 12px; text-shadow: 0 0 3px #4a4a4a; box-shadow: 0 0 3px #6daa2b; }
 
-.gv .hr:has(.ausl-log-tag) .ausl-log-tag { margin: 0; }
-
 .gv .sim-group-header { display: grid; grid-template-columns: minmax(9rem, auto) minmax(16rem, 0.8fr) minmax(24rem, 1.2fr); align-items: center; gap: 0.55rem 0.8rem; position: relative; margin-top: 0.45rem; padding: 0.68rem; border: 1px solid var(--ui-border) !important; border-radius: var(--ui-radius); background: linear-gradient(105deg, rgba(14, 165, 233, 0.09), rgba(17, 29, 46, 0.86)); box-shadow: var(--ui-shadow-sm); }
 
 .gv .sim-group-header button { margin: 0 !important; }
@@ -422,7 +420,9 @@ button { text-decoration: none; }
 
 .gv .sim-group-actions { justify-self: end; }
 
-.gv .ausl-log-tag { grid-column: 1 / -1; width: fit-content; margin: 0.12rem 0 0; }
+.gv .sim-group-auto-log { grid-column: 1 / -1; min-width: 0; }
+
+.gv .sim-group-auto-log:empty { display: none; }
 
 @media (max-width: 1250px) { .gv .sim-group-header { grid-template-columns: auto 1fr; } .gv .sim-group-title { grid-row: 1 / span 2; } .gv .sim-group-actions { justify-self: stretch; } }
 
@@ -458,28 +458,30 @@ button { text-decoration: none; }
 
 .ausl-tip:hover::after, .ausl-tip:hover::before { opacity: 1; visibility: visible; }
 
-/*======================== Auto-Select Log Button ========================*/
-.ausl-log-tag { display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 4px; border: none; cursor: pointer; font-size: 11px; background: #4595ae; color: white; opacity: 0.8; }
+/*======================== Auto-Select Log ========================*/
+.ausl-log { padding-top: 0.45rem; border-top: 1px solid var(--ui-border); }
 
-.ausl-log-tag:hover { opacity: 1; }
+.ausl-log-summary { width: fit-content; padding: 0.28rem 0.5rem; border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-sm); background: var(--ui-surface); color: var(--ui-text-soft); cursor: pointer; font-size: 0.72rem; font-weight: 650; }
 
-.ausl-log-poptip > div { min-width: 320px; max-height: 500px; overflow: auto; }
+.ausl-log[open] .ausl-log-summary { border-color: color-mix(in srgb, var(--ui-accent) 50%, var(--ui-border)); color: var(--ui-text); }
 
-.ausl-log-wrap { color: #e0e0e0; font-size: 14px; }
+.ausl-log-panel { margin-top: 0.45rem; padding: 0.65rem; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-sm); background: var(--ui-bg-soft); color: var(--ui-text-soft); font-size: 0.78rem; }
 
-.ausl-log-title { font-weight: bold; font-size: 16px; color: #78c229; margin-bottom: 8px; }
+.ausl-log-title { color: var(--ui-text); font-weight: 700; }
 
-.ausl-log-reason { color: #ccc; margin-bottom: 12px; font-size: 15px; line-height: 1.5; }
+.ausl-log-reason { margin-top: 0.18rem; color: var(--ui-text-soft); line-height: 1.45; }
 
-.ausl-log-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ausl-log-table-wrap { max-height: 20rem; margin-top: 0.55rem; overflow: auto; }
 
-.ausl-log-table th, .ausl-log-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid #444; }
+.ausl-log-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
 
-.ausl-log-table th { background: #212121; color: #aaa; font-size: 13px; }
+.ausl-log-table th, .ausl-log-table td { padding: 0.36rem 0.5rem; text-align: left; border-bottom: 1px solid var(--ui-border); }
 
-.ausl-log-table tr.winner { background: rgba(120, 194, 41, 0.15); }
+.ausl-log-table th { background: var(--ui-surface); color: var(--ui-text-muted); font-size: 0.68rem; }
 
-.ausl-log-table tr.winner td:first-child { font-weight: bold; color: #78c229; }
+.ausl-log-table tr.winner { background: color-mix(in srgb, var(--ui-success) 12%, transparent); }
+
+.ausl-log-table tr.winner td:first-child { color: var(--ui-success); font-weight: 700; }
 
 /*======================== Modal ========================*/
 .modal .modal-header { padding: 8px; }

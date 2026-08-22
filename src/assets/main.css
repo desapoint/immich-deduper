@@ -1111,7 +1111,7 @@ body { background: radial-gradient(circle at 15% -10%, rgba(14, 165, 233, 0.12),
 
 .similar-workspace .ausl-tip { animation: none; box-shadow: none; }
 
-.similar-workspace .ausl-log-tag { margin-left: 0.15rem; }
+.similar-workspace .ausl-log-summary { margin-left: 0; }
 
 .modal-footer { gap: 0.5rem; }
 

@@ -62,6 +62,13 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn('z-index: 1090;', main)
 		self.assertIn('@include bgNfy("success");', base)
 
+	def test_auto_selection_log_has_a_stable_inline_region(self):
+		comp = (ROOT / 'src/scss/comp.scss').read_text()
+		self.assertIn('.sim-group-auto-log {', comp)
+		self.assertIn('&-summary {', comp)
+		self.assertIn('&-panel {', comp)
+		self.assertNotIn('.ausl-log-poptip', comp)
+
 
 if __name__ == '__main__':
 	unittest.main()

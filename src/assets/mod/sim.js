@@ -504,8 +504,7 @@ async function updAuslTips(applySelection = true){
 // Auto-Select Group Log Buttons
 //========================================================================
 function updAuslLog(){
-	document.querySelectorAll('.ausl-log-tag').forEach(el => el.remove())
-	document.querySelectorAll('.ausl-log-poptip').forEach(el => el.remove())
+	document.querySelectorAll('.sim-group-auto-log').forEach(slot => slot.replaceChildren())
 
 	const logs = window.auslLogs || {}
 	if (!Object.keys(logs).length){
@@ -513,22 +512,12 @@ function updAuslLog(){
 		return
 	}
 
-	ui.mob.waitAll('.gv.fsp > .sim-group-header > .sim-group-title[data-group-id]', titles => {
+	ui.mob.waitAll('.gv.fsp .sim-group-auto-log[data-group-id]', slots => {
 
-		titles.forEach(title =>{
-			const gid = title.getAttribute('data-group-id')
+		slots.forEach(slot =>{
+			const gid = slot.getAttribute('data-group-id')
 			const log = logs[gid]
 			if (!log) return
-			const header = title.closest('.sim-group-header')
-			if (!header) return
-
-			const tipId = `ausl-log-${gid}`
-
-			const tag = document.createElement('span')
-			tag.className = 'ausl-log-tag'
-			tag.setAttribute('data-tip-id', tipId)
-			tag.textContent = 'Auto log'
-			title.appendChild(tag)
 
 			let detailsHtml = ''
 			if (log.details?.length) {
@@ -540,14 +529,13 @@ function updAuslLog(){
 				detailsHtml += '</tbody></table>'
 			}
 
-			const tip = document.createElement('div')
-			tip.className = 'poptip ausl-log-poptip'
-			tip.id = tipId
-			tip.innerHTML = `<div class="ausl-log-wrap"><div class="ausl-log-title">Group ${gid}</div><div class="ausl-log-reason">${log.reason}</div>${detailsHtml}</div>`
-			header.appendChild(tip)
+			const details = document.createElement('details')
+			details.className = 'ausl-log'
+			details.innerHTML = `<summary class="ausl-log-summary">Auto-selection details</summary><div class="ausl-log-panel"><div class="ausl-log-title">Group ${gid}</div><div class="ausl-log-reason">${log.reason}</div><div class="ausl-log-table-wrap">${detailsHtml}</div></div>`
+			slot.appendChild(details)
 		})
 
-		auslDebug(`[ausl] Positioned logs in ${titles.length} group header(s)`)
+		auslDebug(`[ausl] Rendered logs in ${slots.length} group header(s)`)
 	})
 }
 

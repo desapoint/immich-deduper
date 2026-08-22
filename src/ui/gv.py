@@ -78,6 +78,7 @@ def _mkGroupHeader(groupId: int, count: int):
 			_mkGroupAction("Mark resolved", groupId, GROUP_MARK_RESOLVED, "primary", title="Finish this group without deleting its remaining images"),
 			_mkGroupAction("Delete group", groupId, GROUP_DELETE_ALL, "danger", title="Delete every remaining image in this group"),
 		], className="sim-controls sim-group-actions"),
+		htm.Div(className="sim-group-auto-log", **{"data-group-id": str(groupId)}),
 	], className="hr sim-group-header", **{"data-group-id": str(groupId)})
 
 

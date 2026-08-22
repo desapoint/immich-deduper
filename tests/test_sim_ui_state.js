@@ -10,6 +10,7 @@ async function main() {
 	const titleChildren = []
 	const headerChildren = []
 	const cardChildren = []
+	const logChildren = []
 	const selectors = []
 	let coverUpdates = 0
 	let fullCssUpdates = 0
@@ -24,6 +25,11 @@ async function main() {
 		appendChild(child) { titleChildren.push(child) },
 	}
 	const card = {appendChild(child) { cardChildren.push(child) }}
+	const logSlot = {
+		getAttribute(name) { return name === 'data-group-id' ? '7' : null },
+		appendChild(child) { logChildren.push(child) },
+		replaceChildren() { logChildren.length = 0 },
+	}
 
 	const context = {
 		console,
@@ -47,7 +53,7 @@ async function main() {
 			mob: {
 				waitAll(selector, callback) {
 					selectors.push(selector)
-					callback([title])
+					callback([logSlot])
 				},
 				waitFor() {},
 			},
@@ -58,6 +64,7 @@ async function main() {
 			querySelector(selector) { return selector === '#sim-gvSim' && renderedCards.length ? grid : null },
 			querySelectorAll(selector) {
 				if (selector === '#sim-gvSim [id*="card-select"]') return renderedCards
+				if (selector === '.sim-group-auto-log') return [logSlot]
 				if (selector === '.card') return [card]
 				return []
 			},
@@ -90,11 +97,18 @@ async function main() {
 	}
 	vm.runInContext('updAuslLog()', context)
 
-	assert.deepEqual(selectors, ['.gv.fsp > .sim-group-header > .sim-group-title[data-group-id]'])
-	assert.equal(titleChildren.length, 1, 'the Auto log badge must be inside the group title')
-	assert.equal(titleChildren[0].textContent, 'Auto log')
-	assert.equal(headerChildren.length, 1, 'the Auto log popup must be inside the group header')
+	assert.deepEqual(selectors, ['.gv.fsp .sim-group-auto-log[data-group-id]'])
+	assert.equal(logChildren.length, 1, 'the Auto log must render in its dedicated group slot')
+	assert.equal(logChildren[0].className, 'ausl-log')
+	assert.match(logChildren[0].innerHTML, /Auto-selection details/)
+	assert.equal(titleChildren.length, 0, 'the Auto log must not alter the group title grid')
+	assert.equal(headerChildren.length, 0, 'the Auto log must not create a floating header popup')
 	assert.equal(cardChildren.length, 0, 'Auto log UI must never be inserted into an image card')
+
+	context.window.auslLogs[7].reason = 'Updated selection #2'
+	vm.runInContext('updAuslLog()', context)
+	assert.equal(logChildren.length, 1, 'updating Auto Log must replace stale details instead of duplicating them')
+	assert.match(logChildren[0].innerHTML, /Updated selection #2/)
 
 	vm.runInContext('_lastAutoSelAssetIds = [1, 2, 3]; _lastAutoSelConfigSig = "same"', context)
 	assert.equal(vm.runInContext('isExistingResultUpdate([1, 3], "same")', context), true)

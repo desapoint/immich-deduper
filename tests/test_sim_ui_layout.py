@@ -74,6 +74,7 @@ class TestSimilarUiLayout(unittest.TestCase):
 		titles = [node for node in nodes if props(node).get('className') == 'sim-group-title']
 		cardSelects = [node for node in nodes if isinstance(props(node).get('id'), dict) and props(node)['id'].get('type') == 'card-select']
 		coverButtons = [node for node in nodes if isinstance(props(node).get('id'), dict) and props(node)['id'].get('type') == gv.STACK_COVER_BUTTON]
+		autoLogSlots = [node for node in nodes if props(node).get('className') == 'sim-group-auto-log']
 		deleteGroup = next(
 			node for node in nodes
 			if isinstance(props(node).get('id'), dict)
@@ -86,6 +87,8 @@ class TestSimilarUiLayout(unittest.TestCase):
 		self.assertEqual([props(node).get('data-group-id') for node in cardSelects], ['7', '7'])
 		self.assertEqual([props(node).get('data-stack-id') for node in cardSelects], ['stack-a', 'stack-a'])
 		self.assertEqual(len(coverButtons), 2)
+		self.assertEqual(len(autoLogSlots), 1)
+		self.assertEqual(props(autoLogSlots[0]).get('data-group-id'), '7')
 		self.assertTrue(all(props(button).get('children') == 'Set cover' for button in coverButtons))
 		stackCards = [node for node in nodes if 'has-stack' in str(props(node).get('className', ''))]
 		self.assertEqual(len(stackCards), 2)
