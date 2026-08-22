@@ -67,24 +67,13 @@ const fmtDate = (timestamp) =>{
 const dsh = {
 	noUpd: window.dash_clientside.no_update,
 	syncStore(key, data){
-
 		if (!window.dash_clientside || !window.dash_clientside.set_props) {
 			console.error(`[mdlImg] error not found dash client side...`)
-			return
+			return false
 		}
-		let typ = typeof data
-		let str = `data(${typeof data})`
-
-		if (typ == 'object') {
-			const entries = Object.entries(data).map(([k, v]) => `${k}: (${typeof v})[${v}]`).join(', ')
-			str += ` entries: {${entries}}`
-		}
-		else {
-			str += data
-		}
-		console.info(`[dsh] sync store[ ${key} ] ${str}`)
 
 		window.dash_clientside.set_props(key, {data: data}) //use dcc.Store need data property
+		return true
 	},
 
 	getStore(key){
@@ -98,7 +87,16 @@ const dsh = {
 		if (!Array.isArray(selectedIds)) selectedIds = Array.from(selectedIds)
 		if (stackCoverIds === undefined) stackCoverIds = window.Ste?.stackCoverIds || []
 		if (!Array.isArray(stackCoverIds)) stackCoverIds = Array.from(stackCoverIds)
-		this.syncStore('store-state', {cntTotal: cnt, selectedIds: selectedIds, stackCoverIds: stackCoverIds})
+		const data = {cntTotal: cnt, selectedIds: selectedIds, stackCoverIds: stackCoverIds}
+		const current = this.getStore('store-state')
+		const normalizeIds = ids => Array.from(ids || []).map(Number).sort((a, b) => a - b)
+		if (current
+			&& Number(current.cntTotal || 0) === Number(data.cntTotal || 0)
+			&& JSON.stringify(normalizeIds(current.selectedIds)) === JSON.stringify(normalizeIds(data.selectedIds))
+			&& JSON.stringify(normalizeIds(current.stackCoverIds)) === JSON.stringify(normalizeIds(data.stackCoverIds))) {
+			return false
+		}
+		return this.syncStore('store-state', data)
 	}
 }
 

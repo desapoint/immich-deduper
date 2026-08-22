@@ -607,7 +607,6 @@ window.dash_clientside.similar = {
 					stackCoverIds: Array.from(Ste.stackCoverIds),
 				}
 
-				console.log('[Ste] Syncing to ste store on selection:', steData)
 				return steData
 			}
 		}
@@ -655,7 +654,7 @@ window.dash_clientside.similar = {
 		const existingResultUpdate = isExistingResultUpdate(assetIds, configSig)
 		_lastAutoSelAssetIds = assetIds
 		_lastAutoSelConfigSig = configSig
-		console.log(`[NowSync] ==================== triggered[${JSON.stringify(triggered)}] =====================`)
+		auslDebug('[sim] state sync triggers', triggered)
 
 		if (assets && Ste) {
 			Ste.cntTotal = assets.length
