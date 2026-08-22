@@ -2953,3 +2953,131 @@ body {
 	letter-spacing: 0;
 	text-transform: none;
 }
+
+
+//========================================================================
+// Shared settings grids
+//========================================================================
+.ifns {
+	.irow {
+		display: grid;
+		gap: 0.45rem;
+		padding-block: 0.45rem;
+
+		> label:first-child {
+			margin: 0;
+			color: var(--ui-text);
+			font-weight: 650;
+		}
+	}
+
+	.icbxs:not(.single) {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.55rem 0.8rem;
+		margin-top: 0;
+
+		> div {
+			min-width: 0;
+			margin: 0;
+		}
+
+		> div:not(.form-check) {
+			display: grid;
+			grid-template-columns: max-content minmax(0, 1fr);
+			align-items: center;
+			gap: 0.5rem;
+		}
+	}
+
+	.icbxs label,
+	.icriteria label {
+		margin: 0;
+	}
+
+	.icbxs select,
+	.icbxs input:not([type="checkbox"]):not([type="radio"]),
+	.icriteria select,
+	.icriteria input {
+		width: 100%;
+		max-width: none !important;
+		min-width: 0;
+		margin: 0 !important;
+	}
+}
+
+.auto-select-grid {
+	display: grid;
+	gap: 0.65rem;
+}
+
+.auto-select-summary {
+	display: grid !important;
+	grid-template-columns: max-content minmax(0, 1fr);
+	align-items: center;
+	gap: 1rem;
+
+	> div {
+		margin: 0 !important;
+	}
+}
+
+.auto-select-options {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.5rem 0.8rem;
+}
+
+.auto-select-criteria-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.6rem 0.8rem;
+}
+
+.auto-select-card .icriteria {
+	display: grid;
+	grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
+	align-items: center;
+	gap: 0.4rem 0.55rem;
+	min-width: 0;
+	margin: 0 !important;
+	padding: 0.55rem;
+	border: 1px solid var(--ui-border);
+	border-radius: var(--ui-radius-sm);
+	background: var(--ui-bg-soft);
+
+	> span:first-child {
+		grid-column: 1 / -1;
+		margin: 0 0 0.1rem;
+		overflow: visible;
+	}
+
+	&.wrap > *:nth-child(6) {
+		grid-column: auto;
+	}
+}
+
+.auto-select-device-note {
+	margin: 0;
+}
+
+@media (max-width: 760px) {
+	.ifns .icbxs:not(.single),
+	.auto-select-options,
+	.auto-select-criteria-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.auto-select-summary {
+		grid-template-columns: 1fr;
+		gap: 0.35rem;
+	}
+}
+
+@media (max-width: 480px) {
+	.auto-select-card .icriteria {
+		grid-template-columns: max-content minmax(0, 1fr);
+
+		> span:first-child { grid-column: 1 / -1; }
+	}
+}

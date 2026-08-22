@@ -186,7 +186,7 @@ def renderAutoSelect():
 	disDev=dis or not hasDev
 	devTip="Immich 3.0+ removed device tracking; this criterion is unavailable" if not hasDev else None
 	return dbc.Card([
-		dbc.CardHeader([htm.Span("Auto Selection"),htm.Small(["selects top point in group",htm.Br(),"auto-updates on change"])]),
+		dbc.CardHeader([htm.Span("Auto Selection"), htm.Small("Select preferred images automatically")]),
 		dbc.CardBody([
 			htm.Div([
 				# Main enable switch
@@ -195,14 +195,17 @@ def renderAutoSelect():
 					htm.Div([
 						htm.Span([htm.B("Points: "),"0=Ignore, 1=Low, 2=High priority"], className="text-muted")
 					]),
-				], className="icbxs single"),
+				], className="icbxs single auto-select-summary"),
 
-				dbc.Checkbox(id=k.ausl("skipLow"), label="Skip has sim(<0.96) group", value=a.skipLow, disabled=dis),
-				dbc.Checkbox(id=k.ausl("allLive"), label="All LivePhotos (ignore criteria)", value=a.allLive, disabled=dis),
-				dbc.Checkbox(id=k.ausl("kpCands"), label="Keep candidates, not empty (safer)", value=a.kpCands, disabled=dis), htm.Br(),
+				htm.Div([
+					dbc.Checkbox(id=k.ausl("skipLow"), label="Skip groups below 0.96 similarity", value=a.skipLow, disabled=dis),
+					dbc.Checkbox(id=k.ausl("allLive"), label="Select all Live Photos", value=a.allLive, disabled=dis),
+					dbc.Checkbox(id=k.ausl("kpCands"), label="Keep candidates when tied", value=a.kpCands, disabled=dis),
+				], className="auto-select-options"),
 
 				htm.Hr(),
 
+				htm.Div([
 				htm.Div([
 					htm.Span(htm.Span("DateTime",className="tag txt-smx me-1")),
 					htm.Label("Earlier",className="me-2"),
@@ -272,7 +275,7 @@ def renderAutoSelect():
 				htm.Div([
 					htm.Span(htm.Span("User", className="tag txt-smx me-1")),
 					htm.Label("name", className="me-2"),
-					dbc.Select(id=k.ausl("usrPri"), options=toOpts(_getUsrOpts()), value=a.usr.k, disabled=dis, size="sm", className="me-1", style={"minWidth": "60px"}),
+					dbc.Select(id=k.ausl("usrPri"), options=toOpts(_getUsrOpts()), value=a.usr.k, disabled=dis, size="sm", className="me-1"),
 					htm.Label("Weight", className="me-2"),
 					dbc.Select(id=k.ausl("usrWgt"), options=toOpts(optWeights), value=a.usr.v, disabled=dis, size="sm"),
 				], className="icriteria"),
@@ -280,7 +283,7 @@ def renderAutoSelect():
 				htm.Div([
 					htm.Span(htm.Span("Path", className="tag txt-smx me-1")),
 					htm.Label("Contains", className="me-2"),
-					dbc.Input(id=k.ausl("pthVal"), value=a.pth.k, disabled=dis, className="me-1 txt-smx", style={"maxWidth": "80%"}, placeholder="e.g. /library/clean", debounce=1000),
+					dbc.Input(id=k.ausl("pthVal"), value=a.pth.k, disabled=dis, className="me-1 txt-smx", placeholder="e.g. /library/clean", debounce=1000),
 					htm.Label("Weight", className="me-2"),
 					dbc.Select(id=k.ausl("pthWgt"), options=toOpts(optWeights), value=a.pth.v, disabled=dis, size="sm"),
 				], className="icriteria"),
@@ -288,15 +291,16 @@ def renderAutoSelect():
 				htm.Div([
 					htm.Span(htm.Span("Device",className="tag txt-smx me-1")),
 					htm.Label("Source",className="me-2"),
-					dbc.Select(id=k.ausl("devPri"),options=toOpts(getDevOpts()),value=a.dev.k,disabled=disDev,size="sm",className="me-1",style={"minWidth":"60px"}),
+					dbc.Select(id=k.ausl("devPri"),options=toOpts(getDevOpts()),value=a.dev.k,disabled=disDev,size="sm",className="me-1"),
 					htm.Label("Weight",className="me-2"),
 					dbc.Select(id=k.ausl("devWgt"),options=toOpts(optWeights),value=a.dev.v,disabled=disDev,size="sm"),
 				],className="icriteria",title=devTip),
-				htm.Div(devTip,className="txt-smx text-muted",style={"marginTop":"-2px","marginBottom":"4px"}) if devTip else None,
+				], className="auto-select-criteria-grid"),
+				htm.Div(devTip,className="auto-select-device-note txt-smx text-muted") if devTip else None,
 
-			], className="mb-2 igrid txt-sm"),
+			], className="mb-2 igrid txt-sm auto-select-grid"),
 		])
-	], className="ifns mb-0")
+	], className="ifns auto-select-card mb-0")
 
 
 def renderCard():

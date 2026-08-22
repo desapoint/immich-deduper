@@ -190,6 +190,22 @@ class TestSimilarPartialRendering(unittest.TestCase):
 		self.assertFalse(any('sim-action-unit' in str(props(node).get('className', '')) for node in actionNodes))
 		self.assertTrue(any('sim-confirm-menu' in str(props(node).get('className', '')) for node in actionNodes))
 
+	def test_auto_selection_uses_responsive_field_grid(self):
+		with patch.object(similar.cardSets.db.psql, 'fetchUsers', return_value=[]):
+			nodes = list(walk(similar.cardSets.renderAutoSelect()))
+
+		classes = [str(props(node).get('className', '')) for node in nodes]
+		self.assertTrue(any('auto-select-card' in value for value in classes))
+		self.assertTrue(any('auto-select-options' == value for value in classes))
+		self.assertTrue(any('auto-select-criteria-grid' == value for value in classes))
+		self.assertEqual(sum(value.startswith('icriteria') for value in classes), 11)
+
+		pathInput = next(
+			node for node in nodes
+			if isinstance(props(node).get('id'), dict) and props(node)['id'].get('field') == 'pthVal'
+		)
+		self.assertNotIn('maxWidth', props(pathInput).get('style', {}))
+
 
 if __name__ == '__main__':
 	unittest.main()

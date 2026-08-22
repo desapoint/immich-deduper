@@ -36,6 +36,13 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn('// Restrained application styling', main)
 		self.assertIn('opacity: 0.68;', main)
 
+	def test_shared_settings_fields_expand_in_responsive_grids(self):
+		main = (ROOT / 'src/scss/main.scss').read_text()
+		self.assertIn('// Shared settings grids', main)
+		self.assertIn('.auto-select-criteria-grid {', main)
+		self.assertIn('grid-template-columns: repeat(2, minmax(0, 1fr));', main)
+		self.assertIn('max-width: none !important;', main)
+
 
 if __name__ == '__main__':
 	unittest.main()
