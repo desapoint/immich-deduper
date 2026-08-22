@@ -198,6 +198,7 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn('.img-viewer-nav {', main)
 		self.assertIn('border-radius: 50%;', main)
 		self.assertIn('transform: translate(-50%, -50%);', main)
+		self.assertIn('&:active:not(:disabled) {', main)
 		self.assertIn('.img-viewer-mode,', main)
 		self.assertIn('.img-viewer-header-icon {', main)
 		self.assertIn('.img-viewer-header-action {', main)

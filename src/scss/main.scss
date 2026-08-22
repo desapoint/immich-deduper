@@ -3772,10 +3772,12 @@ body:has(.modal.img-pop.show) { overflow: hidden; }
 		}
 
 		&:hover:not(:disabled),
-		&:focus-visible {
+		&:focus-visible,
+		&:active:not(:disabled) {
 			border-color: var(--ui-accent);
 			background: #155b83;
 			color: #e5f7ff;
+			transform: translate(-50%, -50%);
 		}
 	}
 

@@ -1525,7 +1525,7 @@ body:has(.modal.img-pop.show) { overflow: hidden; }
 
 .modal.img-pop .img-viewer-nav i { margin: 0; color: inherit; font-size: 1.1rem; }
 
-.modal.img-pop .img-viewer-nav:hover:not(:disabled), .modal.img-pop .img-viewer-nav:focus-visible { border-color: var(--ui-accent); background: #155b83; color: #e5f7ff; }
+.modal.img-pop .img-viewer-nav:hover:not(:disabled), .modal.img-pop .img-viewer-nav:focus-visible, .modal.img-pop .img-viewer-nav:active:not(:disabled) { border-color: var(--ui-accent); background: #155b83; color: #e5f7ff; transform: translate(-50%, -50%); }
 
 .modal.img-pop .help, .modal.img-pop .info { position: absolute; top: calc(100% + 0.45rem); right: 0; bottom: auto; z-index: 30; max-height: calc(100dvh - 6rem); padding: 0.75rem; overflow: auto; border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-shadow); }
 
