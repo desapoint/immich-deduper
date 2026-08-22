@@ -91,16 +91,38 @@ const ui = window.ui = {
 			clearTimeout(this._hideTimer)
 		},
 
+		attachToDocument(tipEl){
+			if (!tipEl || tipEl.parentNode === document.body) return
+			tipEl._poptipHomeParent = tipEl.parentNode
+			tipEl._poptipHomeNext = tipEl.nextSibling
+			document.body.appendChild(tipEl)
+		},
+
+		restoreHome(tipEl){
+			if (!tipEl || !tipEl._poptipHomeParent) return
+			const parent = tipEl._poptipHomeParent
+			const next = tipEl._poptipHomeNext
+			if (parent.isConnected !== false) {
+				parent.insertBefore(tipEl, next && next.parentNode === parent ? next : null)
+			}
+			else tipEl.remove()
+			tipEl._poptipHomeParent = null
+			tipEl._poptipHomeNext = null
+		},
+
 		hide(tipEl){
 			if (!tipEl) return
+			clearTimeout(tipEl._poptipHideTimer)
 			tipEl.style.transition = 'opacity 0.3s ease'
 			tipEl.style.opacity = '0'
-			setTimeout(() =>{
+			tipEl._poptipHideTimer = setTimeout(() =>{
 				tipEl.style.display = 'none'
 				tipEl.style.opacity = '1'
 				tipEl.style.transition = ''
 				const arrow = tipEl.querySelector('.poptip-arrow')
 				if (arrow) arrow.remove()
+				this.restoreHome(tipEl)
+				tipEl._poptipHideTimer = null
 			}, 300)
 		},
 
@@ -109,6 +131,10 @@ const ui = window.ui = {
 			if (!tipEl) return
 
 			this.cancelHide()
+			clearTimeout(tipEl._poptipHideTimer)
+			tipEl._poptipHideTimer = null
+			tipEl.style.opacity = '1'
+			tipEl.style.transition = ''
 
 			if (this._activeTipId && this._activeTipId !== tipId) {
 				const prevTip = document.getElementById(this._activeTipId)
@@ -123,6 +149,7 @@ const ui = window.ui = {
 				return
 			}
 
+			this.attachToDocument(tipEl)
 			tipEl.style.display = 'block'
 
 			requestAnimationFrame(() =>{

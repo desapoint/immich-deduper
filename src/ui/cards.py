@@ -108,43 +108,45 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 		dbc.Card([
 			dbc.CardHeader([
 				htm.Div([
-					dbc.Row([
-						dbc.Col(
-							dbc.Checkbox(label=f"#{ass.autoId}", value=False)
-						),
-						dbc.Col(
-							[
-								htm.Span("Source", className="sim-source-label", title="Source image used to find this similarity group")
-							] if isMain else [
-								htm.Span("score:", className="tag sm info no-border"),
-								htm.Span(f"{ass.vw.score:.5f}", className="tag lg ms-1")
-							] if isRels else [
-								htm.Span("score: ", className="tag sm second no-border"),
-								htm.Span(f"{ass.vw.score:.5f}", className="tag lg ms-1")
-							]
-						)
-					])
-				], id={"type": "card-select", "id": ass.autoId}, className="flex-grow-1 curP sim-card-select", **{
+					htm.Div(
+						dbc.Checkbox(label=f"#{ass.autoId}", value=False),
+						className="sim-card-selection",
+					),
+					htm.Div(
+						[
+							htm.Span("Source", className="sim-source-label", title="Source image used to find this similarity group")
+						] if isMain else [
+							htm.Span("score:", className="tag sm info no-border"),
+							htm.Span(f"{ass.vw.score:.5f}", className="tag lg ms-1")
+						] if isRels else [
+							htm.Span("score:", className="tag sm second no-border"),
+							htm.Span(f"{ass.vw.score:.5f}", className="tag lg ms-1")
+						],
+						className="sim-card-score",
+					),
+				], id={"type": "card-select", "id": ass.autoId}, className="curP sim-card-select sim-card-header-primary", **{
 					"data-stacked": "true" if stackId else "false",
 					"data-stack-id": stackId or "",
 					"data-group-id": str(stackGroupId) if stackGroupId is not None else "",
 				}),
 				htm.Div([
-					htm.Span(stackLabel, className="badge sim-stack-badge", style={"backgroundColor": stackColor}, title=f"Immich stack {stackId}"),
-					htm.Span("Thumbnail", className="badge bg-warning text-dark sim-stack-thumbnail", title="Current Immich stack thumbnail") if isStackPrimary else None,
-				], className="sim-stack-status") if stackId else None,
-				dbc.Button(
-					"Set cover",
-					id={"type": "sim-stack-cover", "id": ass.autoId, "group": stackGroupId, "owner": ass.ownerId},
-					n_clicks=0,
-					size="sm",
-					color="info",
-					outline=True,
-					className="sim-stack-cover-btn text-nowrap",
-					title="Use this image as the stack cover; it will also be selected",
-				),
+					htm.Div([
+						htm.Span(stackLabel, className="badge sim-stack-badge", style={"backgroundColor": stackColor}, title=f"Immich stack {stackId}"),
+						htm.Span("Thumbnail", className="badge bg-warning text-dark sim-stack-thumbnail", title="Current Immich stack thumbnail") if isStackPrimary else None,
+					] if stackId else [], className="sim-stack-status"),
+					dbc.Button(
+						"Set cover",
+						id={"type": "sim-stack-cover", "id": ass.autoId, "group": stackGroupId, "owner": ass.ownerId},
+						n_clicks=0,
+						size="sm",
+						color="info",
+						outline=True,
+						className="sim-stack-cover-btn text-nowrap",
+						title="Use this image as the stack cover; it will also be selected",
+					),
+				], className="sim-card-header-secondary"),
 			],
-				className="p-2 d-flex align-items-center sim-card-header"
+				className="p-2 sim-card-header"
 			) if modSim else None,
 
 			#------------------------------------------------------------------------

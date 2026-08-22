@@ -451,7 +451,7 @@ button { text-decoration: none; }
     opacity: 1; } }
 
 /*======================== Auto-Select Tooltip ========================*/
-.card-header .row > div:first-child:has(.ausl-tip) { overflow: visible !important; }
+.sim-card-selection:has(.ausl-tip) { overflow: visible !important; }
 
 @keyframes ausl-breathe { 0%, 100% { opacity: 1;
     box-shadow: 0 0 4px rgba(120, 194, 41, 0.5); }

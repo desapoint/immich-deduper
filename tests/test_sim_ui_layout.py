@@ -73,6 +73,10 @@ class TestSimilarUiLayout(unittest.TestCase):
 		headers = [node for node in nodes if 'sim-group-header' in str(props(node).get('className', ''))]
 		titles = [node for node in nodes if props(node).get('className') == 'sim-group-title']
 		cardSelects = [node for node in nodes if isinstance(props(node).get('id'), dict) and props(node)['id'].get('type') == 'card-select']
+		primaryRows = [node for node in nodes if 'sim-card-header-primary' in str(props(node).get('className', ''))]
+		secondaryRows = [node for node in nodes if props(node).get('className') == 'sim-card-header-secondary']
+		cardScores = [node for node in nodes if props(node).get('className') == 'sim-card-score']
+		stackStatuses = [node for node in nodes if props(node).get('className') == 'sim-stack-status']
 		coverButtons = [node for node in nodes if isinstance(props(node).get('id'), dict) and props(node)['id'].get('type') == gv.STACK_COVER_BUTTON]
 		autoLogSlots = [node for node in nodes if props(node).get('className') == 'sim-group-auto-log']
 		groupContainers = [node for node in nodes if props(node).get('className') == 'sim-group-container']
@@ -92,6 +96,10 @@ class TestSimilarUiLayout(unittest.TestCase):
 		self.assertEqual(props(titles[0]).get('data-group-id'), '7')
 		self.assertEqual([props(node).get('data-group-id') for node in cardSelects], ['7', '7'])
 		self.assertEqual([props(node).get('data-stack-id') for node in cardSelects], ['stack-a', 'stack-a'])
+		self.assertEqual(len(primaryRows), 2)
+		self.assertEqual(len(secondaryRows), 2)
+		self.assertEqual(len(cardScores), 2)
+		self.assertEqual(len(stackStatuses), 2)
 		self.assertEqual(len(coverButtons), 2)
 		self.assertEqual(len(autoLogSlots), 1)
 		self.assertEqual(props(autoLogSlots[0]).get('data-group-id'), '7')

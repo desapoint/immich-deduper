@@ -85,6 +85,14 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn('.sim-group-card-list {', comp)
 		self.assertNotIn('&.floating {', base)
 
+	def test_similar_card_status_rows_and_back_to_top_are_stable(self):
+		main = (ROOT / 'src/scss/main.scss').read_text()
+		comp = (ROOT / 'src/scss/comp.scss').read_text()
+		self.assertIn('.sim-card-header-secondary {', main)
+		self.assertIn('.sim-card-score { justify-content: flex-end; }', main)
+		self.assertIn('background: var(--ui-surface-raised);', main)
+		self.assertIn('.sim-card-selection:has(.ausl-tip) {', comp)
+
 
 if __name__ == '__main__':
 	unittest.main()

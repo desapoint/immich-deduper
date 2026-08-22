@@ -334,10 +334,10 @@ def layout(autoId=None):
 
 							# Floating Goto Top Button
 							htm.Button(
-								"Back to top",
+								[htm.I(className="bi bi-arrow-up"), htm.Span("Back to top")],
 								id="sim-goto-top-btn",
 								className="goto-top-btn",
-								style={"display": ""}
+								**{"aria-label": "Back to top"},
 							),
 						]
 					),

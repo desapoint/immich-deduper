@@ -873,7 +873,6 @@ function initBtnTop(btn){
 
 		if (isCurrentTab && scrollY > 200) {
 			btn.classList.add('show')
-			btn.style.display = 'block'
 		}
 		else {
 			btn.classList.remove('show')
