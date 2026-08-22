@@ -119,6 +119,15 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn('text-transform: capitalize;', main)
 		self.assertIn('> .nav-item { flex: 1 1 0; }', main)
 
+	def test_pager_controls_use_consistent_dimensions_and_alignment(self):
+		main = (ROOT / 'src/scss/main.scss').read_text()
+		self.assertIn('.pager-shell {', main)
+		self.assertIn('height: 2.35rem;', main)
+		self.assertIn('min-height: 2.05rem !important;', main)
+		self.assertIn('align-self: stretch;', main)
+		self.assertIn('justify-content: center;', main)
+		self.assertNotIn('.pager-size { margin-left: 0.35rem; }', main)
+
 	def test_image_preview_uses_distinct_readable_control_surfaces(self):
 		main = (ROOT / 'src/scss/main.scss').read_text()
 		self.assertIn('body:has(#img-modal.show) .modal-backdrop.show {', main)

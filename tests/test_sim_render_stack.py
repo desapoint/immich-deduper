@@ -128,6 +128,43 @@ class TestSimilarPartialRendering(unittest.TestCase):
 		self.assertIs(result[0], similar.noUpd)
 		self.assertIs(result[7], similar.noUpd)
 
+	def test_pending_tab_renders_cached_assets_immediately(self):
+		pending = [asset(7, 1)]
+		now = models.Now(sim=models.PgSim(
+			assPend=pending,
+			pagerPnd=models.Pager(idx=1, size=25, cnt=1),
+			activeTab=similar.k.tabCur,
+		))
+
+		with patch.object(similar.db.pics, 'getPagedPending') as getPending:
+			nowData, grid = similar.sim_OnTabChange(similar.k.tabPnd, now.toDict())
+
+		getPending.assert_not_called()
+		self.assertEqual(models.Now.fromDic(nowData).sim.activeTab, similar.k.tabPnd)
+		self.assertTrue(any(
+			props(node).get('id') == {'type': 'img-pop', 'aid': 7}
+			for node in walk(grid)
+		))
+
+	def test_pending_tab_fetches_and_renders_missing_page(self):
+		pending = [asset(8, 1)]
+		now = models.Now(sim=models.PgSim(
+			pagerPnd=models.Pager(idx=2, size=15, cnt=20),
+			activeTab=similar.k.tabCur,
+		))
+
+		with patch.object(similar.db.pics, 'getPagedPending', return_value=pending) as getPending:
+			nowData, grid = similar.sim_OnTabChange(similar.k.tabPnd, now.toDict())
+
+		getPending.assert_called_once_with(page=2, size=15)
+		updated = models.Now.fromDic(nowData)
+		self.assertEqual(updated.sim.activeTab, similar.k.tabPnd)
+		self.assertEqual([item.autoId for item in updated.sim.assPend], [8])
+		self.assertTrue(any(
+			props(node).get('id') == {'type': 'img-pop', 'aid': 8}
+			for node in walk(grid)
+		))
+
 	def test_empty_grouped_results_use_compact_status(self):
 		now = models.Now(sim=models.PgSim(assCur=[]))
 		dto = SimpleNamespace(muod=SimpleNamespace(on=True))

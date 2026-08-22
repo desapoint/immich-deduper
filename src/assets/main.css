@@ -483,7 +483,7 @@ button { text-decoration: none; }
   to { opacity: 1;
     transform: translateY(0); } }
 
-.pager { display: inline-flex; list-style: none; padding: 6px 0 6px 0; margin: 5px auto 5px auto; border-radius: 6px; border: rgba(26, 149, 195, 0.4) 1px solid; box-shadow: 0 0 3px rgba(26, 149, 195, 0.5); }
+.pager { display: flex; align-items: stretch; list-style: none; height: 2.35rem; padding: 0.1rem; margin: 0; border-radius: 6px; border: rgba(26, 149, 195, 0.4) 1px solid; box-shadow: 0 0 3px rgba(26, 149, 195, 0.5); }
 
 .pager li:first-child .lnk { border-top-left-radius: 6px; border-bottom-left-radius: 6px; }
 
@@ -495,17 +495,19 @@ button { text-decoration: none; }
 
 .pager .item:not(.disabled) .lnk:hover { background-color: #62c0ff; border-color: #667eea; color: #ffffff; text-shadow: 0 0 3px #260564, 0 0 3px #2d3748; }
 
-.pager .lnk { padding: 0.375rem 0.75rem; text-decoration: none; background-color: #2d3748; border-color: #4a5568; color: #e2e8f0; cursor: pointer; }
+.pager .lnk { display: flex; align-items: center; justify-content: center; min-width: 2.1rem; height: 2.05rem; padding: 0.3rem 0.6rem; text-decoration: none; font-size: 0.8rem; font-weight: 620; background-color: #2d3748; border-color: #4a5568; color: #e2e8f0; cursor: pointer; }
 
 .pager .lnk:focus { box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25); }
 
-.pager-info { display: inline-flex; padding: 2px 10px 4px 10px; margin: 0 0 0 10px; font-size: 0.8rem; border-radius: 6px; background: #1f5c92; border: rgba(195, 195, 195, 0.3) 1px solid; box-shadow: 0 0 2px rgba(195, 195, 195, 0.5); }
+.pager-shell { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.4rem; }
 
-.pager-size { display: inline-flex; font-size: 0.8rem; padding: 3px 6px 3px 6px; margin: 0 0 0 5px; border-radius: 6px; background: #1f5c92; border: rgba(195, 195, 195, 0.3) 1px solid; box-shadow: 0 0 2px rgba(195, 195, 195, 0.5); }
+.pager-info { display: inline-flex; align-items: center; justify-content: center; height: 2.35rem; padding: 0.3rem 0.7rem; margin: 0; font-size: 0.8rem; font-weight: 620; border-radius: 6px; background: #1f5c92; border: rgba(195, 195, 195, 0.3) 1px solid; box-shadow: 0 0 2px rgba(195, 195, 195, 0.5); }
 
-.pager-size select { font-size: 13px; padding: 2px 3px 2px 3px; text-align: center; }
+.pager-size { display: inline-flex; align-items: center; height: 2.35rem; font-size: 0.8rem; font-weight: 620; padding: 0.1rem 0.25rem; margin: 0; border-radius: 6px; background: #1f5c92; border: rgba(195, 195, 195, 0.3) 1px solid; box-shadow: 0 0 2px rgba(195, 195, 195, 0.5); }
 
-.pager-size span { text-wrap: nowrap; vertical-align: middle; margin: 3px 0 0 3px; }
+.pager-size select { width: 4.2rem; height: 2.05rem; min-height: 2.05rem !important; margin: 0; padding: 0.2rem 1.35rem 0.2rem 0.4rem !important; font-size: 0.8rem; text-align: center; }
+
+.pager-size span { display: flex; align-items: center; align-self: stretch; text-wrap: nowrap; margin: 0 0.25rem; line-height: 1; }
 
 .card { border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); transition: all 0.3s ease; background-color: #3a3a3a; border: 1px solid #444444; }
 
@@ -1441,7 +1443,7 @@ body:has(#img-modal.show) .modal-backdrop.show { background: #02050a; opacity: 0
 
 .similar-workspace img.card-img, .view-results-shell img.card-img { background: #050b14; }
 
-@media (max-width: 520px) { .similar-workspace .sim-controls .btn { flex: 1 1 auto; } .similar-workspace .sim-control-label { flex: 0 0 100%; } .similar-workspace .sim-selection-count { margin-bottom: 0.1rem; } .similar-workspace .sim-stack-delete { flex: 1 1 auto; } .pager .lnk { padding-inline: 0.55rem; } .pager-info, .pager-size { margin-left: 0.35rem; } }
+@media (max-width: 520px) { .similar-workspace .sim-controls .btn { flex: 1 1 auto; } .similar-workspace .sim-control-label { flex: 0 0 100%; } .similar-workspace .sim-selection-count { margin-bottom: 0.1rem; } .similar-workspace .sim-stack-delete { flex: 1 1 auto; } .pager .lnk { padding-inline: 0.55rem; } }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
 

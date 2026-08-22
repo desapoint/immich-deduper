@@ -87,7 +87,7 @@ def createPager(
 		htm.Div(
 			htms,
 			id={"type": f"pgr-{pgId}-container", "idx": idx},
-			className=className
+			className=f"pager-shell {className or ''}".strip()
 		)
 	]
 

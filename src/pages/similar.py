@@ -386,23 +386,36 @@ pager.regCallbacks(k.pagerPnd)
 # Sync tab changes to now state
 #------------------------------------------------------------------------
 @cbk(
-	out(ks.sto.now, "data", allow_duplicate=True),
+	[
+		out(ks.sto.now, "data", allow_duplicate=True),
+		out(k.gvPnd, "children", allow_duplicate=True),
+	],
 	inp(k.tabs, "active_tab",),
 	ste(ks.sto.now, "data"),
 	prevent_initial_call=True
 )
 def sim_OnTabChange(active_tab, dta_now):
-	if not active_tab or not dta_now: return noUpd
+	if not active_tab or not dta_now: return noUpd.by(2)
 
 	now = Now.fromDic(dta_now)
 
-	if now.sim.activeTab == active_tab: return noUpd
+	if now.sim.activeTab == active_tab: return noUpd.by(2)
 
 	lg.info(f"[sim:tab] Tab changed to: {active_tab} (from: {now.sim.activeTab})")
 
+	if active_tab == k.tabPnd:
+		pgr = now.sim.pagerPnd or Pager()
+		if not now.sim.assPend:
+			now.sim.assPend = db.pics.getPagedPending(page=pgr.idx, size=pgr.size)
+		now.sim.pagerPnd = pgr
+		now.sim.activeTab = active_tab
+		return now.toDict(), gv.mkPndGrd(now.sim.assPend, onEmpty=[
+			dbc.Alert("No pending items on this page", color="secondary", className="text-center"),
+		])
+
 	patch = dash.Patch()
 	patch['sim']['activeTab'] = active_tab
-	return patch
+	return patch, noUpd
 
 
 

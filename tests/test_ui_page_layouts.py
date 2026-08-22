@@ -12,7 +12,7 @@ import dash
 dash.Dash(__name__, use_pages=True, pages_folder='')
 
 from pages import fetch, not_found_404, settings, vector, view
-from ui import cardSets
+from ui import cardSets, pager
 
 
 def walk(node):
@@ -30,6 +30,23 @@ def props(node):
 
 
 class TestPageLayouts(unittest.TestCase):
+	def test_pager_controls_share_one_compact_control_height(self):
+		nodes = list(walk(pager.createPager(
+			pgId='layout-test', page=2, size=25, total=80,
+		)))
+		classes = [str(props(node).get('className', '')) for node in nodes]
+
+		self.assertTrue(any('pager-shell' in value for value in classes))
+		self.assertTrue(any(value == 'pager' for value in classes))
+		self.assertTrue(any(value == 'pager-info' for value in classes))
+		self.assertTrue(any(value == 'pager-size' for value in classes))
+		sizer = next(
+			node for node in nodes
+			if props(node).get('id') == {'type': 'pgr-layout-test-sizer', 'idx': 0}
+		)
+		self.assertEqual(props(sizer).get('value'), 25)
+		self.assertTrue(any(getattr(node, 'children', None) == ' / page' for node in nodes))
+
 	def test_threshold_and_worker_controls_share_slider_markup(self):
 		thresholdNodes = list(walk(cardSets.renderThreshold()))
 		workerNodes = list(walk(cardSets.renderCpuSettings()))
