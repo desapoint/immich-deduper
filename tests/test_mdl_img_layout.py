@@ -27,6 +27,11 @@ class TestImageViewerLayout(unittest.TestCase):
 	def test_viewer_exposes_clear_controls_and_accessible_navigation(self):
 		nodes = list(walk(mdlImg.render()))
 		byId = {props(node).get('id'): node for node in nodes if isinstance(props(node).get('id'), str)}
+		main = next(node for node in nodes if props(node).get('className') == 'img-viewer-main')
+		footer = next(node for node in nodes if props(node).get('className') == 'img-viewer-footer')
+		media = next(node for node in nodes if props(node).get('className') == 'img-viewer-media')
+		mainIds = {props(node).get('id') for node in walk(main)}
+		footerIds = {props(node).get('id') for node in walk(footer)}
 
 		self.assertIn('img-viewer-title', props(next(node for node in nodes if 'img-viewer-title' in str(props(node).get('className', '')))).get('className'))
 		self.assertEqual(props(byId[mdlImg.k.btnSelect]).get('children'), 'Select image')
@@ -48,7 +53,14 @@ class TestImageViewerLayout(unittest.TestCase):
 		self.assertTrue(any(props(node).get('className') == 'img-viewer-footer' for node in nodes))
 		self.assertTrue(any(props(node).get('className') == 'img-viewer-header-action img-viewer-info-action' for node in nodes))
 		self.assertTrue(any(props(node).get('className') == 'img-viewer-header-action img-viewer-help-action' for node in nodes))
-		self.assertTrue(any(props(node).get('className') == 'img-viewer-media' for node in nodes))
+		self.assertTrue(any(props(node).get('className') == 'img-viewer-content' for node in nodes))
+		self.assertEqual(len([node for node in nodes if 'img-viewer-nav-zone' in str(props(node).get('className', ''))]), 2)
+		self.assertIn(mdlImg.k.content, {props(node).get('id') for node in walk(media)})
+		self.assertIn(mdlImg.k.btnSelect, mainIds)
+		self.assertNotIn(mdlImg.k.btnSelect, footerIds)
+		self.assertIn(mdlImg.k.status, footerIds)
+		self.assertEqual(props(byId[mdlImg.k.imgHelp]).get('className'), 'help hide')
+		self.assertEqual(props(byId[mdlImg.k.imgInfo]).get('className'), 'info hide')
 		self.assertFalse(props(byId[mdlImg.k.modal]).get('fullscreen', False))
 
 

@@ -74,11 +74,11 @@ const ui = window.ui = {
 	},
 
 	poptip: {
-		baseZIndex: 1000,
+		baseZIndex: 1200,
 		_hideTimer: null,
 		_activeTipId: null,
 
-		delayHide(tipId, delay = 3000){
+		delayHide(tipId, delay = 500){
 			clearTimeout(this._hideTimer)
 			this._hideTimer = setTimeout(() =>{
 				const tipEl = document.getElementById(tipId)
@@ -113,7 +113,7 @@ const ui = window.ui = {
 		hide(tipEl){
 			if (!tipEl) return
 			clearTimeout(tipEl._poptipHideTimer)
-			tipEl.style.transition = 'opacity 0.3s ease'
+			tipEl.style.transition = 'opacity 0.12s ease'
 			tipEl.style.opacity = '0'
 			tipEl._poptipHideTimer = setTimeout(() =>{
 				tipEl.style.display = 'none'
@@ -123,7 +123,7 @@ const ui = window.ui = {
 				if (arrow) arrow.remove()
 				this.restoreHome(tipEl)
 				tipEl._poptipHideTimer = null
-			}, 300)
+			}, 120)
 		},
 
 		show(tipId, triggerEl, forceToggle = false){
@@ -164,7 +164,12 @@ const ui = window.ui = {
 				if (posInfo.direction === 'right') {
 					arrow.classList.add('bi', 'bi-caret-left-fill')
 					arrow.style.left = '-12px'
-					arrow.style.top = '50%'
+					arrow.style.top = `${posInfo.arrowOffset}px`
+					arrow.style.transform = 'translateY(-50%)'
+				} else if (posInfo.direction === 'left') {
+					arrow.classList.add('bi', 'bi-caret-right-fill')
+					arrow.style.right = '-12px'
+					arrow.style.top = `${posInfo.arrowOffset}px`
 					arrow.style.transform = 'translateY(-50%)'
 				} else if (posInfo.direction === 'top') {
 					arrow.classList.add('bi', 'bi-caret-down-fill')
@@ -186,8 +191,7 @@ const ui = window.ui = {
 					this.cancelHide()
 				})
 				tipEl.addEventListener('mouseleave', () =>{
-					this.hide(tipEl)
-					this._activeTipId = null
+					this.delayHide(tipEl.id)
 				})
 				tipEl._mouseLeaveEventsBound = true
 			}
@@ -204,34 +208,32 @@ const ui = window.ui = {
 			const pad = 8
 			const gap = 12
 			const clamp = (value, min, max) => Math.min(Math.max(value, min), Math.max(min, max))
-			let direction = 'bottom'
+			let direction = 'right'
 			let left
-			let top
+			let top = triggerRect.top + (triggerRect.height - tipRect.height) / 2
 
 			if (triggerRect.right + tipRect.width + gap <= viewWidth - pad) {
-				direction = 'right'
 				left = triggerRect.right + gap
-				top = triggerRect.top + (triggerRect.height - tipRect.height) / 2
-			}
-			else if (triggerRect.top - tipRect.height - gap >= pad) {
-				direction = 'top'
-				left = triggerRect.left + (triggerRect.width - tipRect.width) / 2
-				top = triggerRect.top - tipRect.height - gap
 			}
 			else {
-				left = triggerRect.left + (triggerRect.width - tipRect.width) / 2
-				top = triggerRect.bottom + gap
+				direction = 'left'
+				left = triggerRect.left - tipRect.width - gap
 			}
 
 			left = clamp(left, pad, viewWidth - tipRect.width - pad)
 			top = clamp(top, pad, viewHeight - tipRect.height - pad)
+			const arrowOffset = clamp(
+				triggerRect.top + triggerRect.height / 2 - top,
+				12,
+				tipRect.height - 12
+			)
 			tipEl.style.position = 'fixed'
 			tipEl.style.left = `${left}px`
 			tipEl.style.top = `${top}px`
 			tipEl.style.transform = 'none'
 			tipEl.style.zIndex = this.baseZIndex++
 
-			return {direction}
+			return {direction, arrowOffset}
 		},
 
 	}

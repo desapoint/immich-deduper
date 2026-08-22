@@ -186,6 +186,12 @@ class TestSimilarUiLayout(unittest.TestCase):
 			self.assertTrue(any(props(node).get('className') == 'sim-card-poptip-title' for node in popoverNodes))
 			self.assertTrue(any('sim-card-poptip-content' in str(props(node).get('className', '')) for node in popoverNodes))
 
+		tagPopover = next(node for node in popovers if props(node).get('id') == 'tags-5')
+		tagNodes = list(walk(tagPopover))
+		self.assertTrue(any(props(node).get('className') == 'sim-card-poptip-content sim-card-poptip-content-tags' for node in tagNodes))
+		self.assertTrue(any(props(node).get('className') == 'sim-card-poptip-list sim-card-poptip-tag-list' for node in tagNodes))
+		self.assertTrue(any(props(node).get('className') == 'sim-card-poptip-item sim-card-poptip-tag' for node in tagNodes))
+
 	def test_similar_card_has_identity_metadata_and_collapsed_details(self):
 		item = asset(4, 8, stackId='stack-b', primary=True)
 		item.originalFileName = 'holiday-original-name.jpg'

@@ -55,12 +55,12 @@ layoutHelp = htm.Div([
 			htm.Tr([htm.Td(htm.Code("?")), htm.Td("Toggle shortcuts", className="ps-3")]),
 		])
 	], className="small help-content"),
-], id=k.imgHelp, className="help")
+], id=k.imgHelp, className="help hide")
 
 layoutInfo = htm.Div([
 	htm.H6("Image details", className="mb-2"),
 	htm.Div(id=f"{k.imgInfo}-content", className="info-content"),
-], id=k.imgInfo, className="info")
+], id=k.imgInfo, className="info hide")
 
 
 def render():
@@ -109,27 +109,31 @@ def render():
 			], close_button=True, className="img-viewer-header"),
 			dbc.ModalBody([
 				htm.Div([
-					htm.Div(id=k.content, className="img img-viewer-stage"),
-					htm.Button(
-						htm.I(className="bi bi-chevron-left"),
-						id=k.btnPrev,
-						className="btn btn-secondary img-viewer-nav img-viewer-nav-prev",
-						style={"zIndex": 1000, "display": "none"},
-						title="Previous image",
-						**{"aria-label": "Previous image"},
+					htm.Div([
+						htm.Button(
+							htm.I(className="bi bi-chevron-left"),
+							id=k.btnPrev,
+							className="btn btn-secondary img-viewer-nav img-viewer-nav-prev",
+							style={"zIndex": 1000, "display": "none"},
+							title="Previous image",
+							**{"aria-label": "Previous image"},
+						),
+					], className="img-viewer-nav-zone img-viewer-nav-zone-prev"),
+					htm.Div(
+						htm.Div(id=k.content, className="img img-viewer-stage"),
+						className="img-viewer-media",
 					),
-					htm.Button(
-						htm.I(className="bi bi-chevron-right"),
-						id=k.btnNext,
-						className="btn btn-secondary img-viewer-nav img-viewer-nav-next",
-						style={"zIndex": 1000, "display": "none"},
-						title="Next image",
-						**{"aria-label": "Next image"},
-					),
-				], className="img-viewer-media"),
-			], className="img-viewer-main"),
-			dbc.ModalFooter([
-				htm.Div(id=k.status, className="viewer-asset-status"),
+					htm.Div([
+						htm.Button(
+							htm.I(className="bi bi-chevron-right"),
+							id=k.btnNext,
+							className="btn btn-secondary img-viewer-nav img-viewer-nav-next",
+							style={"zIndex": 1000, "display": "none"},
+							title="Next image",
+							**{"aria-label": "Next image"},
+						),
+					], className="img-viewer-nav-zone img-viewer-nav-zone-next"),
+				], className="img-viewer-content"),
 				htm.Div([
 					dbc.Button(
 						"Select image",
@@ -138,7 +142,10 @@ def render():
 						className="img-viewer-select",
 						style={"display": "none"}
 					),
-				], className="img-viewer-primary-actions"),
+				], className="img-viewer-primary-actions img-viewer-select-slot"),
+			], className="img-viewer-main"),
+			dbc.ModalFooter([
+				htm.Div(id=k.status, className="viewer-asset-status"),
 			], className="img-viewer-footer"),
 		],
 			id=k.modal,
