@@ -47,9 +47,11 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn('grid-template-columns: repeat(2, minmax(0, 1fr));', main)
 		self.assertIn('max-width: none !important;', main)
 		self.assertIn('.auto-select-field {', main)
-		self.assertIn('grid-template-columns: minmax(0, 1fr) clamp(7rem, 36%, 9rem);', main)
+		self.assertIn('grid-template-columns: repeat(2, minmax(0, 1fr));', main)
+		self.assertIn('grid-template-columns: minmax(0, 1fr) minmax(3.5rem, 45%);', main)
 		self.assertIn('.auto-select-path-criterion {', main)
-		self.assertIn('grid-column: 1 / -1;', main)
+		self.assertIn('grid-column: auto;', main)
+		self.assertIn('.form-check-label {', main)
 		self.assertIn('resize: vertical;', main)
 
 	def test_similar_empty_state_is_compact_and_neutral(self):
