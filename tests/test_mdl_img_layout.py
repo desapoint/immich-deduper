@@ -62,6 +62,8 @@ class TestImageViewerLayout(unittest.TestCase):
 		self.assertEqual(props(byId[mdlImg.k.imgHelp]).get('className'), 'help hide')
 		self.assertEqual(props(byId[mdlImg.k.imgInfo]).get('className'), 'info hide')
 		self.assertFalse(props(byId[mdlImg.k.modal]).get('fullscreen', False))
+		self.assertIsInstance(props(byId[mdlImg.k.store]).get('data'), dict)
+		self.assertIn('modeH', props(byId[mdlImg.k.store]).get('data'))
 
 
 if __name__ == '__main__':

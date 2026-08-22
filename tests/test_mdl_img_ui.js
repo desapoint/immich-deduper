@@ -29,8 +29,12 @@ function main() {
 	const setPropsCalls = []
 	const toggles = []
 	let syncs = 0
+	const stores = {
+		'store-mdl-img': {open: false, modeH: false, hideHelp: true, hideInfo: true},
+	}
 	const context = {
 		console,
+		fetch() { return Promise.resolve({ok: true}) },
 		document: {
 			addEventListener() {},
 			getElementById(id) { return id === 'btn-img-select' ? selectButton : null },
@@ -42,12 +46,17 @@ function main() {
 			set_props(id, props) { setPropsCalls.push({id, props}) },
 		},
 		Ste: {
+			cntTotal: 2,
 			selectedIds: new Set([11]),
+			stackCoverIds: new Set(),
 			toggle(aid) {
 				toggles.push(aid)
 				this.selectedIds.has(aid) ? this.selectedIds.delete(aid) : this.selectedIds.add(aid)
 			},
 			sync() { syncs++; context.window.MdlImg.syncSelectState() },
+		},
+		dsh: {
+			getStore(id) { return stores[id] || null },
 		},
 		R: {
 			mk(type, props, ...children) { return {type, props, children: children.filter(child => child != null)} },
@@ -66,6 +75,7 @@ function main() {
 	]
 	const mdl = {open: true, isMulti: true, curIdx: 0, modeH: true, imgUrl: '/api/img/11'}
 	const now = {sim: {assCur: assets}}
+	stores['store-now'] = now
 	const ste = {cntTotal: 2, selectedIds: [11], stackCoverIds: []}
 	const viewer = context.window.MdlImg.init(mdl, now, ste)
 
@@ -88,6 +98,19 @@ function main() {
 	assert.deepEqual(toggles, [11])
 	assert.equal(syncs, 1)
 	assert.equal(selectButton.textContent, 'Select image')
+
+	setPropsCalls.length = 0
+	assert.equal(viewer.openFromElement({id: JSON.stringify({type: 'img-pop-multi', aid: 11})}), true)
+	assert.equal(context.window.currentMdlImgAutoId, 11)
+	assert.ok(setPropsCalls.some(call => call.id === 'img-modal' && call.props.is_open === true))
+	assert.ok(setPropsCalls.some(call => call.id === 'store-mdl-img' && call.props.data.imgUrl === '/api/img/11?q=preview'))
+	assert.equal(viewer.navigateLocal('next'), true)
+	assert.equal(context.window.currentMdlImgAutoId, 12)
+	assert.ok(setPropsCalls.some(call => call.id === 'img-modal-status'
+		&& call.props.children[1].children[0] === '2 of 2'))
+	assert.equal(viewer.close(), true)
+	assert.ok(setPropsCalls.some(call => call.id === 'img-modal' && call.props.is_open === false))
+	viewer.init(mdl, now, ste)
 
 	const content = viewer.buildImageContent(mdl)
 	assert.equal(content.map(node => findByClass(node, 'viewer-asset-status')).find(Boolean), undefined)

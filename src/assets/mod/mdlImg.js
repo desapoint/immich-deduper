@@ -18,6 +18,101 @@ const MdlImg = window.MdlImg = {
 		return this
 	},
 
+	setProps(id, props){
+		if (typeof dash_clientside.set_props !== 'function') return false
+		dash_clientside.set_props(id, props)
+		return true
+	},
+
+	selectionState(){
+		return window.Ste ? {
+			cntTotal: Ste.cntTotal,
+			selectedIds: Array.from(Ste.selectedIds),
+			stackCoverIds: Array.from(Ste.stackCoverIds),
+		} : {cntTotal: 0, selectedIds: [], stackCoverIds: []}
+	},
+
+	setCurrentAsset(){
+		const asset = this.getCurrentAsset()
+		window.currentMdlImgAutoId = asset?.autoId || null
+	},
+
+	openFromElement(element){
+		if (!element?.id) return false
+		let trigger
+		try { trigger = JSON.parse(element.id) }
+		catch (error) { return false }
+		if (!['img-pop', 'img-pop-multi'].includes(trigger.type) || !trigger.aid) return false
+
+		const stored = dsh.getStore('store-mdl-img') || {}
+		const now = dsh.getStore('store-now') || {}
+		const mdl = {
+			open: true,
+			imgUrl: `/api/img/${trigger.aid}?q=preview`,
+			isMulti: trigger.type === 'img-pop-multi',
+			curIdx: 0,
+			hideHelp: stored.hideHelp ?? true,
+			hideInfo: stored.hideInfo ?? true,
+			modeH: stored.modeH ?? false,
+		}
+		if (mdl.isMulti) {
+			const assets = now.sim?.assCur || []
+			const index = assets.findIndex(asset => Number(asset.autoId) === Number(trigger.aid))
+			if (index < 0) return false
+			mdl.curIdx = index
+		}
+
+		this.init(mdl, now, this.selectionState())
+		this.setCurrentAsset()
+		this.apply()
+		return true
+	},
+
+	apply(){
+		const mdl = this.state.mdl
+		if (!mdl) return false
+		this.state.ste = this.selectionState()
+		const asset = this.getCurrentAsset()
+		this.setProps('img-modal', {is_open: !!mdl.open, className: this.getModeCss(mdl)})
+		this.setProps('store-mdl-img', {data: mdl})
+		if (!mdl.open) return true
+
+		this.setProps('img-modal-content', {children: this.buildImageContent(mdl)})
+		this.setProps('img-modal-status', {children: this.buildAssetStatus(mdl)})
+		this.setProps('btn-img-prev', {style: this.getPrevButtonStyle(mdl)})
+		this.setProps('btn-img-next', {style: this.getNextButtonStyle(mdl)})
+		this.setProps('btn-img-select', {
+			style: this.getSelectButtonStyle(mdl),
+			children: this.getSelectButtonText(mdl, asset),
+			color: this.getSelectButtonColor(mdl, asset),
+		})
+		this.setProps('img-modal-help', {className: this.getHelpClassName(mdl)})
+		this.setProps('btn-img-help', {children: this.getHelpButtonContent()})
+		this.setProps('img-modal-info', {className: this.getInfoClassName(mdl)})
+		this.setProps('btn-img-info', {children: this.getInfoButtonContent()})
+		this.setProps('img-modal-info-content', {children: this.getInfoContent(mdl)})
+		this.setProps('btn-img-mode', {children: this.getModeContent(mdl)})
+		return true
+	},
+
+	close(){
+		if (!this.state.mdl) return false
+		this.state.mdl = {...this.state.mdl, open: false}
+		window.currentMdlImgAutoId = null
+		return this.apply()
+	},
+
+	persistSettings(){
+		const mdl = this.state.mdl
+		if (!mdl || typeof fetch !== 'function') return
+		fetch('/api/settings/image-preview', {
+			method: 'POST',
+			headers: {'Content-Type': 'application/json'},
+			body: JSON.stringify({auto: !!mdl.modeH, help: !!mdl.hideHelp, info: !!mdl.hideInfo}),
+			keepalive: true,
+		}).catch(error => console.error('[mdlImg] Failed to save preview settings:', error))
+	},
+
 	navigate(direction){
 		if (!this.state.mdl || !this.state.mdl.isMulti || !this.state.now?.sim?.assCur)
 			return this.noUpdate(7)
@@ -35,6 +130,8 @@ const MdlImg = window.MdlImg = {
 			curIdx: newIdx,
 			imgUrl: `/api/img/${curAss.autoId}?q=preview`
 		}
+		this.state.mdl = newMdl
+		this.setCurrentAsset()
 
 		const htms = this.buildImageContent(newMdl)
 		const status = this.buildAssetStatus(newMdl)
@@ -46,6 +143,12 @@ const MdlImg = window.MdlImg = {
 		console.log(`[MdlImg] navigated to idx[${newIdx}] autoId[${curAss.autoId}]`)
 
 		return [newMdl, htms, status, prevStyle, nextStyle, selectText, selectColor]
+	},
+
+	navigateLocal(direction){
+		const result = this.navigate(direction)
+		if (result[0] === dash_clientside.no_update) return false
+		return this.apply()
 	},
 
 	buildImageContent(mdl){
@@ -362,6 +465,7 @@ const MdlImg = window.MdlImg = {
 
 		const helpCss = this.getHelpClassName(newMdl)
 		const helpTxt = this.getHelpButtonContent()
+		this.state.mdl = newMdl
 
 		return [newMdl, helpCss, helpTxt]
 	},
@@ -376,6 +480,7 @@ const MdlImg = window.MdlImg = {
 
 		const infoCss = this.getInfoClassName(newMdl)
 		const infoTxt = this.getInfoButtonContent()
+		this.state.mdl = newMdl
 
 		return [newMdl, infoCss, infoTxt]
 	},
@@ -390,6 +495,7 @@ const MdlImg = window.MdlImg = {
 
 		let newCss = this.getModeCss(newMdl)
 		let newTxt = this.getModeContent(newMdl)
+		this.state.mdl = newMdl
 
 		return [newMdl, newCss, newTxt]
 	}
@@ -458,11 +564,26 @@ window.dash_clientside.mdlImg = {
 
 
 document.addEventListener('click', function(ev){
-	const selectButton = ev.target.closest?.('#btn-img-select')
-	if (!selectButton) return
+	const target = ev.target
+	const image = target.closest?.('[id*=\'"type":"img-pop\']')
+	if (image && MdlImg.openFromElement(image)) {
+		ev.preventDefault()
+		ev.stopPropagation()
+		return
+	}
+
+	const action = target.closest?.('#btn-img-select, #btn-img-prev, #btn-img-next, #btn-img-help, #btn-img-info, #btn-img-mode, #img-modal .btn-close')
+	if (!action) return
 	ev.preventDefault()
 	ev.stopPropagation()
-	MdlImg.toggleCurrentSelection()
+
+	if (action.id === 'btn-img-select') MdlImg.toggleCurrentSelection()
+	else if (action.id === 'btn-img-prev') MdlImg.navigateLocal('prev')
+	else if (action.id === 'btn-img-next') MdlImg.navigateLocal('next')
+	else if (action.id === 'btn-img-help') { MdlImg.toggleHelp(); MdlImg.apply(); MdlImg.persistSettings() }
+	else if (action.id === 'btn-img-info') { MdlImg.toggleInfo(); MdlImg.apply(); MdlImg.persistSettings() }
+	else if (action.id === 'btn-img-mode') { MdlImg.toggleMode(); MdlImg.apply(); MdlImg.persistSettings() }
+	else MdlImg.close()
 })
 
 

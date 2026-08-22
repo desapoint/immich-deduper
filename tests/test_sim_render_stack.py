@@ -100,6 +100,12 @@ class TestSimilarPartialRendering(unittest.TestCase):
 		self.assertFalse(any('sim-stack-cover' in str(item['id']) for item in inputs))
 		self.assertFalse(any(item['id'] == 'btn-img-select' for item in inputs))
 		self.assertFalse(any(item['id'] == similar.ks.sto.ste for item in inputs))
+		for componentId in {
+			'store-mdl-img', 'btn-img-prev', 'btn-img-next',
+			'btn-img-help', 'btn-img-info', 'btn-img-mode',
+		}:
+			self.assertFalse(any(item['id'] == componentId for item in inputs))
+		self.assertFalse(any('img-pop' in str(item['id']) for item in inputs))
 
 		initKey = next(key for key in testApp.callback_map if 'init-selection' in key)
 		initInputs = [item['id'] for item in testApp.callback_map[initKey]['inputs']]

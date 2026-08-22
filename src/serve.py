@@ -245,6 +245,24 @@ def regBy(app):
 			return jsonify({"error":str(e)}),500
 
 	#----------------------------------------------------------------
+	# Image preview preferences
+	#----------------------------------------------------------------
+	@app.server.route('/api/settings/image-preview', methods=['POST'])
+	def saveImagePreviewSettings():
+		try:
+			data = request.get_json(silent=True) or {}
+			current = db.dto.mdlImgSets or {}
+			db.dto.mdlImgSets = {
+				'auto': bool(data.get('auto', current.get('auto', False))),
+				'help': bool(data.get('help', current.get('help', True))),
+				'info': bool(data.get('info', current.get('info', True))),
+			}
+			return jsonify({'ok': True})
+		except Exception as e:
+			lg.error(f"[api] saveImagePreviewSettings Failed: {str(e)}")
+			return jsonify({'error': str(e)}), 500
+
+	#----------------------------------------------------------------
 	# System Check endpoint
 	#----------------------------------------------------------------
 	@app.server.route('/api/chk')
