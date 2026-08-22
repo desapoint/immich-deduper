@@ -65,7 +65,7 @@ const MdlImg = window.MdlImg = {
 							controls: false
 						}),
 						R.mk('div', {className: 'ctrls', id: 'livephoto-controls'},
-							R.mk('button', {className: 'play-pause-btn', id: 'livephoto-play-pause'}, '⏸️'),
+							R.mk('button', {className: 'play-pause-btn', id: 'livephoto-play-pause'}, 'Pause'),
 							R.mk('div', {className: 'progress-bar', id: 'livephoto-progress-bar'},
 								R.mk('div', {className: 'progress-fill', id: 'livephoto-progress-fill'})
 							),

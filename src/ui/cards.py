@@ -131,7 +131,7 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 				}),
 				htm.Div([
 					htm.Span(stackLabel, className="badge sim-stack-badge", style={"backgroundColor": stackColor}, title=f"Immich stack {stackId}"),
-					htm.Span("★ Thumbnail", className="badge bg-warning text-dark sim-stack-thumbnail", title="Current Immich stack thumbnail") if isStackPrimary else None,
+					htm.Span("Thumbnail", className="badge bg-warning text-dark sim-stack-thumbnail", title="Current Immich stack thumbnail") if isStackPrimary else None,
 				], className="sim-stack-status") if stackId else None,
 				dbc.Button(
 					"Set cover",
@@ -214,9 +214,9 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 				], class_name="grid grid-info"),
 				htm.Div([
 
-					htm.Span('✅ resolved', className='tag') if ass.simOk else None,
-					htm.Span('❤️', className='tag') if ass.isFavorite else None,
-					htm.Span(f'⭐{ex.rating}', className='tag yellow') if ex and ex.rating and ex.rating > 0 else None,
+					htm.Span('Resolved', className='tag') if ass.simOk else None,
+					htm.Span('Favorite', className='tag') if ass.isFavorite else None,
+					htm.Span(f'Rating {ex.rating}', className='tag yellow') if ex and ex.rating and ex.rating > 0 else None,
 					htm.Span(ex.visibility, className='tag info') if ex and ex.visibility and ex.visibility != 'timeline' else None,
 
 					htm.Span("exif", className='tag blue', **{'data-tip-id': f'exif-{ass.autoId}'}) if ass.jsonExif else None, #type: ignore

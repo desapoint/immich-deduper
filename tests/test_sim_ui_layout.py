@@ -74,6 +74,12 @@ class TestSimilarUiLayout(unittest.TestCase):
 		titles = [node for node in nodes if props(node).get('className') == 'sim-group-title']
 		cardSelects = [node for node in nodes if isinstance(props(node).get('id'), dict) and props(node)['id'].get('type') == 'card-select']
 		coverButtons = [node for node in nodes if isinstance(props(node).get('id'), dict) and props(node)['id'].get('type') == gv.STACK_COVER_BUTTON]
+		deleteGroup = next(
+			node for node in nodes
+			if isinstance(props(node).get('id'), dict)
+			and props(node)['id'].get('type') == gv.GROUP_ACTION_BUTTON
+			and props(node)['id'].get('action') == gv.GROUP_DELETE_ALL
+		)
 
 		self.assertEqual(len(headers), 1)
 		self.assertEqual(props(titles[0]).get('data-group-id'), '7')
@@ -85,7 +91,9 @@ class TestSimilarUiLayout(unittest.TestCase):
 		self.assertEqual(len(stackCards), 2)
 		self.assertTrue(all('--sim-stack-color' in props(card).get('style', {}) for card in stackCards))
 		self.assertTrue(any(getattr(node, 'children', None) == 'Source' for node in nodes))
-		self.assertTrue(any(getattr(node, 'children', None) == '★ Thumbnail' for node in nodes))
+		self.assertTrue(any(getattr(node, 'children', None) == 'Thumbnail' for node in nodes))
+		self.assertEqual(props(deleteGroup).get('color'), 'danger')
+		self.assertFalse(props(deleteGroup).get('outline', False))
 
 	def test_card_media_defers_offscreen_work(self):
 		with patch('ui.cards.db.psql.getUsrName', return_value='Owner'):

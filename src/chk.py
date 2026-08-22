@@ -141,7 +141,7 @@ def immichLogic() -> tuple[bool, list[str]]:
 
 		if failed:
 			msgs = ["[system]"]
-			for desc in failed: msgs.append(f"❌ {desc} check failed.")
+			for desc in failed: msgs.append(f"{desc} check failed.")
 
 			msgs += [
 				"The Operation logic may have changed.",

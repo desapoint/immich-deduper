@@ -24,7 +24,7 @@ const TskWS = {
 
 		if (typeof io === 'undefined') {
 			console.error('[wst] WebSocket client library not found')
-			notify('❌ WebSocket client library not found. Task functionality unavailable.', 'error')
+			notify('WebSocket client library not found. Task functionality unavailable.', 'error')
 			return
 		}
 
@@ -106,7 +106,7 @@ const TskWS = {
 		this.isConnected = false
 
 		this.updStoreWs({err: typeof ex === 'string' ? ex : 'Connection error'})
-		//notify('❌ WebSocket connection failed. Task functionality is unavailable.', 'error')
+		//notify('WebSocket connection failed. Task functionality is unavailable.', 'error')
 		this.fnErroed(typeof ex === 'string' ? ex : ex?.message || 'Connection error')
 		this.schedule()
 	},

@@ -31,8 +31,8 @@ class k:
 	btnSelect = "btn-img-select"
 	navCtrls = "img-nav-controls"
 
-	txtHAuto = "🔄 Auto Height ?"
-	txtHFix = "🔄 Fixed Height ?"
+	txtHAuto = "Use automatic height"
+	txtHFix = "Use fixed height"
 
 	cssAuto = "auto"
 

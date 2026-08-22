@@ -171,7 +171,7 @@ def tsk_OnTasking(dta_tsk, dta_nfy, dta_now, dta_cnt, dta_ste, dta_gws):
     if not tsk.id or not tsk.cmd: return noUpd.by(2)
 
     if not gws.dtc:
-        nfy.error(f"❌ Cannot start task: WebSocket is not connected, state[{dta_gws}]")
+        nfy.error(f"Cannot start task: WebSocket is not connected, state[{dta_gws}]")
         tsk.reset()
 
         return tsk.toDict(), nfy.toDict()
@@ -285,7 +285,7 @@ def tsk_UpdUI(gwsmsg, dta_tsk, rstChs):
                 return 100, "Cancelled", msg if msg else "task cancelled"
 
             lg.info(f"[tws:uui] complete, ste[{ste}] chs[{rstChs}]")
-            return 100, "completed", msg if msg else "⭐ completed"
+            return 100, "completed", msg if msg else "Completed"
 
 
     except Exception as e:

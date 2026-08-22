@@ -342,7 +342,7 @@ def layout(autoId=None):
 
 							# Floating Goto Top Button
 							htm.Button(
-								"↑ Top",
+								"Back to top",
 								id="sim-goto-top-btn",
 								className="goto-top-btn",
 								style={"display": ""}
@@ -1269,7 +1269,7 @@ def sim_FindSimilar(doReport: IFnProg, sto: models.ITaskStore):
 			cntAll = len(assets)
 			hasRoot = any(a.autoId == root.autoId for a in assets)
 			msg = [f"Found {cntInfos} similar, displaying {cntAll} for #{root.autoId} ({root.id})"]
-			if not hasRoot: msg.append(f"⚠️ Root #{root.autoId} missing from display!")
+			if not hasRoot: msg.append(f"Root #{root.autoId} missing from display!")
 			if cntAll > cntInfos: msg.append(f"include ({cntAll - cntInfos}) asset extra tree in similar tree.")
 			if cntAll >= maxItems: msg.append(f"Reached maximum search limit ({maxItems} items).")
 

@@ -16,11 +16,11 @@ class k:
 #========================================================================
 def renderHeader():
 	defs = [
-		dbc.NavLink(htm.Span([f"⚙️ {ks.pg.setting.name}"]), href=f"/", active="exact", className="navLnk"),
-		dbc.NavLink(htm.Span([f"⚡️ {ks.pg.fetch.name}"]), href=f"/{ks.pg.fetch}", active="exact", id=k.fth, className="navLnk", disabled=True),
-		dbc.NavLink(htm.Span([f"🔄 {ks.pg.vector.name}"]), href=f"/{ks.pg.vector}", active="exact", id=k.vec, className="navLnk", disabled=True),
-		dbc.NavLink(htm.Span([f"🔍 {ks.pg.similar.name}"]), href=f"/{ks.pg.similar}", active="exact", id=k.sim, className="navLnk", disabled=True),
-		dbc.NavLink(htm.Span([f"🖼️ {ks.pg.view.name}"]), href=f"/{ks.pg.view}", active="exact", id=k.view, className="navLnk", disabled=True),
+		dbc.NavLink(htm.Span(ks.pg.setting.name), href=f"/", active="exact", className="navLnk"),
+		dbc.NavLink(htm.Span(ks.pg.fetch.name), href=f"/{ks.pg.fetch}", active="exact", id=k.fth, className="navLnk", disabled=True),
+		dbc.NavLink(htm.Span(ks.pg.vector.name), href=f"/{ks.pg.vector}", active="exact", id=k.vec, className="navLnk", disabled=True),
+		dbc.NavLink(htm.Span(ks.pg.similar.name), href=f"/{ks.pg.similar}", active="exact", id=k.sim, className="navLnk", disabled=True),
+		dbc.NavLink(htm.Span(ks.pg.view.name), href=f"/{ks.pg.view}", active="exact", id=k.view, className="navLnk", disabled=True),
 	]
 
 	return dbc.Navbar(

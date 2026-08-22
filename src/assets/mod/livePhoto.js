@@ -138,12 +138,12 @@ const LivePhoto = window.LivePhoto = {
 		if ( video.paused )
 		{
 			video.play()
-			button.textContent = '⏸️'
+			button.textContent = 'Pause'
 		}
 		else
 		{
 			video.pause()
-			button.textContent = '▶️'
+			button.textContent = 'Play'
 		}
 	},
 

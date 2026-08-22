@@ -76,7 +76,7 @@ def _mkGroupHeader(groupId: int, count: int):
 				title="Stack selected images; reuse existing stacks and keep this group open",
 			),
 			_mkGroupAction("Mark resolved", groupId, GROUP_MARK_RESOLVED, "primary", title="Finish this group without deleting its remaining images"),
-			_mkGroupAction("Delete group", groupId, GROUP_DELETE_ALL, "danger", title="Delete every remaining image in this group", outline=True),
+			_mkGroupAction("Delete group", groupId, GROUP_DELETE_ALL, "danger", title="Delete every remaining image in this group"),
 		], className="sim-controls sim-group-actions"),
 	], className="hr sim-group-header", **{"data-group-id": str(groupId)})
 
