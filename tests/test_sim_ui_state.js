@@ -240,6 +240,16 @@ async function main() {
 	], {pth: {k: '/library/clean\\n/screenshots', v: 2}})`, context)
 	assert.equal(pathSelection.aids[0], 1, 'any matching path rule should select the matching asset')
 	assert.equal(pathSelection.allScores[1].score, 20, 'multiple matching path rules should apply the configured weight only once')
+
+	const criteriaSelection = vm.runInContext(`_selectBestAsset([
+		{autoId: 1, originalFileName: 'a.jpg', originalPath: '/library/a.jpg', fileModifiedAt: '2026-01-01', jsonExif: {dateTimeOriginal: '2026-01-01', exifImageWidth: 100, exifImageHeight: 100, fileSizeInByte: 100}, ex: {albs: []}},
+		{autoId: 2, originalFileName: 'middle.jpg', originalPath: '/library/b.jpg', fileModifiedAt: '2026-02-01', jsonExif: {dateTimeOriginal: '2026-02-01', exifImageWidth: 200, exifImageHeight: 200, fileSizeInByte: 200}, ex: {albs: []}},
+		{autoId: 3, originalFileName: 'longest-name.jpg', originalPath: '/preferred/c.jpg', fileModifiedAt: '2026-03-01', isFavorite: true, jsonExif: {dateTimeOriginal: '2026-03-01', exifImageWidth: 300, exifImageHeight: 300, fileSizeInByte: 300, make: 'Camera'}, ex: {albs: [{}]}}
+	], {later: 1, mdLate: 1, exRich: 1, ofsBig: 1, dimBig: 1, namLon: 1, fav: 1, inAlb: 1, pth: {k: '/preferred', v: 1}})`, context)
+	assert.deepEqual(Array.from(criteriaSelection.aids), [3], 'precomputed criteria must preserve the winning asset')
+	assert.ok(criteriaSelection.allScores[3].reasons.includes('Later+10'))
+	assert.ok(criteriaSelection.allScores[3].reasons.includes('BigSize+10'))
+	assert.ok(criteriaSelection.allScores[3].reasons.includes('BigDim+10'))
 }
 
 

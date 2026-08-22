@@ -93,18 +93,32 @@ function _selectBestAsset(grpAssets, ausl){
 	if (!grpAssets?.length) return null
 
 	const metrics = grpAssets.map(ass => _extractMetric(ass))
+	const dates = metrics.map(metric => metric.dt).filter(Boolean).sort()
+	const modifiedDates = metrics.map(metric => metric.mdt).filter(Boolean).sort()
+	const dateRange = dates.length > 1 && dates[0] !== dates[dates.length - 1]
+	const modifiedDateRange = modifiedDates.length > 1 && modifiedDates[0] !== modifiedDates[modifiedDates.length - 1]
+	const pathRules = _pathRules(ausl.pth?.k)
+	const metricStats = {}
+	for (const key of ['exfCnt', 'fileSz', 'dim', 'nameLen']) {
+		const values = metrics.map(metric => metric[key])
+		metricStats[key] = {
+			distinct: new Set(values).size > 1,
+			min: Math.min(...values),
+			max: Math.max(...values),
+		}
+	}
 
 	auslDebug(`[ausl] Group comparison:`)
 	for ( const m of metrics){
 		auslDebug(`[ausl]   #${m.aid}: date[${m.dt}] mdate[${m.mdt}] exif[${m.exfCnt}] fsize[${m.fileSz}] dim[${m.dim}] name[${m.nameLen}] type[${m.fileType}] fav[${m.isFav}] alb[${m.hasAlb}] owner[${m.ownerId?.slice(0, 8) || ''}] path[${m.path?.slice(-30) || ''}] dev[${m.deviceId}]`)
 	}
 
-	const add = (idx, vals, isMax, weight, label) =>{
+	const add = (metric, key, isMax, weight, label) =>{
 		if (weight <= 0) return {pts: 0, reason: null}
-		const uniq = [...new Set(vals)]
-		if (uniq.length <= 1) return {pts: 0, reason: null}
-		const target = isMax ? Math.max(...vals) : Math.min(...vals)
-		if (vals[idx] === target) {
+		const stats = metricStats[key]
+		if (!stats?.distinct) return {pts: 0, reason: null}
+		const target = isMax ? stats.max : stats.min
+		if (metric[key] === target) {
 			const pts = weight * 10
 			return {pts, reason: `${label}+${pts}`}
 		}
@@ -120,15 +134,13 @@ function _selectBestAsset(grpAssets, ausl){
 		const m = metrics[i]
 
 		// DateTime
-		const dates=metrics.map(x=>x.dt).filter(d=>d)
-		if (m.dt&&dates.length>1&&new Set(dates).size>1) {
-			const sorted=[...dates].sort()
-			if (ausl.earlier>0&&m.dt === sorted[0]) {
+		if (m.dt && dateRange) {
+			if (ausl.earlier>0&&m.dt === dates[0]) {
 				const pts=ausl.earlier * 10
 				scr += pts
 				reasons.push(`Earlier+${pts}`)
 			}
-			if (ausl.later>0&&m.dt === sorted[sorted.length-1]) {
+			if (ausl.later>0&&m.dt === dates[dates.length-1]) {
 				const pts=ausl.later * 10
 				scr += pts
 				reasons.push(`Later+${pts}`)
@@ -136,15 +148,13 @@ function _selectBestAsset(grpAssets, ausl){
 		}
 
 		// ModifiedAt
-		const mdates=metrics.map(x=>x.mdt).filter(d=>d)
-		if (m.mdt&&mdates.length>1&&new Set(mdates).size>1) {
-			const sorted=[...mdates].sort()
-			if (ausl.mdEarly>0&&m.mdt === sorted[0]) {
+		if (m.mdt && modifiedDateRange) {
+			if (ausl.mdEarly>0&&m.mdt === modifiedDates[0]) {
 				const pts=ausl.mdEarly * 10
 				scr += pts
 				reasons.push(`MdEarly+${pts}`)
 			}
-			if (ausl.mdLate>0&&m.mdt === sorted[sorted.length-1]) {
+			if (ausl.mdLate>0&&m.mdt === modifiedDates[modifiedDates.length-1]) {
 				const pts=ausl.mdLate * 10
 				scr += pts
 				reasons.push(`MdLate+${pts}`)
@@ -152,21 +162,21 @@ function _selectBestAsset(grpAssets, ausl){
 		}
 
 		let r
-		r = add(i, metrics.map(x => x.exfCnt), true, ausl.exRich, 'ExifRich')
+		r = add(m, 'exfCnt', true, ausl.exRich, 'ExifRich')
 		if (r.pts) {scr += r.pts; reasons.push(r.reason)}
-		r = add(i, metrics.map(x => x.exfCnt), false, ausl.exPoor, 'ExifPoor')
+		r = add(m, 'exfCnt', false, ausl.exPoor, 'ExifPoor')
 		if (r.pts) {scr += r.pts; reasons.push(r.reason)}
-		r = add(i, metrics.map(x => x.fileSz), true, ausl.ofsBig, 'BigSize')
+		r = add(m, 'fileSz', true, ausl.ofsBig, 'BigSize')
 		if (r.pts) {scr += r.pts; reasons.push(r.reason)}
-		r = add(i, metrics.map(x => x.fileSz), false, ausl.ofsSml, 'SmallSize')
+		r = add(m, 'fileSz', false, ausl.ofsSml, 'SmallSize')
 		if (r.pts) {scr += r.pts; reasons.push(r.reason)}
-		r = add(i, metrics.map(x => x.dim), true, ausl.dimBig, 'BigDim')
+		r = add(m, 'dim', true, ausl.dimBig, 'BigDim')
 		if (r.pts) {scr += r.pts; reasons.push(r.reason)}
-		r = add(i, metrics.map(x => x.dim), false, ausl.dimSml, 'SmallDim')
+		r = add(m, 'dim', false, ausl.dimSml, 'SmallDim')
 		if (r.pts) {scr += r.pts; reasons.push(r.reason)}
-		r = add(i, metrics.map(x => x.nameLen), true, ausl.namLon, 'LongName')
+		r = add(m, 'nameLen', true, ausl.namLon, 'LongName')
 		if (r.pts) {scr += r.pts; reasons.push(r.reason)}
-		r = add(i, metrics.map(x => x.nameLen), false, ausl.namSht, 'ShortName')
+		r = add(m, 'nameLen', false, ausl.namSht, 'ShortName')
 		if (r.pts) {scr += r.pts; reasons.push(r.reason)}
 
 		// File type
@@ -204,7 +214,7 @@ function _selectBestAsset(grpAssets, ausl){
 			scr += pts
 			reasons.push(`Owner+${pts}`)
 		}
-		if (ausl.pth?.v > 0 && _matchesPathRule(m.path, ausl.pth?.k)) {
+		if (ausl.pth?.v > 0 && pathRules.some(rule => String(m.path || '').includes(rule))) {
 			const pts = ausl.pth.v * 10
 			scr += pts
 			reasons.push(`Path+${pts}`)
@@ -251,6 +261,8 @@ let _lastAutoSelConfigSig = null
 let _auslObserver = null
 let _auslTimeout = null
 let _auslFrame = null
+let _autoSelectionTimer = null
+let _auslLogTimer = null
 
 function getAssetIds(assets){
 	return (assets || []).map(a => parseInt(a.autoId)).sort((a,b) => a - b)
@@ -459,14 +471,18 @@ function getAutoSelectAuids(assets, ausl){
 
 	auslDebug(`[ausl] Final selection: ${selIds.length} assets: [${selIds.join(', ')}]`)
 
-	try{
-		fetch('/api/log/ausl',{
-			method:'POST',
-			headers:{'Content-Type':'application/json'},
-			body:JSON.stringify({assetIds:assets.map(a=>a.autoId).sort((x,y)=>x-y),ausl,groups:window.auslLogs})
-		}).catch(e=>console.error('[ausl] log post failed:',e))
-	}
-	catch (e){ console.error('[ausl] log post err:',e) }
+	if (_auslLogTimer) clearTimeout(_auslLogTimer)
+	_auslLogTimer = setTimeout(() =>{
+		_auslLogTimer = null
+		try{
+			fetch('/api/log/ausl',{
+				method:'POST',
+				headers:{'Content-Type':'application/json'},
+				body:JSON.stringify({assetIds:assets.map(a=>a.autoId).sort((x,y)=>x-y),ausl,groups:window.auslLogs})
+			}).catch(e=>console.error('[ausl] log post failed:',e))
+		}
+		catch (e){ console.error('[ausl] log post err:',e) }
+	}, 100)
 
 	return selIds
 }
@@ -627,20 +643,29 @@ window.dash_clientside.similar = {
 		if (assets && Ste) {
 			Ste.cntTotal = assets.length
 			if (existingResultUpdate) {
+				if (_autoSelectionTimer) {
+					clearTimeout(_autoSelectionTimer)
+					_autoSelectionTimer = null
+				}
 				pruneAuslState(assets)
 				waitForCardsAndUpdate(Array.from(Ste.selectedIds), assets, false)
 				auslDebug('[ausl] Preserved selection after existing-result update')
 				return dash_clientside.no_update
 			}
 
-			Ste.initSilent(assets.length)
-			Ste.selectedIds.clear()
+			if (_autoSelectionTimer) clearTimeout(_autoSelectionTimer)
+			_autoSelectionTimer = setTimeout(() =>{
+				_autoSelectionTimer = null
+				const currentNow = dsh.getStore('store-now')
+				const currentSets = dsh.getStore('store-sets')
+				if (JSON.stringify(getAssetIds(currentNow?.sim?.assCur)) !== JSON.stringify(assetIds)) return
+				if (JSON.stringify(currentSets?.ausl || {}) !== configSig) return
 
-			const ids = getAutoSelectAuids(assets, ausl)
-
-			for ( const autoId of ids ) Ste.selectedIds.add(autoId)
-
-			waitForCardsAndUpdate(ids, assets, true)
+				Ste.initSilent(assets.length)
+				const ids = getAutoSelectAuids(assets, ausl)
+				for ( const autoId of ids ) Ste.selectedIds.add(autoId)
+				waitForCardsAndUpdate(ids, assets, true)
+			}, 0)
 		}
 		return dash_clientside.no_update
 	}
