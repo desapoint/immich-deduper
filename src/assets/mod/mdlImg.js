@@ -78,7 +78,7 @@ const MdlImg = window.MdlImg = {
 
 			if (ass) {
 				htms.push(
-					R.mk('div', {className: 'acts B viewer-asset-status'},
+					R.mk('div', {className: 'viewer-asset-status'},
 						R.mk('span', {className: 'viewer-asset-id'}, `Asset #${ass.autoId}`),
 						R.mk('span', {className: 'viewer-position'}, `${mdl.curIdx + 1} of ${this.state.now.sim.assCur.length}`),
 						ass.simGIDs?.length
@@ -98,7 +98,7 @@ const MdlImg = window.MdlImg = {
 
 		const disabled = mdl.curIdx <= 0
 		return {
-			display: 'block',
+			display: 'grid',
 			opacity: disabled ? '0.28' : '1',
 			pointerEvents: disabled ? 'none' : 'auto'
 		}
@@ -109,7 +109,7 @@ const MdlImg = window.MdlImg = {
 
 		const disabled = mdl.curIdx >= this.state.now.sim.assCur.length - 1
 		return {
-			display: 'block',
+			display: 'grid',
 			opacity: disabled ? '0.28' : '1',
 			pointerEvents: disabled ? 'none' : 'auto'
 		}
@@ -132,7 +132,7 @@ const MdlImg = window.MdlImg = {
 	noUpdate(cnt){return Array(cnt).fill(dash_clientside.no_update)},
 
 	updMdl(){
-		if (!this.state.mdl || !this.state.mdl.open) return this.noUpdate(12)
+		if (!this.state.mdl || !this.state.mdl.open) return this.noUpdate(14)
 
 		const mdl = this.state.mdl
 		let asset = this.getCurrentAsset()
@@ -163,7 +163,7 @@ const MdlImg = window.MdlImg = {
 		return (idx >= 0 && idx < assets.length) ? assets[idx] : null
 	},
 
-	getSelectButtonStyle(mdl){return mdl.isMulti ? {display: 'block'} : {display: 'none'}},
+	getSelectButtonStyle(mdl){return mdl.isMulti ? {display: 'inline-flex'} : {display: 'none'}},
 
 	getInfoContent(mdl){
 		if (!mdl.isMulti || !this.state.now?.sim?.assCur) return []

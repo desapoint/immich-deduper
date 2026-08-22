@@ -45,11 +45,14 @@ function main() {
 	assert.equal(viewer.getSelectButtonText(mdl, assets[0]), 'Selected')
 	assert.equal(viewer.getSelectButtonText(mdl, assets[1]), 'Select image')
 	assert.equal(viewer.getModeTxt(mdl), 'Actual size')
+	assert.equal(viewer.getPrevButtonStyle(mdl).display, 'grid')
 	assert.equal(viewer.getPrevButtonStyle(mdl).pointerEvents, 'none')
+	assert.equal(viewer.getNextButtonStyle(mdl).display, 'grid')
 	assert.equal(viewer.getNextButtonStyle(mdl).pointerEvents, 'auto')
+	assert.equal(viewer.getSelectButtonStyle(mdl).display, 'inline-flex')
 
 	const content = viewer.buildImageContent(mdl)
-	const status = content.map(node => findByClass(node, 'acts B viewer-asset-status')).find(Boolean)
+	const status = content.map(node => findByClass(node, 'viewer-asset-status')).find(Boolean)
 	assert.ok(status, 'multi-image content should expose a stable asset status bar')
 	assert.equal(status.children[0].children[0], 'Asset #11')
 	assert.equal(status.children[1].children[0], '1 of 2')
@@ -57,6 +60,9 @@ function main() {
 	const toggled = viewer.toggleMode()
 	assert.equal(toggled[0].modeH, false)
 	assert.equal(toggled[2], 'Fit screen')
+
+	viewer.init({open: false}, now, ste)
+	assert.equal(viewer.updMdl().length, 14, 'a closed viewer must return one no-update value per callback output')
 }
 
 

@@ -48,7 +48,7 @@ layoutHelp = htm.Div([
 			"Shortcuts",
 			id=k.btnHelp,
 			color="secondary",
-			outline=True,
+			outline=False,
 			size="sm",
 			className="img-viewer-panel-toggle",
 			title="Show or hide keyboard shortcuts",
@@ -97,7 +97,7 @@ layoutInfo = htm.Div([
 			"Details",
 			id=k.btnInfo,
 			color="secondary",
-			outline=True,
+			outline=False,
 			size="sm",
 			className="img-viewer-panel-toggle",
 			title="Show or hide image details",
@@ -117,25 +117,19 @@ def render():
 
 		dbc.Modal([
 			dbc.ModalHeader([
-				htm.Div([
-					htm.I(className="bi bi-image"),
-					htm.Div([
-						htm.Small("Asset preview"),
-						htm.Span("Image viewer"),
-					]),
-				], className="img-viewer-title me-auto"),
+				htm.Div("Image preview", className="img-viewer-title me-auto"),
 				dbc.Button(
 					"Fit screen",
 					id=k.btnMode,
 					color="secondary",
-					outline=True,
+					outline=False,
 					size="sm",
 					className="img-viewer-mode",
 					title="Toggle between fit-to-screen and actual-size viewing",
 				),
 			], close_button=True),
 			dbc.ModalBody([
-				htm.Div(id=k.content, className="img"),
+				htm.Div(id=k.content, className="img img-viewer-stage"),
 				htm.Div([
 					dbc.Button(
 						"Select image",
@@ -144,14 +138,14 @@ def render():
 						className="img-viewer-select",
 						style={"display": "none"}
 					),
-				], className="acts"),
-				htm.Div([layoutInfo], id=k.floatL, className="acts L"),
-				htm.Div(id=k.floatR, className="acts R"),
+				], className="img-viewer-primary-actions"),
+				htm.Div([layoutInfo], id=k.floatL, className="img-viewer-side-host L"),
+				htm.Div(id=k.floatR, className="img-viewer-side-host R"),
 				layoutHelp,
 				htm.Button(
 					htm.I(className="bi bi-chevron-left"),
 					id=k.btnPrev,
-					className="btn btn-secondary btn-lg position-fixed start-0 top-50 translate-middle-y ms-3",
+					className="btn btn-secondary btn-lg img-viewer-nav img-viewer-nav-prev position-fixed start-0 top-50 translate-middle-y ms-3",
 					style={"zIndex": 1000, "display": "none"},
 					title="Previous image",
 					**{"aria-label": "Previous image"},
@@ -159,7 +153,7 @@ def render():
 				htm.Button(
 					htm.I(className="bi bi-chevron-right"),
 					id=k.btnNext,
-					className="btn btn-secondary btn-lg position-fixed end-0 top-50 translate-middle-y me-3",
+					className="btn btn-secondary btn-lg img-viewer-nav img-viewer-nav-next position-fixed end-0 top-50 translate-middle-y me-3",
 					style={"zIndex": 1000, "display": "none"},
 					title="Next image",
 					**{"aria-label": "Next image"},

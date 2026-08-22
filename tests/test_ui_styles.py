@@ -119,6 +119,18 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn('text-transform: capitalize;', main)
 		self.assertIn('> .nav-item { flex: 1 1 0; }', main)
 
+	def test_image_preview_uses_distinct_readable_control_surfaces(self):
+		main = (ROOT / 'src/scss/main.scss').read_text()
+		self.assertIn('#img-modal.img-pop {', main)
+		self.assertIn('.img-viewer-primary-actions {', main)
+		self.assertIn('.img-viewer-side-host { display: contents; }', main)
+		self.assertIn('.viewer-asset-status {', main)
+		self.assertIn('background: #0b1524;', main)
+		self.assertIn('.img-viewer-nav {', main)
+		self.assertIn('.img-viewer-mode,', main)
+		self.assertIn('.img-viewer-panel-toggle {', main)
+		self.assertIn('.help:not(.collapsed) {', main)
+
 
 if __name__ == '__main__':
 	unittest.main()

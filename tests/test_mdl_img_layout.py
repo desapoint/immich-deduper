@@ -35,6 +35,13 @@ class TestImageViewerLayout(unittest.TestCase):
 		self.assertEqual(props(byId[mdlImg.k.btnInfo]).get('children'), 'Details')
 		self.assertEqual(props(byId[mdlImg.k.btnPrev]).get('aria-label'), 'Previous image')
 		self.assertEqual(props(byId[mdlImg.k.btnNext]).get('aria-label'), 'Next image')
+		self.assertFalse(props(byId[mdlImg.k.btnMode]).get('outline'))
+		self.assertFalse(props(byId[mdlImg.k.btnHelp]).get('outline'))
+		self.assertFalse(props(byId[mdlImg.k.btnInfo]).get('outline'))
+		self.assertIn('img-viewer-stage', props(byId[mdlImg.k.content]).get('className'))
+		self.assertIn('img-viewer-nav', props(byId[mdlImg.k.btnPrev]).get('className'))
+		self.assertIn('img-viewer-nav', props(byId[mdlImg.k.btnNext]).get('className'))
+		self.assertIn('img-viewer-side-host', props(byId[mdlImg.k.floatL]).get('className'))
 
 
 if __name__ == '__main__':
