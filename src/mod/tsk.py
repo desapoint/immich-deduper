@@ -85,11 +85,27 @@ def render():
             label="0%",
             className="task-status-progress",
         ),
-        htm.Div(id=k.rst, className="visually-hidden", **{"aria-live": "polite"}),
+        htm.Div([
+            htm.Div([
+                htm.I(className="bi bi-info-circle", **{"aria-hidden": "true"}),
+                htm.Span("Task details"),
+            ], className="task-status-detail-title"),
+            htm.Div(
+                "Waiting for task details…",
+                id=k.rst,
+                className="task-status-detail-text",
+                **{"aria-live": "polite"},
+            ),
+        ], className="task-status-detail", role="tooltip"),
     ],
         id=k.div,
         className="tskPanel task-status idle",
-        **{"aria-live": "polite", "aria-label": "Task status"},
+        tabIndex=0,
+        **{
+            "aria-live": "polite",
+            "aria-label": "Task status; hover or focus for details",
+            "aria-describedby": k.rst,
+        },
     )
 
 

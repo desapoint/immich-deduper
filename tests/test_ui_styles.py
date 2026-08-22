@@ -66,6 +66,10 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn('&.running {', main)
 		self.assertIn('&.idle {', main)
 		self.assertIn('pointer-events: auto;', main)
+		self.assertIn('&.btn-warning {', main)
+		self.assertIn('color: #111827 !important;', main)
+		self.assertIn('.task-status-detail {', main)
+		self.assertIn('&:focus-within .task-status-detail {', main)
 		self.assertIn('z-index: 1090;', main)
 		self.assertIn('@include bgNfy("success");', base)
 

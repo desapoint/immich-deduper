@@ -1354,6 +1354,7 @@ select.form-select {
 }
 
 .tskPanel {
+	position: relative;
 	border: 1px solid var(--ui-border-strong);
 	border-radius: var(--ui-radius-sm);
 	background: var(--ui-surface);
@@ -1382,6 +1383,82 @@ select.form-select {
 		border-radius: var(--ui-radius-sm);
 		font-size: 0.7rem;
 		white-space: nowrap;
+
+		&.btn-warning {
+			border-color: #d8a93f !important;
+			background: var(--ui-warning) !important;
+			color: #111827 !important;
+			text-shadow: none;
+
+			i { color: inherit !important; }
+
+			&:hover:not(:disabled),
+			&:active:not(:disabled) {
+				border-color: #f3d27f !important;
+				background: #ffd978 !important;
+				color: #0b1220 !important;
+			}
+
+			&:focus-visible {
+				color: #0b1220 !important;
+				box-shadow: 0 0 0 0.2rem rgba(246, 199, 96, 0.32) !important;
+			}
+
+			&:disabled {
+				border-color: #a98539 !important;
+				background: var(--ui-warning) !important;
+				color: #111827 !important;
+				opacity: 0.78;
+			}
+		}
+	}
+
+	.task-status-detail {
+		position: absolute;
+		top: calc(100% + 0.5rem);
+		right: 0;
+		z-index: 1120;
+		width: 26rem;
+		max-width: calc(100vw - 1.4rem);
+		max-height: 15rem;
+		padding: 0.7rem 0.78rem;
+		overflow-y: auto;
+		border: 1px solid var(--ui-border-strong);
+		border-radius: var(--ui-radius-sm);
+		background: var(--ui-surface-raised);
+		box-shadow: var(--ui-shadow);
+		color: var(--ui-text-soft);
+		font-size: 0.74rem;
+		line-height: 1.4;
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
+		transform: translateY(-0.25rem);
+		transition: opacity 0.14s ease, visibility 0.14s ease, transform 0.14s ease;
+
+		&::before {
+			content: "";
+			position: absolute;
+			right: 1rem;
+			bottom: 100%;
+			border: 0.38rem solid transparent;
+			border-bottom-color: var(--ui-border-strong);
+		}
+	}
+
+	.task-status-detail-title {
+		display: flex;
+		align-items: center;
+		gap: 0.38rem;
+		margin-bottom: 0.35rem;
+		color: var(--ui-text);
+		font-size: 0.7rem;
+		font-weight: 680;
+	}
+
+	.task-status-detail-text {
+		white-space: normal;
+		overflow-wrap: anywhere;
 	}
 
 	.progress {
@@ -1415,6 +1492,14 @@ select.form-select {
 		.task-status-cancel {
 			visibility: visible;
 			pointer-events: auto;
+		}
+
+		&:hover .task-status-detail,
+		&:focus-within .task-status-detail {
+			opacity: 1;
+			visibility: visible;
+			pointer-events: auto;
+			transform: translateY(0);
 		}
 	}
 }

@@ -51,12 +51,19 @@ class TestGlobalTaskStatus(unittest.TestCase):
 		panel = next(node for node in nodes if props(node).get('id') == tsk.k.div)
 		progress = next(node for node in nodes if props(node).get('id') == tsk.k.prg)
 		cancel = next(node for node in nodes if props(node).get('id') == tsk.k.btnCancel)
+		detail = next(node for node in nodes if props(node).get('className') == 'task-status-detail')
+		detailText = next(node for node in nodes if props(node).get('id') == tsk.k.rst)
 
 		self.assertIn('task-status idle', props(panel).get('className', ''))
 		self.assertIn('task-status-progress', props(progress).get('className', ''))
 		self.assertTrue(props(cancel).get('disabled'))
 		self.assertTrue(any(getattr(node, 'children', None) == 'Cancel' for node in walk(cancel)))
 		self.assertEqual(props(cancel).get('title'), 'Cancel running task')
+		self.assertEqual(props(panel).get('tabIndex'), 0)
+		self.assertEqual(props(panel).get('aria-describedby'), tsk.k.rst)
+		self.assertEqual(props(detail).get('role'), 'tooltip')
+		self.assertEqual(props(detailText).get('className'), 'task-status-detail-text')
+		self.assertNotIn('visually-hidden', props(detailText).get('className', ''))
 
 		idle = tsk.tsk_PanelStatus(models.Tsk().toDict())
 		self.assertEqual(idle, ('tskPanel task-status idle', 'Idle', True))
@@ -70,6 +77,19 @@ class TestGlobalTaskStatus(unittest.TestCase):
 		self.assertEqual(starting, ('tskPanel task-status running', 'Similar', True))
 		self.assertEqual(tsk.tsk_OnStatus({'typ': 'start', 'tsn': 'task-1'}, startingTask.toDict()), False)
 		self.assertEqual(tsk.tsk_OnStatus({'typ': 'progress', 'tsn': 'task-1'}, runningTask.toDict()), False)
+
+		started = tsk.tsk_UpdUI(
+			{'typ': 'start', 'nam': 'Similar', 'tsn': 'task-1'},
+			runningTask.toDict(),
+			None,
+		)
+		self.assertEqual(started, (0, '0%', 'Starting Similar...'))
+		progressed = tsk.tsk_UpdUI(
+			{'typ': 'progress', 'prg': 42, 'msg': 'Comparing assets', 'tsn': 'task-1'},
+			runningTask.toDict(),
+			started[2],
+		)
+		self.assertEqual(progressed, (42.0, '42.0%', 'Comparing assets'))
 
 	def test_completion_resets_header_status_and_preserves_toast(self):
 		nfy = models.Nfy()

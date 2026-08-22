@@ -799,11 +799,29 @@ select.form-select { appearance: none; padding-right: 2rem !important; backgroun
 
 .global-task-status { flex: 0 1 15rem; min-width: 9rem; margin-left: auto; margin-right: 0.75rem; }
 
-.tskPanel { border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-sm); background: var(--ui-surface); box-shadow: none; color: var(--ui-text-soft); font-size: 0.75rem; line-height: 1.1; transition: border-color 0.18s ease, background-color 0.18s ease; }
+.tskPanel { position: relative; border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-sm); background: var(--ui-surface); box-shadow: none; color: var(--ui-text-soft); font-size: 0.75rem; line-height: 1.1; transition: border-color 0.18s ease, background-color 0.18s ease; }
 
 .tskPanel .task-status-dot { flex: 0 0 auto; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--ui-text-muted); }
 
 .tskPanel .task-status-cancel { display: inline-flex; align-items: center; justify-content: center; gap: 0.28rem; width: auto; height: 1.65rem; padding: 0.2rem 0.42rem; border-radius: var(--ui-radius-sm); font-size: 0.7rem; white-space: nowrap; }
+
+.tskPanel .task-status-cancel.btn-warning { border-color: #d8a93f !important; background: var(--ui-warning) !important; color: #111827 !important; text-shadow: none; }
+
+.tskPanel .task-status-cancel.btn-warning i { color: inherit !important; }
+
+.tskPanel .task-status-cancel.btn-warning:hover:not(:disabled), .tskPanel .task-status-cancel.btn-warning:active:not(:disabled) { border-color: #f3d27f !important; background: #ffd978 !important; color: #0b1220 !important; }
+
+.tskPanel .task-status-cancel.btn-warning:focus-visible { color: #0b1220 !important; box-shadow: 0 0 0 0.2rem rgba(246, 199, 96, 0.32) !important; }
+
+.tskPanel .task-status-cancel.btn-warning:disabled { border-color: #a98539 !important; background: var(--ui-warning) !important; color: #111827 !important; opacity: 0.78; }
+
+.tskPanel .task-status-detail { position: absolute; top: calc(100% + 0.5rem); right: 0; z-index: 1120; width: 26rem; max-width: calc(100vw - 1.4rem); max-height: 15rem; padding: 0.7rem 0.78rem; overflow-y: auto; border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-sm); background: var(--ui-surface-raised); box-shadow: var(--ui-shadow); color: var(--ui-text-soft); font-size: 0.74rem; line-height: 1.4; opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-0.25rem); transition: opacity 0.14s ease, visibility 0.14s ease, transform 0.14s ease; }
+
+.tskPanel .task-status-detail::before { content: ""; position: absolute; right: 1rem; bottom: 100%; border: 0.38rem solid transparent; border-bottom-color: var(--ui-border-strong); }
+
+.tskPanel .task-status-detail-title { display: flex; align-items: center; gap: 0.38rem; margin-bottom: 0.35rem; color: var(--ui-text); font-size: 0.7rem; font-weight: 680; }
+
+.tskPanel .task-status-detail-text { white-space: normal; overflow-wrap: anywhere; }
 
 .tskPanel .progress { height: 0.45rem; border: 1px solid var(--ui-border); background: var(--ui-bg); }
 
@@ -818,6 +836,8 @@ select.form-select { appearance: none; padding-right: 2rem !important; backgroun
 .tskPanel.running .task-status-dot { background: var(--ui-accent); animation: taskStatusPulse 1.4s ease-in-out infinite; }
 
 .tskPanel.running .task-status-cancel { visibility: visible; pointer-events: auto; }
+
+.tskPanel.running:hover .task-status-detail, .tskPanel.running:focus-within .task-status-detail { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0); }
 
 @keyframes taskStatusPulse { 0%, 100% { opacity: 0.45; }
   50% { opacity: 1; } }
