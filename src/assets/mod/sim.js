@@ -700,6 +700,31 @@ function groupAssetsByVisualGroups(data){
 	}
 
 	const children = Array.from(gvContainer.children)
+	const groupContainers = children.filter(child => child.classList.contains('sim-group-container'))
+	if (groupContainers.length) {
+		return groupContainers.map((group, index) =>{
+			const assets = []
+			group.querySelectorAll('.card-meta').forEach(metaDiv =>{
+				if (!metaDiv.dataset.meta) return
+				try {
+					const meta = JSON.parse(metaDiv.dataset.meta)
+					assets.push({
+						assetId: meta.id,
+						autoId: parseInt(meta.autoId),
+						filename: meta.originalFileName,
+						path: meta.originalPath,
+					})
+				}
+				catch (e) { console.error('[Export] Error parsing group asset meta:', e) }
+			})
+
+			return {
+				group: parseInt(group.getAttribute('data-group-id')) || index + 1,
+				assets,
+			}
+		})
+	}
+
 	let currentGroupAssets = []
 
 	children.forEach(child =>{
@@ -835,90 +860,13 @@ window.exportIdsToCSV = function exportIdsToCSV(){
 
 
 //------------------------------------------------------------------------
-// Tab Acts Floating Bar
-//------------------------------------------------------------------------
-function initTabActsFloating(){
-	const tabActs = document.querySelector('.tab-acts')
-	if (!tabActs) throw new Error( `[tabActs] NotFound??` )
-
-	let placeholder = document.createElement('div')
-	placeholder.className = 'tab-acts-placeholder'
-	tabActs.parentNode.insertBefore(placeholder, tabActs.nextSibling)
-
-	let originalTop = null
-	let isFloating = false
-
-	function updateOriginalTop(){
-		if (!isFloating) {
-			const rect = tabActs.getBoundingClientRect()
-			originalTop = rect.top + window.scrollY
-		}
-	}
-
-	function toggleFloatingBar(){
-		const currentTab = document.querySelector('.nav-tabs .nav-link.active')
-		const isCurrentTab = currentTab && currentTab.textContent.trim() == 'current'
-		const scrollY = window.scrollY
-
-		if (!isCurrentTab) {
-			if (isFloating) {
-				tabActs.classList.remove('floating', 'show')
-				placeholder.classList.remove('active')
-				isFloating = false
-			}
-			return
-		}
-
-		if (originalTop === null) updateOriginalTop()
-
-		const shouldFloat = scrollY > originalTop + 50
-
-		if (shouldFloat !== isFloating) {
-			if (shouldFloat) {
-				tabActs.classList.add('floating')
-				placeholder.classList.add('active')
-				setTimeout(() => tabActs.classList.add('show'), 10)
-				isFloating = true
-			}
-			else {
-				tabActs.classList.remove('show')
-				setTimeout(() =>{
-					tabActs.classList.remove('floating')
-					placeholder.classList.remove('active')
-				}, 300)
-				isFloating = false
-			}
-		}
-	}
-
-	window.addEventListener('scroll', toggleFloatingBar)
-	window.addEventListener('resize', () =>{
-		originalTop = null
-		updateOriginalTop()
-	})
-
-	document.addEventListener('click', function(e){
-		if (e.target && e.target.matches('.nav-link')) {
-			setTimeout(() =>{
-				originalTop = null
-				updateOriginalTop()
-				toggleFloatingBar()
-			}, 100)
-		}
-	})
-
-	updateOriginalTop()
-	setTimeout(toggleFloatingBar, 100)
-}
-
-//------------------------------------------------------------------------
 // Goto Top Button
 //------------------------------------------------------------------------
 function initBtnTop(btn){
 
 	function toggleGotoTopBtn(){
 		const currentTab = document.querySelector('.nav-tabs .nav-link.active')
-		const isCurrentTab = currentTab && currentTab.textContent.trim() == 'current'
+		const isCurrentTab = currentTab && currentTab.textContent.trim().toLowerCase().startsWith('current')
 		const scrollY = window.scrollY
 
 		// console.log('[GotoTop] Toggle check - isCurrentTab:', isCurrentTab, 'scrollY:', scrollY)
@@ -959,7 +907,6 @@ document.addEventListener('DOMContentLoaded', function(){
 	//------------------------------------------------------------------------
 	// for pages
 	//------------------------------------------------------------------------
-	ui.mob.waitFor('.tab-acts', initTabActsFloating)
 	ui.mob.waitFor('#sim-goto-top-btn', initBtnTop)
 
 })

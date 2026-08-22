@@ -83,14 +83,21 @@ def _mkGroupHeader(groupId: int, count: int):
 
 
 def mkCardRow(asset: models.Asset, groupId: int, style: Optional[dict] = None):
-	return htm.Div(cards.mk(asset, stackGroupId=groupId), style=style or {})
+	return htm.Div(cards.mk(asset, stackGroupId=groupId), className="sim-card-cell", style=style or {})
 
 
-def mkGroupRows(groupId: int, assets: List[models.Asset], style: Optional[dict] = None):
-	return [
+def mkGroupContainer(groupId: int, assets: List[models.Asset], minW=290):
+	cardGridStyle = {
+		"gridTemplateColumns": f"repeat(auto-fit, minmax(min(100%, {minW}px), 1fr))",
+	}
+	return htm.Section([
 		_mkGroupHeader(groupId, len(assets)),
-		*[mkCardRow(asset, groupId, style) for asset in assets],
-	]
+		htm.Div(
+			[mkCardRow(asset, groupId) for asset in assets],
+			className="sim-group-card-list",
+			style=cardGridStyle,
+		),
+	], className="sim-group-container", **{"data-group-id": str(groupId)})
 
 
 def mkGrd(assets: list[models.Asset], minW=230, onEmpty=None, maker=cards.mk):
@@ -140,30 +147,12 @@ def mkGrd(assets: list[models.Asset], minW=230, onEmpty=None, maker=cards.mk):
 	return htm.Div(rows, className="gv fsp", style=styGrid)
 
 
-def mkGrdGrps(assets: List[models.Asset], minW=250, maxW=300, onEmpty=None):
+def mkGrdGrps(assets: List[models.Asset], minW=290, maxW=380, onEmpty=None):
 	if not assets or len(assets) == 0:
 		if onEmpty:
 			if isinstance(onEmpty, str): return dbc.Alert(f"{onEmpty}", color="warning", className="text-center")
 			else: return onEmpty
 		return htm.Div(dbc.Alert("--------", color="warning"), className="text-center")
-
-	cntAss = len(assets)
-
-	if cntAss <= 4:
-		styGrid = {
-			"display": "flex",
-			"flexWrap": "wrap",
-			"gap": "1rem",
-			"justifyContent": "center"
-		}
-		styItem = {"flex": f"1 1 {minW}px"}
-	else:
-		styGrid = {
-			"display": "grid",
-			"gridTemplateColumns": f"repeat(auto-fit, minmax({minW}px, 1fr))",
-			"gap": "1rem"
-		}
-		styItem = {}
 
 	groups = {}
 	for asset in assets:
@@ -171,14 +160,14 @@ def mkGrdGrps(assets: List[models.Asset], minW=250, maxW=300, onEmpty=None):
 		if grpId not in groups: groups[grpId] = []
 		groups[grpId].append(asset)
 
-	rows = []
+	groupContainers = []
 	for grpId in sorted(groups.keys()):
 		grpAssets = groups[grpId]
-		rows.extend(mkGroupRows(grpId, grpAssets, styItem))
+		groupContainers.append(mkGroupContainer(grpId, grpAssets, minW))
 
-	lg.info(f"[fsp:gv] assets[{len(assets)}] groups[{len(groups)}] rows[{len(rows)}]")
+	lg.info(f"[fsp:gv] assets[{len(assets)}] groups[{len(groups)}]")
 
-	return htm.Div(rows, className="gv fsp", style=styGrid)
+	return htm.Div(groupContainers, className="gv fsp sim-group-list")
 
 
 

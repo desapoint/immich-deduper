@@ -80,7 +80,6 @@ def _similarRenderState(assets: list[models.Asset], multiMode: bool) -> dict:
 def _patchMultiGrid(oldState: dict, newState: dict, assets: list[models.Asset]):
 	if not oldState or not oldState.get('multi') or not newState.get('multi'): return None
 	if not oldState.get('groups') or not newState.get('groups'): return None
-	if (oldState.get('count', 0) <= 4) != (newState.get('count', 0) <= 4): return None
 
 	oldGroups = oldState['groups']
 	newGroups = newState['groups']
@@ -94,44 +93,37 @@ def _patchMultiGrid(oldState: dict, newState: dict, assets: list[models.Asset]):
 		for groupId, groupAssets in sim_stack.groupAssets(assets, True).items()
 	}
 	newGroupsById = {str(group['id']): group for group in newGroups}
-	style = {'flex': '1 1 250px'} if len(assets) <= 4 else {}
-
-	starts = []
-	start = 0
-	for group in oldGroups:
-		starts.append((start, group))
-		start += 1 + len(group['assets'])
-
 	patch = dash.Patch()
-	rows = patch['props']['children']
+	groupRows = patch['props']['children']
 	changed = False
 
-	for start, oldGroup in reversed(starts):
+	for groupIndex in range(len(oldGroups) - 1, -1, -1):
+		oldGroup = oldGroups[groupIndex]
 		groupId = str(oldGroup['id'])
 		newGroup = newGroupsById.get(groupId)
 		oldAssetIds = [str(asset['id']) for asset in oldGroup['assets']]
 		newAssetIds = [str(asset['id']) for asset in newGroup['assets']] if newGroup else []
 
+		if not newGroup:
+			del groupRows[groupIndex]
+			changed = True
+			continue
+
 		if newGroup and oldAssetIds == newAssetIds:
 			assetsById = {str(asset.autoId): asset for asset in groupedAssets[groupId][1]}
-			for offset, (oldAsset, newAsset) in enumerate(zip(oldGroup['assets'], newGroup['assets']), start=1):
+			cardRows = groupRows[groupIndex]['props']['children'][1]['props']['children']
+			for cardIndex, (oldAsset, newAsset) in enumerate(zip(oldGroup['assets'], newGroup['assets'])):
 				if oldAsset['signature'] == newAsset['signature']: continue
-				rows[start + offset] = gv.mkCardRow(
+				cardRows[cardIndex] = gv.mkCardRow(
 					assetsById[str(newAsset['id'])],
 					groupedAssets[groupId][0],
-					style,
 				)
 				changed = True
 			continue
 
-		for rowIndex in range(start + len(oldGroup['assets']), start - 1, -1):
-			del rows[rowIndex]
+		actualGroupId, groupAssets = groupedAssets[groupId]
+		groupRows[groupIndex] = gv.mkGroupContainer(actualGroupId, groupAssets)
 		changed = True
-
-		if newGroup:
-			actualGroupId, groupAssets = groupedAssets[groupId]
-			for offset, row in enumerate(gv.mkGroupRows(actualGroupId, groupAssets, style)):
-				rows.insert(start + offset, row)
 
 	return patch if changed else None
 
@@ -565,7 +557,7 @@ def sim_Load(dta_now, dta_cnt, oldRenderState):
 				_emptyResult("No grouped results found", "Run a search or adjust the Similar settings."),
 			])
 	else:
-		gview = gv.mkGrd(now.sim.assCur, onEmpty=[
+		gview = gv.mkGrd(now.sim.assCur, minW=280, onEmpty=[
 			_emptyResult("No similar images to review", "Run a search to load results."),
 		])
 

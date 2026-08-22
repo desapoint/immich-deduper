@@ -75,6 +75,8 @@ class TestSimilarUiLayout(unittest.TestCase):
 		cardSelects = [node for node in nodes if isinstance(props(node).get('id'), dict) and props(node)['id'].get('type') == 'card-select']
 		coverButtons = [node for node in nodes if isinstance(props(node).get('id'), dict) and props(node)['id'].get('type') == gv.STACK_COVER_BUTTON]
 		autoLogSlots = [node for node in nodes if props(node).get('className') == 'sim-group-auto-log']
+		groupContainers = [node for node in nodes if props(node).get('className') == 'sim-group-container']
+		cardLists = [node for node in nodes if props(node).get('className') == 'sim-group-card-list']
 		deleteGroup = next(
 			node for node in nodes
 			if isinstance(props(node).get('id'), dict)
@@ -83,6 +85,10 @@ class TestSimilarUiLayout(unittest.TestCase):
 		)
 
 		self.assertEqual(len(headers), 1)
+		self.assertEqual(len(groupContainers), 1)
+		self.assertEqual(len(cardLists), 1)
+		self.assertEqual(props(groupContainers[0]).get('data-group-id'), '7')
+		self.assertIn('290px', props(cardLists[0]).get('style', {}).get('gridTemplateColumns', ''))
 		self.assertEqual(props(titles[0]).get('data-group-id'), '7')
 		self.assertEqual([props(node).get('data-group-id') for node in cardSelects], ['7', '7'])
 		self.assertEqual([props(node).get('data-stack-id') for node in cardSelects], ['stack-a', 'stack-a'])

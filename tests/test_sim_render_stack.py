@@ -157,7 +157,10 @@ class TestSimilarPartialRendering(unittest.TestCase):
 		self.assertEqual([operation['operation'] for operation in operations], ['Assign', 'Assign'])
 		self.assertEqual(
 			[operation['location'] for operation in operations],
-			[['props', 'children', 1], ['props', 'children', 2]],
+			[
+				['props', 'children', 0, 'props', 'children', 1, 'props', 'children', 0],
+				['props', 'children', 0, 'props', 'children', 1, 'props', 'children', 1],
+			],
 		)
 
 	def test_removed_group_deletes_only_its_existing_rows(self):
@@ -168,11 +171,24 @@ class TestSimilarPartialRendering(unittest.TestCase):
 
 		gridPatch = similar._patchMultiGrid(oldState, newState, newAssets)
 		operations = gridPatch.to_plotly_json()['operations']
-		self.assertEqual([operation['operation'] for operation in operations], ['Delete', 'Delete', 'Delete'])
+		self.assertEqual([operation['operation'] for operation in operations], ['Delete'])
 		self.assertEqual(
 			[operation['location'] for operation in operations],
-			[['props', 'children', 2], ['props', 'children', 1], ['props', 'children', 0]],
+			[['props', 'children', 0]],
 		)
+
+	def test_changed_group_membership_replaces_only_that_group_container(self):
+		oldAssets = [asset(1, 1), asset(2, 1), asset(3, 2), asset(4, 2)]
+		newAssets = [asset(1, 1), asset(3, 2), asset(4, 2)]
+		oldState = similar._similarRenderState(oldAssets, True)
+		newState = similar._similarRenderState(newAssets, True)
+
+		with patch('ui.cards.db.psql.getUsrName', return_value='Owner'):
+			gridPatch = similar._patchMultiGrid(oldState, newState, newAssets)
+
+		operations = gridPatch.to_plotly_json()['operations']
+		self.assertEqual([operation['operation'] for operation in operations], ['Assign'])
+		self.assertEqual([operation['location'] for operation in operations], [['props', 'children', 0]])
 
 	def test_global_controls_share_group_control_structure(self):
 		with (

@@ -17,6 +17,7 @@ async function main() {
 	let buttonUpdates = 0
 	let cacheRefreshes = 0
 	let renderedCards = []
+	let exportGrid = null
 	const grid = {}
 	const header = {appendChild(child) { headerChildren.push(child) }}
 	const title = {
@@ -61,7 +62,10 @@ async function main() {
 		document: {
 			body: {},
 			addEventListener() {},
-			querySelector(selector) { return selector === '#sim-gvSim' && renderedCards.length ? grid : null },
+			querySelector(selector) {
+				if (selector === '.gv.fsp') return exportGrid
+				return selector === '#sim-gvSim' && renderedCards.length ? grid : null
+			},
 			querySelectorAll(selector) {
 				if (selector === '#sim-gvSim [id*="card-select"]') return renderedCards
 				if (selector === '.sim-group-auto-log') return [logSlot]
@@ -109,6 +113,25 @@ async function main() {
 	vm.runInContext('updAuslLog()', context)
 	assert.equal(logChildren.length, 1, 'updating Auto Log must replace stale details instead of duplicating them')
 	assert.match(logChildren[0].innerHTML, /Updated selection #2/)
+
+	const exportGroup = (groupId, metas) => ({
+		classList: {contains(name) { return name === 'sim-group-container' }},
+		getAttribute(name) { return name === 'data-group-id' ? String(groupId) : null },
+		querySelectorAll(selector) {
+			return selector === '.card-meta'
+				? metas.map(meta => ({dataset: {meta: JSON.stringify(meta)}}))
+				: []
+		},
+	})
+	exportGrid = {
+		children: [
+			exportGroup(7, [{id: 'a', autoId: 1, originalFileName: 'one.jpg', originalPath: '/one.jpg'}]),
+			exportGroup(8, [{id: 'b', autoId: 2, originalFileName: 'two.jpg', originalPath: '/two.jpg'}]),
+		],
+	}
+	const groupedExport = vm.runInContext('groupAssetsByVisualGroups([])', context)
+	assert.deepEqual(Array.from(groupedExport, group => group.group), [7, 8])
+	assert.deepEqual(Array.from(groupedExport, group => group.assets.length), [1, 1])
 
 	vm.runInContext('_lastAutoSelAssetIds = [1, 2, 3]; _lastAutoSelConfigSig = "same"', context)
 	assert.equal(vm.runInContext('isExistingResultUpdate([1, 3], "same")', context), true)

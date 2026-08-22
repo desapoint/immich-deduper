@@ -69,6 +69,16 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn('&-panel {', comp)
 		self.assertNotIn('.ausl-log-poptip', comp)
 
+	def test_similar_controls_and_groups_have_stable_layout_boundaries(self):
+		main = (ROOT / 'src/scss/main.scss').read_text()
+		base = (ROOT / 'src/scss/main.base.scss').read_text()
+		comp = (ROOT / 'src/scss/comp.scss').read_text()
+		self.assertIn('position: sticky;', main)
+		self.assertIn('top: 4rem;', main)
+		self.assertIn('.sim-group-container {', comp)
+		self.assertIn('.sim-group-card-list {', comp)
+		self.assertNotIn('&.floating {', base)
+
 
 if __name__ == '__main__':
 	unittest.main()
