@@ -93,6 +93,78 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 		]),
 	], className="viewer sim-card-media" if modSim else "viewer")
 
+	captureDate = exi.dateTimeOriginal or ass.localDateTime or ass.fileCreatedAt
+	captureLabel = str(captureDate).replace("T", " ")[:16] if captureDate else "Date unavailable"
+	fileName = ass.originalFileName or path.basename(ass.originalPath) or f"Asset #{ass.autoId}"
+	pathFileName = path.basename(ass.originalPath) if ass.originalPath else None
+
+	metadataItems = []
+	if ass.isFavorite:
+		metadataItems.append(htm.Span([htm.I(className="bi bi-heart-fill"), "Favorite"], className="tag sim-card-meta-item is-favorite", title="Marked as favorite"))
+	if ex and ex.rating and ex.rating > 0:
+		metadataItems.append(htm.Span([htm.I(className="bi bi-star-fill"), f"{ex.rating}"], className="tag sim-card-meta-item", title=f"Rating {ex.rating}"))
+	if ex and ex.albs:
+		metadataItems.append(htm.Span([htm.I(className="bi bi-images"), f"{len(ex.albs)}"], className="tag sim-card-meta-item", title=f"{len(ex.albs)} album(s)", **{"data-tip-id": f"albs-{ass.autoId}"})) # type: ignore
+	if ex and ex.tags:
+		metadataItems.append(htm.Span([htm.I(className="bi bi-tags-fill"), f"{len(ex.tags)}"], className="tag sim-card-meta-item", title=f"{len(ex.tags)} tag(s)", **{"data-tip-id": f"tags-{ass.autoId}"})) # type: ignore
+	if ex and ex.facs:
+		metadataItems.append(htm.Span([htm.I(className="bi bi-people-fill"), f"{len(ex.facs)}"], className="tag sim-card-meta-item", title=f"{len(ex.facs)} recognized person(s)", **{"data-tip-id": f"facs-{ass.autoId}"})) # type: ignore
+	if ass.libId:
+		metadataItems.append(htm.Span([htm.I(className="bi bi-hdd-network-fill"), "External"], className="tag sim-card-meta-item", title="External-library asset"))
+	if ex and ex.stackAssets:
+		metadataItems.append(htm.Span([htm.Span(className="ico stack"), f"{len(ex.stackAssets)}"], className="tag sim-card-meta-item", title=f"{len(ex.stackAssets)} image(s) in this stack", **{"data-tip-id": f"stack-{ass.autoId}"})) # type: ignore
+	if ass.simOk:
+		metadataItems.append(htm.Span([htm.I(className="bi bi-check-circle-fill"), "Resolved"], className="tag sim-card-meta-item", title="Similarity record is resolved"))
+
+	detailRows = [
+		("Immich ID", ass.id),
+		("Original filename", ass.originalFileName),
+		("Full path", ass.originalPath),
+		("Stored filename", pathFileName if pathFileName and pathFileName != ass.originalFileName else None),
+		("Device ID", ass.deviceId),
+		("Asset type", ass.type),
+		("Captured", captureDate),
+		("Created", ass.fileCreatedAt),
+		("Modified", ass.fileModifiedAt),
+		("Library ID", ass.libId),
+		("Stack ID", stackId),
+		("Stack thumbnail ID", stackPrimaryId),
+		("Live Photo video ID", ass.vdoId),
+		("Live Photo path", ass.pathVdo),
+	]
+	detailLinks = [
+		htm.Span("EXIF", className="tag sim-card-detail-link", **{"data-tip-id": f"exif-{ass.autoId}"}) if exi and exi.toAvDict() else None, # type: ignore
+		htm.Span("Description", className="tag sim-card-detail-link", **{"data-tip-id": f"desc-{ass.autoId}"}) if ex and ex.description else None, # type: ignore
+		htm.Span("Location", className="tag sim-card-detail-link", **{"data-tip-id": f"loc-{ass.autoId}"}) if ex and ex.latitude is not None and ex.longitude is not None else None, # type: ignore
+	]
+
+	similarCardBody = dbc.CardBody([
+		htm.Div([
+			htm.Span(fileName, className="tag sim-card-filename", title=fileName),
+			htm.Div([
+				htm.Span([htm.I(className="bi bi-calendar3"), captureLabel], className="sim-card-identity-item", title=str(captureDate) if captureDate else None),
+				htm.Span([htm.I(className="bi bi-person-circle"), ownerName or "Unknown owner"], className="sim-card-identity-item", title=ass.ownerId or None),
+			], className="sim-card-identity-secondary"),
+		], className="sim-card-identity"),
+		htm.Div(metadataItems, className="sim-card-metadata", **{"aria-label": "Asset metadata summary"}),
+		htm.Details([
+			htm.Summary([
+				htm.Span("Details"),
+				htm.I(className="bi bi-chevron-down", **{"aria-hidden": "true"}),
+			], className="sim-card-details-summary"),
+			htm.Div([
+				*[
+					htm.Div([
+						htm.Span(label, className="sim-card-detail-label"),
+						htm.Span(str(value), className="sim-card-detail-value", title=str(value)),
+					], className="sim-card-detail-row")
+					for label, value in detailRows if value not in (None, "")
+				],
+				htm.Div(detailLinks, className="sim-card-detail-links") if any(detailLinks) else None,
+			], className="sim-card-detail-grid"),
+		], className="sim-card-details", open=bool(db.dto.showGridInfo)),
+	], className="p-0 sim-card-content")
+
 	return htm.Div([
 		#------------------------------------------------------------------------
 		# hidden meta data for export
@@ -196,7 +268,7 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 
 			#------------------------------------------------------------------------
 			mediaStage,
-			dbc.CardBody([
+			similarCardBody if modSim else dbc.CardBody([
 				dbc.Row([
 					htm.Span("immich id"),htm.Span(f"{ass.id}",className="tag"),
 					*([htm.Span("device"),htm.Span(f"{ass.deviceId}",className="tag second")] if ass.deviceId else []),

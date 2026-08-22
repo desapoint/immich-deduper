@@ -12,7 +12,7 @@ class MockElement {
 		this.attributes = {}
 		this.listeners = {}
 		this.isConnected = true
-		this.classList = {add() {}, remove() {}}
+		this.classList = {add() {}, remove() {}, toggle() {}}
 	}
 	get nextSibling() {
 		if (!this.parentNode) return null
@@ -51,6 +51,7 @@ const home = new MockElement('home')
 const tip = new MockElement('tip-1')
 const sibling = new MockElement('sibling')
 const trigger = new MockElement('trigger')
+const details = new MockElement('details')
 trigger.setAttribute('data-tip-id', 'tip-1')
 home.appendChild(tip)
 home.appendChild(sibling)
@@ -66,7 +67,11 @@ const sandbox = {
 		documentElement: {scrollLeft: 0, scrollTop: 0},
 		getElementById(id) { return id === 'tip-1' ? tip : null },
 		querySelector() { return null },
-		querySelectorAll(selector) { return selector === 'span[data-tip-id]' ? [trigger] : [] },
+		querySelectorAll(selector) {
+			if (selector === 'span[data-tip-id]') return [trigger]
+			if (selector === '.sim-card-details') return [details]
+			return []
+		},
 		createElement() { return new MockElement() },
 		addEventListener(name, callback) { if (name === 'DOMContentLoaded') onReady = callback },
 	},
@@ -89,6 +94,10 @@ async function run() {
 	assert.equal(trigger.getAttribute('role'), 'button')
 	assert.equal(trigger.getAttribute('aria-haspopup'), 'true')
 	assert.deepEqual(Object.keys(trigger.listeners).sort(), ['blur', 'focus', 'mouseenter', 'mouseleave'])
+	vm.runInContext('window.dash_clientside.ui.toggleGridInfo(true)', sandbox)
+	assert.equal(details.open, true, 'Show Grid Info should open the native card details')
+	vm.runInContext('window.dash_clientside.ui.toggleGridInfo(false)', sandbox)
+	assert.equal(details.open, false, 'hiding Grid Info should close the native card details')
 
 	vm.runInContext('ui.poptip.show("tip-1", document.body)', sandbox)
 	assert.equal(tip.parentNode, body, 'an active popup must escape card paint containment')

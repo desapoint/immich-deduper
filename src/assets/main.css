@@ -1223,6 +1223,52 @@ select.form-select { appearance: none; padding-right: 2rem !important; backgroun
 
 .similar-workspace .card.sim .viewer.sim-card-media .sim-card-media-facts { right: 0.5rem; justify-content: flex-end; }
 
+.similar-workspace .card.sim .sim-card-content { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; background: rgba(8, 17, 31, 0.24); }
+
+.similar-workspace .card.sim .sim-card-identity { display: grid; gap: 0.42rem; min-height: 4.35rem; padding: 0.72rem 0.78rem 0.65rem; border-bottom: 1px solid var(--ui-border); }
+
+.similar-workspace .card.sim .sim-card-filename.tag { display: block; width: 100%; min-width: 0; margin: 0; padding: 0; overflow: hidden; border: 0; background: transparent; color: var(--ui-text); font-size: 0.84rem; font-weight: 680; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+
+.similar-workspace .card.sim .sim-card-filename.tag:hover, .similar-workspace .card.sim .sim-card-filename.tag:focus-visible { border: 0; background: transparent; color: #bae6fd; }
+
+.similar-workspace .card.sim .sim-card-identity-secondary { display: flex; flex-wrap: wrap; align-items: center; gap: 0.28rem 0.7rem; min-width: 0; }
+
+.similar-workspace .card.sim .sim-card-identity-item { display: inline-flex; align-items: center; gap: 0.3rem; min-width: 0; color: var(--ui-text-muted); font-size: 0.68rem; line-height: 1.25; }
+
+.similar-workspace .card.sim .sim-card-identity-item i { flex: 0 0 auto; color: var(--ui-text-soft); }
+
+.similar-workspace .card.sim .sim-card-metadata { display: flex; flex-wrap: wrap; align-content: flex-start; align-items: center; gap: 0.3rem; min-height: 2.85rem; padding: 0.55rem 0.72rem; border-bottom: 1px solid var(--ui-border); }
+
+.similar-workspace .card.sim .sim-card-meta-item.tag, .similar-workspace .card.sim .sim-card-detail-link.tag { display: inline-flex; align-items: center; gap: 0.28rem; margin: 0; padding: 0.22rem 0.4rem; border: 1px solid var(--ui-border); border-radius: 0.35rem; background: rgba(17, 29, 46, 0.72); color: var(--ui-text-soft); font-size: 0.64rem; font-weight: 620; line-height: 1.2; }
+
+.similar-workspace .card.sim .sim-card-meta-item.tag i, .similar-workspace .card.sim .sim-card-meta-item.tag .ico, .similar-workspace .card.sim .sim-card-detail-link.tag i, .similar-workspace .card.sim .sim-card-detail-link.tag .ico { flex: 0 0 auto; margin: 0; }
+
+.similar-workspace .card.sim .sim-card-meta-item.tag.is-favorite, .similar-workspace .card.sim .sim-card-detail-link.tag.is-favorite { color: #f9a8d4; }
+
+.similar-workspace .card.sim .sim-card-details { margin-top: auto; background: rgba(8, 17, 31, 0.28); }
+
+.similar-workspace .card.sim .sim-card-details[open] .sim-card-details-summary i { transform: rotate(180deg); }
+
+.similar-workspace .card.sim .sim-card-details-summary { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-height: 2.35rem; padding: 0.52rem 0.75rem; color: var(--ui-text-soft); font-size: 0.7rem; font-weight: 650; list-style: none; cursor: pointer; }
+
+.similar-workspace .card.sim .sim-card-details-summary::-webkit-details-marker { display: none; }
+
+.similar-workspace .card.sim .sim-card-details-summary:hover { background: var(--ui-surface-hover); color: var(--ui-text); }
+
+.similar-workspace .card.sim .sim-card-details-summary:focus-visible { outline: none; box-shadow: inset var(--ui-focus); }
+
+.similar-workspace .card.sim .sim-card-details-summary i { transition: transform 120ms ease; }
+
+.similar-workspace .card.sim .sim-card-detail-grid { display: grid; gap: 0; padding: 0 0.72rem 0.68rem; border-top: 1px solid var(--ui-border); }
+
+.similar-workspace .card.sim .sim-card-detail-row { display: grid; grid-template-columns: minmax(5.75rem, 34%) minmax(0, 1fr); gap: 0.55rem; padding: 0.38rem 0; border-bottom: 1px solid rgba(148, 163, 184, 0.11); font-size: 0.65rem; line-height: 1.35; }
+
+.similar-workspace .card.sim .sim-card-detail-label { color: var(--ui-text-muted); }
+
+.similar-workspace .card.sim .sim-card-detail-value { min-width: 0; overflow-wrap: anywhere; color: var(--ui-text-soft); }
+
+.similar-workspace .card.sim .sim-card-detail-links { display: flex; flex-wrap: wrap; gap: 0.3rem; padding-top: 0.55rem; }
+
 .similar-workspace .card.sim span.tag:not(.no), .similar-workspace .card.sim .sim-source-label { transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease; }
 
 .similar-workspace .card.sim span.tag:not(.no) { cursor: copy; }

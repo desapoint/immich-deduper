@@ -152,6 +152,56 @@ class TestSimilarUiLayout(unittest.TestCase):
 		self.assertFalse(any(props(node).get('className') in {'LT', 'RT', 'LB', 'RB'} for node in mediaNodes))
 		self.assertFalse(any(props(node).get('data-tip-id') for node in mediaNodes))
 
+	def test_similar_card_has_identity_metadata_and_collapsed_details(self):
+		item = asset(4, 8, stackId='stack-b', primary=True)
+		item.originalFileName = 'holiday-original-name.jpg'
+		item.originalPath = '/external/archive/holiday-stored-name.jpg'
+		item.deviceId = 'camera-import'
+		item.libId = 'external-library'
+		item.type = 'IMAGE'
+		item.localDateTime = '2025-07-08T09:10:11'
+		item.fileCreatedAt = '2025-07-08T09:11:12Z'
+		item.fileModifiedAt = '2025-07-09T10:12:13Z'
+		item.isFavorite = 1
+		item.jsonExif.dateTimeOriginal = '2025-07-08T09:10:11'
+		item.jsonExif.fileSizeInByte = 8192
+		item.ex.rating = 4
+		item.ex.albs = [models.Album(albumName='Trips')]
+		item.ex.tags = [models.Tags(value='beach')]
+		item.ex.facs = [models.AssetFace(name='Person')]
+		item.ex.description = 'A useful description'
+		item.ex.latitude = 45.5
+		item.ex.longitude = -73.6
+
+		with patch('ui.cards.db.psql.getUsrName', return_value='Owner Name'):
+			card = gv.cards.mk(item, stackGroupId=8)
+
+		nodes = list(walk(card))
+		identity = next(node for node in nodes if props(node).get('className') == 'sim-card-identity')
+		metadata = next(node for node in nodes if props(node).get('className') == 'sim-card-metadata')
+		details = next(node for node in nodes if props(node).get('className') == 'sim-card-details')
+		detailRows = [node for node in nodes if props(node).get('className') == 'sim-card-detail-row']
+		metaItems = [node for node in walk(metadata) if 'sim-card-meta-item' in str(props(node).get('className', ''))]
+
+		self.assertTrue(any(props(node).get('className') == 'tag sim-card-filename' for node in walk(identity)))
+		self.assertTrue(any(getattr(node, 'children', None) == 'holiday-original-name.jpg' for node in walk(identity)))
+		self.assertTrue(any(node == 'Owner Name' or getattr(node, 'children', None) == 'Owner Name' for node in walk(identity)))
+		self.assertGreaterEqual(len(metaItems), 7)
+		self.assertEqual(props(details).get('open'), bool(gv.cards.db.dto.showGridInfo))
+		self.assertGreaterEqual(len(detailRows), 10)
+		self.assertTrue(any(getattr(node, 'children', None) == 'Full path' for node in nodes))
+		self.assertTrue(any(getattr(node, 'children', None) == '/external/archive/holiday-stored-name.jpg' for node in nodes))
+		self.assertFalse(any(props(node).get('className') == 'grid grid-info' for node in nodes))
+
+	def test_view_card_retains_legacy_information_layout(self):
+		with patch('ui.cards.db.psql.getUsrName', return_value='Owner'):
+			card = gv.cards.mk(asset(1, 7), False)
+
+		nodes = list(walk(card))
+		self.assertTrue(any(props(node).get('class_name') == 'grid grid-info' for node in nodes))
+		self.assertTrue(any(props(node).get('className') == 'tagbox' for node in nodes))
+		self.assertFalse(any(props(node).get('className') == 'sim-card-details' for node in nodes))
+
 
 if __name__ == '__main__':
 	unittest.main()

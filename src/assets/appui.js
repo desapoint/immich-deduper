@@ -340,6 +340,7 @@ ui.init()
 window.dash_clientside.ui = {
 	toggleGridInfo(checked){
 		document.body.classList.toggle('show-grid-info', checked)
+		document.querySelectorAll('.sim-card-details').forEach(details => { details.open = !!checked })
 		return dash_clientside.no_update
 	}
 }
@@ -353,5 +354,8 @@ ui.mob.waitFor('#sets-showGridInfo', cbx =>{
 
 	if (inp.checked) document.body.classList.add('show-grid-info')
 
-	inp.addEventListener('change', () => document.body.classList.toggle('show-grid-info', inp.checked))
+	inp.addEventListener('change', () =>{
+		document.body.classList.toggle('show-grid-info', inp.checked)
+		document.querySelectorAll('.sim-card-details').forEach(details => { details.open = inp.checked })
+	})
 })

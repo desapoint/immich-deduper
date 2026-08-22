@@ -118,6 +118,17 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn('.sim-card-media-badges,', main)
 		self.assertIn('.sim-card-media-facts {', main)
 
+	def test_similar_card_information_zones_are_compact_and_native(self):
+		main = (ROOT / 'src/scss/main.scss').read_text()
+		appui = (ROOT / 'src/assets/appui.js').read_text()
+		for selector in (
+			'.sim-card-content {', '.sim-card-identity {', '.sim-card-filename.tag {',
+			'.sim-card-metadata {', '.sim-card-details {', '.sim-card-details-summary {',
+			'.sim-card-detail-grid {', '.sim-card-detail-row {',
+		):
+			self.assertIn(selector, main)
+		self.assertIn("document.querySelectorAll('.sim-card-details')", appui)
+
 	def test_similar_review_tabs_match_shared_controls(self):
 		main = (ROOT / 'src/scss/main.scss').read_text()
 		self.assertIn('.similar-workspace {', main)
