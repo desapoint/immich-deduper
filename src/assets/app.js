@@ -118,12 +118,10 @@ function applySystemCheckResults(sc, data){
 		if (!div) continue
 		applied++
 
-		const icon = div.querySelector('i')
 		const state = div.querySelector('.settings-status-state')
 		div.classList.remove('is-valid', 'is-invalid', 'bg-danger', 'text-white', 'divtip')
 
 		if (!item.ok) {
-			if (icon) icon.className = 'bi bi-x-circle-fill text-danger'
 			if (state) {
 				state.innerText = 'Issue'
 				state.className = 'settings-status-state is-invalid'
@@ -134,7 +132,6 @@ function applySystemCheckResults(sc, data){
 			div.style.cursor = 'help'
 		}
 		else {
-			if (icon) icon.className = 'bi bi-check-circle-fill text-success'
 			if (state) {
 				state.innerText = 'Valid'
 				state.className = 'settings-status-state is-valid'

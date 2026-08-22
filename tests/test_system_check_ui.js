@@ -12,8 +12,8 @@ function classList(initial = []) {
 	}
 }
 
-function statusItem() {
-	const icon = {className: 'bi bi-server'}
+function statusItem(iconClass) {
+	const icon = {className: `bi ${iconClass}`}
 	const state = {innerText: 'Checking', className: 'settings-status-state'}
 	const attributes = {}
 	return {
@@ -32,8 +32,8 @@ function statusItem() {
 	}
 }
 
-const dataItem = statusItem()
-const pathItem = statusItem()
+const dataItem = statusItem('bi-database')
+const pathItem = statusItem('bi-folder2-open')
 const statusCard = {
 	querySelector(selector) {
 		if (selector === '.chk-data') return dataItem
@@ -78,12 +78,12 @@ observerCallback()
 assert.equal(dataItem.state.innerText, 'Valid')
 assert.equal(dataItem.attributes['data-check-status'], 'valid')
 assert.equal(dataItem.classList.contains('is-valid'), true)
-assert.match(dataItem.icon.className, /check-circle-fill/)
+assert.equal(dataItem.icon.className, 'bi bi-database', 'a valid check must retain its service icon')
 
 assert.equal(pathItem.state.innerText, 'Issue')
 assert.equal(pathItem.attributes['data-check-status'], 'invalid')
 assert.equal(pathItem.attributes['data-tooltip'], 'not mounted')
 assert.equal(pathItem.classList.contains('is-invalid'), true)
-assert.match(pathItem.icon.className, /x-circle-fill/)
+assert.equal(pathItem.icon.className, 'bi bi-folder2-open', 'an invalid check must retain its service icon')
 
 console.log('system check UI tests passed')
