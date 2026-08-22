@@ -709,15 +709,20 @@
 
 	.card-header {
 		&.sim-card-header {
+			position: relative;
+			z-index: 3;
 			display: grid;
 			grid-template-columns: minmax(0, 1fr);
 			gap: 0.35rem;
+			overflow: visible;
 		}
 
 		.sim-card-select {
 			display: grid;
 			grid-template-columns: minmax(0, 1fr) auto;
 			align-items: center;
+			justify-items: stretch;
+			column-gap: 0.5rem;
 			min-width: 0;
 		}
 
@@ -727,6 +732,33 @@
 			display: flex;
 			align-items: center;
 			min-width: 0;
+		}
+
+		.sim-card-selection {
+			justify-self: start;
+			justify-content: flex-start;
+
+			.form-check {
+				display: flex;
+				align-items: center;
+				justify-content: flex-start;
+				width: max-content;
+				max-width: 100%;
+				margin: 0;
+				padding: 0;
+			}
+
+			.form-check-input[type="checkbox"] {
+				flex: 0 0 auto;
+				margin: 0 0.42rem 0 0;
+			}
+
+			.form-check-label {
+				display: flex;
+				align-items: center;
+				min-width: 0;
+				margin: 0;
+			}
 		}
 
 		.sim-card-score { justify-content: flex-end; }

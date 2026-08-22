@@ -18,6 +18,7 @@ async function main() {
 	let cacheRefreshes = 0
 	let renderedCards = []
 	let exportGrid = null
+	let autoCard = null
 	const grid = {}
 	const header = {appendChild(child) { headerChildren.push(child) }}
 	const title = {
@@ -44,7 +45,7 @@ async function main() {
 			stackCoverIds: new Set(),
 			extractAssetIdBy() { return null },
 			refreshDomCache() { cacheRefreshes++ },
-			getCard() { return null },
+			getCard() { return autoCard },
 			updStackCoverButtons() { coverUpdates++ },
 			updAllCss() { fullCssUpdates++; return Promise.resolve(0) },
 			updBtns() { buttonUpdates++ },
@@ -108,6 +109,27 @@ async function main() {
 	assert.equal(titleChildren.length, 0, 'the Auto log must not alter the group title grid')
 	assert.equal(headerChildren.length, 0, 'the Auto log must not create a floating header popup')
 	assert.equal(cardChildren.length, 0, 'Auto log UI must never be inserted into an image card')
+
+	const autoLabelChildren = []
+	const autoLabel = {
+		querySelector(selector) {
+			return selector === '.ausl-tip'
+				? autoLabelChildren.find(child => child.className === 'ausl-tip') || null
+				: null
+		},
+		appendChild(child) { autoLabelChildren.push(child) },
+	}
+	autoCard = {
+		querySelector(selector) { return selector === 'label' ? autoLabel : null },
+	}
+	context.window.auslReasons = {1: ['Higher resolution', 'Favorite']}
+	await vm.runInContext('updAuslTips(false)', context)
+	assert.equal(autoLabelChildren.length, 1, 'Auto selection should add one explanation trigger')
+	assert.equal(autoLabelChildren[0].textContent, 'Auto')
+	assert.equal(autoLabelChildren[0].tabIndex, 0, 'Auto explanation should support keyboard focus')
+	assert.equal(autoLabelChildren[0].role, 'note')
+	assert.equal(autoLabelChildren[0]['aria-label'], 'Auto-selected: Higher resolution, Favorite')
+	autoCard = null
 
 	context.window.auslLogs[7].reason = 'Updated selection #2'
 	vm.runInContext('updAuslLog()', context)

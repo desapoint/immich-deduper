@@ -492,7 +492,10 @@ async function updAuslTips(applySelection = true){
 		const tipText = reasonList.join(', ')
 		const tip = document.createElement('span')
 		tip.className = 'ausl-tip'
-		tip.textContent = 'Auto?'
+		tip.textContent = 'Auto'
+		tip.tabIndex = 0
+		tip.setAttribute('role', 'note')
+		tip.setAttribute('aria-label', `Auto-selected: ${tipText}`)
 		tip.setAttribute('data-tip', tipText)
 		label.appendChild(tip)
 	}

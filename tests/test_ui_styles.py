@@ -95,8 +95,13 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		comp = (ROOT / 'src/scss/comp.scss').read_text()
 		self.assertIn('.sim-card-header-secondary {', main)
 		self.assertIn('.sim-card-score { justify-content: flex-end; }', main)
+		self.assertIn('.sim-card-selection {', main)
+		self.assertIn('justify-self: start;', main)
+		self.assertIn('.form-check-input[type="checkbox"] {', main)
 		self.assertIn('background: var(--ui-surface-raised);', main)
-		self.assertIn('.sim-card-selection:has(.ausl-tip) {', comp)
+		self.assertIn('top: calc(100% + 0.5rem);', comp)
+		self.assertIn('&:focus-visible::after,', comp)
+		self.assertNotIn('.sim-card-selection:has(.ausl-tip) {', comp)
 
 	def test_similar_review_tabs_match_shared_controls(self):
 		main = (ROOT / 'src/scss/main.scss').read_text()

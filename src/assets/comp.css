@@ -451,20 +451,15 @@ button { text-decoration: none; }
     opacity: 1; } }
 
 /*======================== Auto-Select Tooltip ========================*/
-.sim-card-selection:has(.ausl-tip) { overflow: visible !important; }
+.ausl-tip { display: inline-flex; align-items: center; justify-content: center; position: relative; margin-left: 0.4rem; padding: 0.12rem 0.4rem; border: 1px solid rgba(134, 239, 172, 0.38); border-radius: 999px; background: rgba(22, 101, 52, 0.38); color: #bbf7d0; cursor: help; font-size: 0.62rem; font-weight: 650; vertical-align: text-bottom; white-space: nowrap; transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease; }
 
-@keyframes ausl-breathe { 0%, 100% { opacity: 1;
-    box-shadow: 0 0 4px rgba(120, 194, 41, 0.5); }
-  50% { opacity: 0.7;
-    box-shadow: 0 0 8px rgba(120, 194, 41, 0.8); } }
+.ausl-tip:hover, .ausl-tip:focus-visible { border-color: rgba(134, 239, 172, 0.68); background: rgba(22, 101, 52, 0.62); color: #dcfce7; outline: none; }
 
-.ausl-tip { display: inline-flex; padding: 2px 8px; border-radius: 10px; background: #78c229; color: white; font-size: 10px; font-weight: bold; align-items: center; justify-content: center; margin-left: 6px; cursor: help; position: relative; vertical-align: text-bottom; white-space: nowrap; animation: ausl-breathe 2s ease-in-out infinite; }
+.ausl-tip::after { content: attr(data-tip); position: absolute; top: calc(100% + 0.5rem); left: 0; width: max-content; max-width: 16rem; padding: 0.45rem 0.55rem; border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-sm); background: rgba(8, 17, 31, 0.98); color: var(--ui-text); box-shadow: var(--ui-shadow); font-size: 0.68rem; font-weight: 500; line-height: 1.35; text-align: left; white-space: normal; opacity: 0; visibility: hidden; transition: opacity 120ms ease, visibility 120ms ease; z-index: 1000; pointer-events: none; }
 
-.ausl-tip::after { content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); background: #1a1a1a; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: normal; white-space: nowrap; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; z-index: 1000; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); border: 1px solid #444; }
+.ausl-tip::before { content: ''; position: absolute; top: calc(100% + 0.18rem); left: 0.65rem; border: 0.35rem solid transparent; border-bottom-color: var(--ui-border-strong); opacity: 0; visibility: hidden; transition: opacity 120ms ease, visibility 120ms ease; z-index: 1001; pointer-events: none; }
 
-.ausl-tip::before { content: ''; position: absolute; left: 50%; bottom: calc(100% + 2px); transform: translateX(-50%); border: 6px solid transparent; border-top-color: #1a1a1a; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; z-index: 1001; }
-
-.ausl-tip:hover::after, .ausl-tip:hover::before { opacity: 1; visibility: visible; }
+.ausl-tip:hover::after, .ausl-tip:hover::before, .ausl-tip:focus-visible::after, .ausl-tip:focus-visible::before { opacity: 1; visibility: visible; }
 
 /*======================== Auto-Select Log ========================*/
 .ausl-log { padding-top: 0.45rem; border-top: 1px solid var(--ui-border); }
