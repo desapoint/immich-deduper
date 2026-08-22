@@ -43,6 +43,11 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn('grid-template-columns: repeat(2, minmax(0, 1fr));', main)
 		self.assertIn('max-width: none !important;', main)
 
+	def test_similar_empty_state_is_compact_and_neutral(self):
+		main = (ROOT / 'src/scss/main.scss').read_text()
+		self.assertIn('.sim-empty-state {', main)
+		self.assertIn('border: 1px dashed var(--ui-border-strong);', main)
+
 
 if __name__ == '__main__':
 	unittest.main()

@@ -128,6 +128,22 @@ class TestSimilarPartialRendering(unittest.TestCase):
 		self.assertIs(result[0], similar.noUpd)
 		self.assertIs(result[7], similar.noUpd)
 
+	def test_empty_grouped_results_use_compact_status(self):
+		now = models.Now(sim=models.PgSim(assCur=[]))
+		dto = SimpleNamespace(muod=SimpleNamespace(on=True))
+
+		with (
+			patch.object(similar, 'getTrgId', return_value='store-now'),
+			patch.object(similar.db, 'dto', dto),
+			patch.object(similar.db.pics, 'getPagedPending', return_value=[]),
+		):
+			result = similar.sim_Load(now.toDict(), models.Cnt().toDict(), None)
+
+		nodes = list(walk(result[0]))
+		emptyState = next(node for node in nodes if props(node).get('className') == 'sim-empty-state')
+		self.assertEqual(props(emptyState).get('role'), 'status')
+		self.assertTrue(any(getattr(node, 'children', None) == 'No grouped results found' for node in nodes))
+
 	def test_stack_metadata_patches_only_changed_group_cards(self):
 		oldAssets = [asset(1, 1), asset(2, 1), asset(3, 2), asset(4, 2)]
 		newAssets = [asset(1, 1, 'stack-a'), asset(2, 1, 'stack-a'), asset(3, 2), asset(4, 2)]

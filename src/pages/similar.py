@@ -135,6 +135,13 @@ def _patchMultiGrid(oldState: dict, newState: dict, assets: list[models.Asset]):
 
 	return patch if changed else None
 
+
+def _emptyResult(title: str, detail: str):
+	return htm.Div([
+		htm.Strong(title),
+		htm.Small(detail),
+	], className="sim-empty-state", role="status")
+
 dash.register_page(
 	__name__,
 	path=f'/{ks.pg.similar}',
@@ -555,11 +562,11 @@ def sim_Load(dta_now, dta_cnt, oldRenderState):
 		gview = _patchMultiGrid(oldRenderState, renderState, now.sim.assCur)
 		if gview is None:
 			gview = gv.mkGrdGrps(now.sim.assCur, onEmpty=[
-				dbc.Alert("No grouped results found..", color="secondary", className="text-center m-5"),
+				_emptyResult("No grouped results found", "Run a search or adjust the Similar settings."),
 			])
 	else:
 		gview = gv.mkGrd(now.sim.assCur, onEmpty=[
-			dbc.Alert("Please find the similar images..", color="secondary", className="text-center m-5"),
+			_emptyResult("No similar images to review", "Run a search to load results."),
 		])
 
 	# Initialize or get pager

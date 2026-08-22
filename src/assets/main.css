@@ -1347,3 +1347,9 @@ html, body { background: var(--ui-bg); }
 @media (max-width: 760px) { .ifns .icbxs:not(.single), .auto-select-options, .auto-select-criteria-grid { grid-template-columns: 1fr; } .auto-select-summary { grid-template-columns: 1fr; gap: 0.35rem; } }
 
 @media (max-width: 480px) { .auto-select-card .icriteria { grid-template-columns: max-content minmax(0, 1fr); } .auto-select-card .icriteria > span:first-child { grid-column: 1 / -1; } }
+
+.sim-empty-state { display: grid; gap: 0.25rem; margin: 1rem 0; padding: 1.25rem; border: 1px dashed var(--ui-border-strong); border-radius: var(--ui-radius-sm); background: var(--ui-bg-soft); text-align: center; }
+
+.sim-empty-state strong { color: var(--ui-text); font-size: 0.9rem; font-weight: 650; }
+
+.sim-empty-state small { color: var(--ui-text-muted); font-size: 0.75rem; }
