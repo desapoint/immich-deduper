@@ -55,6 +55,8 @@ class TestGlobalTaskStatus(unittest.TestCase):
 		self.assertIn('task-status idle', props(panel).get('className', ''))
 		self.assertIn('task-status-progress', props(progress).get('className', ''))
 		self.assertTrue(props(cancel).get('disabled'))
+		self.assertTrue(any(getattr(node, 'children', None) == 'Cancel' for node in walk(cancel)))
+		self.assertEqual(props(cancel).get('title'), 'Cancel running task')
 
 		idle = tsk.tsk_PanelStatus(models.Tsk().toDict())
 		self.assertEqual(idle, ('tskPanel task-status idle', 'Idle', True))
@@ -62,6 +64,12 @@ class TestGlobalTaskStatus(unittest.TestCase):
 		runningTask = models.Tsk(id='similar', name='Similar', tsn='task-1')
 		running = tsk.tsk_PanelStatus(runningTask.toDict())
 		self.assertEqual(running, ('tskPanel task-status running', 'Similar', False))
+
+		startingTask = models.Tsk(id='similar', name='Similar')
+		starting = tsk.tsk_PanelStatus(startingTask.toDict())
+		self.assertEqual(starting, ('tskPanel task-status running', 'Similar', True))
+		self.assertEqual(tsk.tsk_OnStatus({'typ': 'start', 'tsn': 'task-1'}, startingTask.toDict()), False)
+		self.assertEqual(tsk.tsk_OnStatus({'typ': 'progress', 'tsn': 'task-1'}, runningTask.toDict()), False)
 
 	def test_completion_resets_header_status_and_preserves_toast(self):
 		nfy = models.Nfy()

@@ -803,19 +803,21 @@ select.form-select { appearance: none; padding-right: 2rem !important; backgroun
 
 .tskPanel .task-status-dot { flex: 0 0 auto; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--ui-text-muted); }
 
-.tskPanel .task-status-cancel { display: inline-flex; align-items: center; justify-content: center; width: 1.65rem; height: 1.65rem; padding: 0; border-radius: var(--ui-radius-sm); font-size: 0.8rem; }
+.tskPanel .task-status-cancel { display: inline-flex; align-items: center; justify-content: center; gap: 0.28rem; width: auto; height: 1.65rem; padding: 0.2rem 0.42rem; border-radius: var(--ui-radius-sm); font-size: 0.7rem; white-space: nowrap; }
 
 .tskPanel .progress { height: 0.45rem; border: 1px solid var(--ui-border); background: var(--ui-bg); }
 
 .tskPanel .progress .progress-bar { font-size: 0; transition: width 0.2s ease; }
 
-.tskPanel.idle .task-status-cancel { visibility: hidden; }
+.tskPanel.idle .task-status-cancel { visibility: hidden; pointer-events: none; }
 
 .tskPanel.idle .progress-bar { width: 0 !important; }
 
 .tskPanel.running { border-color: color-mix(in srgb, var(--ui-accent) 55%, var(--ui-border)); background: var(--ui-surface-raised); }
 
 .tskPanel.running .task-status-dot { background: var(--ui-accent); animation: taskStatusPulse 1.4s ease-in-out infinite; }
+
+.tskPanel.running .task-status-cancel { visibility: visible; pointer-events: auto; }
 
 @keyframes taskStatusPulse { 0%, 100% { opacity: 0.45; }
   50% { opacity: 1; } }

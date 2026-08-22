@@ -69,7 +69,7 @@ def render():
             htm.Span("Idle", id=k.txt, className="task-status-text"),
         ], className="task-status-summary"),
         dbc.Button(
-            htm.I(className="bi bi-stop-circle"),
+            [htm.I(className="bi bi-stop-circle"), htm.Span("Cancel")],
             id=k.btnCancel,
             className="task-status-cancel",
             size="sm",
@@ -109,8 +109,9 @@ def tsk_PanelStatus(dta_tsk):
 
     tsk = models.Tsk.fromDic(dta_tsk)
     isRunning = bool(tsk.id and tsk.name)
+    canCancel = bool(isRunning and tsk.tsn)
     css = "tskPanel task-status running" if isRunning else "tskPanel task-status idle"
-    return css, tsk.name if isRunning else "Idle", not isRunning
+    return css, tsk.name if isRunning else "Idle", not canCancel
 
 
 #------------------------------------------------------------------------
@@ -401,8 +402,9 @@ def tsk_OnStatus(wmsg, dta_tsk):
         if not data: raise RuntimeError( "[tsk] no data" )
         msgType = data.get('typ') or data.get('type')
 
-        if msgType == 'start':
-            return False
+        if msgType in ('start', 'progress'):
+            tsk = models.Tsk.fromDic(dta_tsk)
+            return not bool(data.get('tsn') or tsk.tsn)
         elif msgType == 'complete':
             return True
     except Exception as e:
