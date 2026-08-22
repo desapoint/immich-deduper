@@ -1,7 +1,7 @@
 from typing import List, Optional, Callable, Any
 import json
 
-from dsh import htm, dbc, dcc, cbk, out, inp, ste, ctx, ALL, noUpd
+from dsh import htm, dbc, dcc, cbk, ccbk, cbkFn, out, inp, ste, ctx, ALL, noUpd
 from util import log
 from mod import models
 
@@ -246,98 +246,84 @@ def _buildUI(pgrId: str, idx: int, page: int, size: int, total: int, btnSize: in
 def regCallbacks(pgrId: str, onPageChg: Optional[Callable]=None):
 	lg.info(f"[pager] registering callbacks for {pgrId}")
 
-	# Handle page size changes
-	@cbk(
-		out(id.store(pgrId), "data", allow_duplicate=True),
-		inp({'type': f"pgr-{pgrId}-sizer", 'idx': ALL}, "value"),
-		ste(id.store(pgrId), "data"),
-		prevent_initial_call=True
-	)
-	def pager_onSizeChange(sizeVal, dtaPgr):
-		if sizeVal is None: return noUpd
-		trig = ctx.triggered
-		if not trig: return noUpd
+	if onPageChg is None:
+		# Navigation intent is entirely local; only the resulting store change
+		# needs server work to load data and rebuild the visible pager bars.
+		ccbk(
+			cbkFn("pager", "onSizeChange"),
+			out(id.store(pgrId), "data", allow_duplicate=True),
+			inp({'type': f"pgr-{pgrId}-sizer", 'idx': ALL}, "value"),
+			ste(id.store(pgrId), "data"),
+			prevent_initial_call=True,
+		)
+		ccbk(
+			cbkFn("pager", "onClick"),
+			out(id.store(pgrId), "data", allow_duplicate=True),
+			[
+				inp({"type": f"pgr-{pgrId}-page", "page": ALL, "idx": ALL}, "n_clicks"),
+				inp({"type": f"pgr-{pgrId}-nav", "action": ALL, "idx": ALL}, "n_clicks"),
+			],
+			ste(id.store(pgrId), "data"),
+			prevent_initial_call=True,
+		)
+	else:
+		# Preserve the Python hook for callers that explicitly request it.
+		@cbk(
+			out(id.store(pgrId), "data", allow_duplicate=True),
+			inp({'type': f"pgr-{pgrId}-sizer", 'idx': ALL}, "value"),
+			ste(id.store(pgrId), "data"),
+			prevent_initial_call=True
+		)
+		def pager_onSizeChange(sizeVal, dtaPgr):
+			if sizeVal is None: return noUpd
+			trig = ctx.triggered
+			if not trig: return noUpd
 
-		sizeVal = int(trig[0]['value'])
+			sizeVal = int(trig[0]['value'])
+			pgr = models.Pager.fromDic(dtaPgr)
+			oldSize = pgr.size
+			pgr.size = sizeVal
+			if oldSize == sizeVal: return noUpd
 
-		pgr = models.Pager.fromDic(dtaPgr)
-		if DEBUG: lg.info(f"[pgr] Size changed old[{pgr.size}] to [{sizeVal}], page adjusted to {pgr.idx}/{pgr.cnt}")
-		oldSize = pgr.size
-		pgr.size = sizeVal
-
-		if oldSize != sizeVal:
 			totalPages = (pgr.cnt + pgr.size - 1) // pgr.size if pgr.cnt > 0 else 1
 			if pgr.idx > totalPages: pgr.idx = totalPages
-
-			if DEBUG: lg.info(f"[pgr] Size changed from {oldSize} to {sizeVal}, page adjusted to {pgr.idx}/{totalPages}")
-
-			if onPageChg:
-				try: onPageChg(pgr)
-				except Exception as e: lg.error(f"[pgr] Error in onPageChange callback: {e}")
-
-		return pgr.toDict()
-
-	# Handle page clicks and navigation
-	@cbk(
-		out(id.store(pgrId), "data", allow_duplicate=True),
-		[
-			inp({"type": f"pgr-{pgrId}-page", "page": ALL, "idx": ALL}, "n_clicks"),
-			inp({"type": f"pgr-{pgrId}-nav", "action": ALL, "idx": ALL}, "n_clicks")
-		],
-		ste(id.store(pgrId), "data"),
-		prevent_initial_call=True
-	)
-	def pager_onClick(clks_pg, clks_nv, dta_pgr):
-		if not ctx.triggered:
-			lg.info(f'[pgr] no triggered!!!!!!!')
-			return dta_pgr
-
-		if DEBUG: lg.info(f"[pgr] pager_onClick...")
-		triggered = ctx.triggered[0]
-		prop_id = triggered["prop_id"]
-
-		# Check if any actual click happened (not just initialization)
-		if all(click is None for click in clks_pg + clks_nv):
-			if DEBUG: lg.info(f"[pgr] Ignoring initial callback with all None clicks")
-			return dta_pgr
-
-		if DEBUG: lg.info(f"[pgr] onClick triggered: {ctx.triggered}, page_clicks: {clks_pg}, nav_clicks: {clks_nv}")
-
-		pgr = models.Pager.fromDic(dta_pgr)
-
-		# Ensure idx is valid (default to 1 if None)
-		if pgr.idx is None: pgr.idx = 1
-
-		totalPages = (pgr.cnt + pgr.size - 1) // pgr.size if pgr.cnt > 0 else 1
-
-		# Check if it's a page click or nav click
-		if f"pgr-{pgrId}-page" in prop_id:
-			# Direct page click
-			trig_id = json.loads(prop_id.split(".")[0])
-			newPage = trig_id["page"]
-		elif f"pgr-{pgrId}-nav" in prop_id:
-			# Navigation button click
-			trig_id = json.loads(prop_id.split(".")[0])
-			action = trig_id["action"]
-
-			if action == "first": newPage = 1
-			elif action == "last": newPage = totalPages
-			elif action == "prev": newPage = max(1, pgr.idx - 1) if pgr.idx else 1
-			elif action == "next": newPage = min(totalPages, pgr.idx + 1) if pgr.idx else 2
-			else: return dta_pgr
-		else: return dta_pgr
-
-		# Update pgr
-		pgr.idx = newPage
-
-		if DEBUG: lg.info(f"[pgr] Page changed to {newPage}/{totalPages}")
-
-		# Call custom callback if provided
-		if onPageChg:
 			try: onPageChg(pgr)
 			except Exception as e: lg.error(f"[pgr] Error in onPageChange callback: {e}")
+			return pgr.toDict()
 
-		return pgr.toDict()
+		@cbk(
+			out(id.store(pgrId), "data", allow_duplicate=True),
+			[
+				inp({"type": f"pgr-{pgrId}-page", "page": ALL, "idx": ALL}, "n_clicks"),
+				inp({"type": f"pgr-{pgrId}-nav", "action": ALL, "idx": ALL}, "n_clicks")
+			],
+			ste(id.store(pgrId), "data"),
+			prevent_initial_call=True
+		)
+		def pager_onClick(clks_pg, clks_nv, dta_pgr):
+			if not ctx.triggered or not any(click for click in clks_pg + clks_nv): return noUpd
+			triggered = ctx.triggered[0]
+			prop_id = triggered["prop_id"]
+			pgr = models.Pager.fromDic(dta_pgr)
+			if pgr.idx is None: pgr.idx = 1
+			totalPages = (pgr.cnt + pgr.size - 1) // pgr.size if pgr.cnt > 0 else 1
+
+			if f"pgr-{pgrId}-page" in prop_id:
+				newPage = json.loads(prop_id.split(".")[0])["page"]
+			elif f"pgr-{pgrId}-nav" in prop_id:
+				action = json.loads(prop_id.split(".")[0])["action"]
+				if action == "first": newPage = 1
+				elif action == "last": newPage = totalPages
+				elif action == "prev": newPage = max(1, pgr.idx - 1)
+				elif action == "next": newPage = min(totalPages, pgr.idx + 1)
+				else: return noUpd
+			else: return noUpd
+
+			if pgr.idx == newPage: return noUpd
+			pgr.idx = newPage
+			try: onPageChg(pgr)
+			except Exception as e: lg.error(f"[pgr] Error in onPageChange callback: {e}")
+			return pgr.toDict()
 
 
 	#------------------------------------------------------------------------
