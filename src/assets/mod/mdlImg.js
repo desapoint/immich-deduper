@@ -134,6 +134,32 @@ const MdlImg = window.MdlImg = {
 		return isSelected ? 'success' : 'primary'
 	},
 
+	syncSelectState(aid = window.currentMdlImgAutoId){
+		if (!aid || !window.Ste) return false
+		const button = document.getElementById('btn-img-select')
+		if (!button) return false
+
+		const selected = Ste.selectedIds.has(Number(aid))
+		const text = selected ? 'Selected' : 'Select image'
+		const color = selected ? 'success' : 'primary'
+		const changed = button.textContent !== text || !button.classList.contains(`btn-${color}`)
+		button.textContent = text
+		button.classList.toggle('btn-success', selected)
+		button.classList.toggle('btn-primary', !selected)
+		if (changed && typeof dash_clientside.set_props === 'function')
+			dash_clientside.set_props('btn-img-select', {children: text, color})
+		return selected
+	},
+
+	toggleCurrentSelection(){
+		const aid = Number(window.currentMdlImgAutoId)
+		if (!aid || !window.Ste) return false
+		Ste.toggle(aid)
+		Ste.sync()
+		console.log('[mdlImg] Toggled autoId:', aid)
+		return true
+	},
+
 	noUpdate(cnt){return Array(cnt).fill(dash_clientside.no_update)},
 
 	updMdl(){
@@ -390,40 +416,6 @@ window.dash_clientside.mdlImg = {
 		}
 		return dash_clientside.no_update
 	},
-	onBtnSelectToSte(n_clicks){
-		if (dash_clientside.callback_context.triggered.length > 0) {
-			let triggered = dash_clientside.callback_context.triggered[0]
-			if (triggered.prop_id && triggered.value > 0) {
-				let mdl = arguments[arguments.length - 1] // mdlImg store data
-				let now = arguments[arguments.length - 2] // now store data
-
-				if (mdl && mdl.isMulti && now && now.sim && now.sim.assCur) {
-					let curIdx = mdl.curIdx
-					let assets = now.sim.assCur
-
-					if (curIdx >= 0 && curIdx < assets.length) {
-						let curAsset = assets[curIdx]
-						let autoId = curAsset.autoId
-
-						if (Ste) {
-							Ste.toggle(autoId)
-
-							let selectedIds = Array.from(Ste.selectedIds)
-							let ste = {
-								selectedIds,
-								cntTotal: Ste.cntTotal,
-								stackCoverIds: Array.from(Ste.stackCoverIds),
-							}
-							console.log('[mdlImg] Toggled autoId:', autoId, 'ste:', ste)
-							return ste
-						}
-					}
-				}
-			}
-		}
-		return dash_clientside.no_update
-	},
-
 	onNavigation(prevClk, nextClk, now, ste, mdl){
 		const ctx = dash_clientside.callback_context
 		if (!ctx.triggered.length) return dash_clientside.no_update
@@ -461,26 +453,17 @@ window.dash_clientside.mdlImg = {
 
 		MdlImg.init(mdl, null, null)
 		return MdlImg.toggleMode()
-	},
-
-	onSteChanged(ste, now, mdl){
-		if (!ste || !now || !mdl) return Array(2).fill(dash_clientside.no_update)
-
-		MdlImg.init(mdl, now, ste)
-
-		if (!mdl.isMulti || !now.sim?.assCur || mdl.curIdx >= now.sim.assCur.length) return Array(2).fill(dash_clientside.no_update)
-
-		const curAss = now.sim.assCur[mdl.curIdx]
-		if (!curAss) return Array(2).fill(dash_clientside.no_update)
-
-		const selectText = MdlImg.getSelectButtonText(mdl, curAss)
-		const selectColor = MdlImg.getSelectButtonColor(mdl, curAss)
-
-		console.log(`[MdlImg] Updated button state for autoId[${curAss.autoId}]`)
-
-		return [selectText, selectColor]
 	}
 }
+
+
+document.addEventListener('click', function(ev){
+	const selectButton = ev.target.closest?.('#btn-img-select')
+	if (!selectButton) return
+	ev.preventDefault()
+	ev.stopPropagation()
+	MdlImg.toggleCurrentSelection()
+})
 
 
 document.addEventListener('keydown', function(ev){
@@ -499,16 +482,7 @@ document.addEventListener('keydown', function(ev){
 	}
 	else if (ev.key == ' ') {
 		ev.preventDefault()
-
-		if (Ste && window.currentMdlImgAutoId) {
-			Ste.toggle(window.currentMdlImgAutoId)
-
-			const { cntTotal, selectedIds } = Ste
-
-			console.log('[mdlImg Hotkey] Space toggled autoId:', window.currentMdlImgAutoId)
-
-			dsh.syncSte(cntTotal, selectedIds)
-		}
+		MdlImg.toggleCurrentSelection()
 	}
 	else if (ev.key == 'Escape' || ev.key == 'q') {
 		ev.preventDefault()

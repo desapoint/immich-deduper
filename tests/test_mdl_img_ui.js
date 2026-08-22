@@ -18,10 +18,37 @@ function findByClass(node, className) {
 
 
 function main() {
+	const selectClasses = new Set(['btn-primary'])
+	const selectButton = {
+		textContent: 'Select image',
+		classList: {
+			contains(name) { return selectClasses.has(name) },
+			toggle(name, enabled) { enabled ? selectClasses.add(name) : selectClasses.delete(name) },
+		},
+	}
+	const setPropsCalls = []
+	const toggles = []
+	let syncs = 0
 	const context = {
 		console,
-		document: {addEventListener() {}, querySelector() { return null }},
-		dash_clientside: {no_update: {}, callback_context: {triggered: []}},
+		document: {
+			addEventListener() {},
+			getElementById(id) { return id === 'btn-img-select' ? selectButton : null },
+			querySelector() { return null },
+		},
+		dash_clientside: {
+			no_update: {},
+			callback_context: {triggered: []},
+			set_props(id, props) { setPropsCalls.push({id, props}) },
+		},
+		Ste: {
+			selectedIds: new Set([11]),
+			toggle(aid) {
+				toggles.push(aid)
+				this.selectedIds.has(aid) ? this.selectedIds.delete(aid) : this.selectedIds.add(aid)
+			},
+			sync() { syncs++; context.window.MdlImg.syncSelectState() },
+		},
 		R: {
 			mk(type, props, ...children) { return {type, props, children: children.filter(child => child != null)} },
 		},
@@ -50,6 +77,17 @@ function main() {
 	assert.equal(viewer.getNextButtonStyle(mdl).display, 'grid')
 	assert.equal(viewer.getNextButtonStyle(mdl).pointerEvents, 'auto')
 	assert.equal(viewer.getSelectButtonStyle(mdl).display, 'inline-flex')
+	context.window.currentMdlImgAutoId = 11
+	assert.equal(viewer.syncSelectState(), true)
+	assert.equal(selectButton.textContent, 'Selected')
+	assert.equal(selectClasses.has('btn-success'), true)
+	assert.equal(setPropsCalls.at(-1).id, 'btn-img-select')
+	assert.equal(setPropsCalls.at(-1).props.children, 'Selected')
+	assert.equal(setPropsCalls.at(-1).props.color, 'success')
+	assert.equal(viewer.toggleCurrentSelection(), true)
+	assert.deepEqual(toggles, [11])
+	assert.equal(syncs, 1)
+	assert.equal(selectButton.textContent, 'Select image')
 
 	const content = viewer.buildImageContent(mdl)
 	assert.equal(content.map(node => findByClass(node, 'viewer-asset-status')).find(Boolean), undefined)

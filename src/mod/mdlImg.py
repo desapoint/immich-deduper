@@ -340,36 +340,6 @@ ccbk(
 )
 
 #------------------------------------------------------------------------
-# Client-side callback for mdlImg ste changes
-#------------------------------------------------------------------------
-ccbk(
-	cbkFn("mdlImg", "onSteChanged"),
-
-	[
-		out(k.btnSelect, "children", allow_duplicate=True),
-		out(k.btnSelect, "color", allow_duplicate=True),
-	],
-	inp(ks.sto.ste, "data"),
-	[
-		ste(ks.sto.now, "data"),
-		ste(k.store, "data"),
-	],
-	prevent_initial_call=True
-)
-
-#------------------------------------------------------------------------
-# Client-side callback for mdlImg selection
-#------------------------------------------------------------------------
-ccbk(
-	cbkFn("mdlImg", "onBtnSelectToSte"),
-
-	out(ks.sto.ste, "data", allow_duplicate=True),
-	[inp(k.btnSelect, "n_clicks")],
-	[ste(ks.sto.now, "data"), ste(k.store, "data")],
-	prevent_initial_call=True
-)
-
-#------------------------------------------------------------------------
 # Client-side callback to set current mdlImg autoId for hotkeys
 #------------------------------------------------------------------------
 ccbk(

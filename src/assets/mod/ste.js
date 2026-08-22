@@ -119,6 +119,7 @@ const Ste = window.Ste = {
 
 	sync()
 	{
+		if ( typeof window.MdlImg?.syncSelectState === 'function' ) window.MdlImg.syncSelectState()
 		return dsh.syncSte( this.cntTotal, this.selectedIds, this.stackCoverIds )
 	},
 
@@ -130,7 +131,7 @@ const Ste = window.Ste = {
 		this.stackCoverIds.clear()
 		console.log( `[Ste] Initialized with ${ cnt } assets, selected[ ${ this.selectedIds.size } ]` )
 
-		dsh.syncSte( this.cntTotal, this.selectedIds )
+		this.sync()
 	},
 
 	initSilent( cnt )
@@ -287,7 +288,7 @@ const Ste = window.Ste = {
 		await this.updAllCss()
 		this.updBtns()
 		console.log( `[Ste] Selected all ${ this.selectedIds.size } assets` )
-		dsh.syncSte( this.cntTotal, this.selectedIds )
+		this.sync()
 	},
 
 	getMainIds()
@@ -309,7 +310,7 @@ const Ste = window.Ste = {
 		this.updBtns()
 		await this.updAllCss()
 		console.log( `[Ste] ${ allSel ? 'Deselected' : 'Selected' } ${ ids.length } main assets` )
-		dsh.syncSte( this.cntTotal, this.selectedIds )
+		this.sync()
 	},
 
 	updBtnMns()
@@ -329,7 +330,7 @@ const Ste = window.Ste = {
 		this.updStackCoverButtons()
 		this.updBtns()
 		console.log( `[Ste] Cleared all selections` )
-		dsh.syncSte( this.cntTotal, this.selectedIds )
+		this.sync()
 	},
 
 	async updAllCss()
@@ -399,7 +400,7 @@ const Ste = window.Ste = {
 		this.updStackCoverButtons( groupId )
 		this.updBtns( groupId )
 		console.log( `[Ste] Selected ${ matchingCards.length } ${ isStacked ? 'stacked' : 'non-stacked' } items${ groupId == null ? '' : ` in group ${ groupId }` }` )
-		dsh.syncSte( this.cntTotal, this.selectedIds )
+		this.sync()
 	},
 
 	updStackCoverButtons( groupId = null, ownerId = null )
@@ -483,7 +484,7 @@ const Ste = window.Ste = {
 		} )
 
 		this.updBtns( groupId )
-		dsh.syncSte( this.cntTotal, this.selectedIds )
+		this.sync()
 	},
 
 	clearGroup( groupId )
@@ -502,7 +503,7 @@ const Ste = window.Ste = {
 
 		this.updStackCoverButtons( groupId )
 		this.updBtns( groupId )
-		dsh.syncSte( this.cntTotal, this.selectedIds )
+		this.sync()
 	},
 }
 
