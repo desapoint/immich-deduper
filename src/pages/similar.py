@@ -689,11 +689,11 @@ ccbk(
 	],
 	[
 		inp(ks.sto.now, "data"),
-		inp(ks.sto.ste, "data"),
 		inp(ks.sto.cnt, "data"),
 		inp(ks.sto.tsk, "data"),
 	],
 	[
+		ste(ks.sto.ste, "data"),
 		ste({"type": gv.STACK_GROUP_BUTTON, "id": ALL}, "id"),
 		ste({"type": gv.GROUP_ACTION_BUTTON, "action": ALL, "id": ALL}, "id"),
 		ste({"type": gv.STACK_COVER_BUTTON, "id": ALL, "group": ALL, "owner": ALL}, "id"),
@@ -701,14 +701,13 @@ ccbk(
 	prevent_initial_call="initial_duplicate"
 )
 def sim_UpdateButtons(
-	dta_now, dta_ste, dta_cnt, dta_tsk,
+	dta_now, dta_cnt, dta_tsk, dta_ste,
 	groupButtonIds, groupActionButtonIds, coverButtonIds,
 ):
 	now = Now.fromDic(dta_now)
 	ste = Ste.fromDic(dta_ste) if dta_ste else Ste()
 	cnt = Cnt.fromDic(dta_cnt)
 	tsk = Tsk.fromDic(dta_tsk)
-	selectionOnly = ctx.triggered_id == ks.sto.ste
 
 	from mod.mgr.tskSvc import mgr
 	isTaskRunning = False
@@ -720,19 +719,16 @@ def sim_UpdateButtons(
 	if tsk.id and tsk.cmd: isTaskRunning = True
 
 	cntAssets = len(now.sim.assCur) if now.sim.assCur else 0
-	if selectionOnly:
-		disFind = disClear = disReset = disOk = disDel = disExport = dash.no_update
-	else:
-		cntNo = cnt.ass - cnt.simOk if cnt else 0
-		cntPn = cnt.simPnd if cnt else 0
-		disFind = cntNo <= 0 or (cntPn >= cntNo) or isTaskRunning
-		cntSrchd = db.pics.countHasSimIds(isOk=0) if not isTaskRunning else 0
-		disClear = cntSrchd <= 0 or isTaskRunning
-		cntOk = cnt.simOk if cnt else 0
-		disReset = (cntOk <= 0 and cntPn <= 0) or isTaskRunning
-		disOk = cntAssets <= 0 or isTaskRunning
-		disDel = cntAssets <= 0 or isTaskRunning
-		disExport = cntAssets <= 0
+	cntNo = cnt.ass - cnt.simOk if cnt else 0
+	cntPn = cnt.simPnd if cnt else 0
+	disFind = cntNo <= 0 or (cntPn >= cntNo) or isTaskRunning
+	cntSrchd = db.pics.countHasSimIds(isOk=0) if not isTaskRunning else 0
+	disClear = cntSrchd <= 0 or isTaskRunning
+	cntOk = cnt.simOk if cnt else 0
+	disReset = (cntOk <= 0 and cntPn <= 0) or isTaskRunning
+	disOk = cntAssets <= 0 or isTaskRunning
+	disDel = cntAssets <= 0 or isTaskRunning
+	disExport = cntAssets <= 0
 
 	cntSel = len(ste.selectedIds) if ste.selectedIds else 0
 	disRm = isTaskRunning or cntSel == 0

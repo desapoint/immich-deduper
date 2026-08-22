@@ -81,6 +81,15 @@ class TestSimilarPartialRendering(unittest.TestCase):
 	def test_render_state_callback_is_registered(self):
 		self.assertTrue(any('sim-render-state.data' in key for key in testApp.callback_map))
 
+	def test_selection_store_does_not_trigger_server_button_reconciliation(self):
+		key = next(key for key in testApp.callback_map if 'sim-btn-fnd.disabled' in key)
+		callback = testApp.callback_map[key]
+		inputIds = [item['id'] for item in callback['inputs']]
+		stateIds = [item['id'] for item in callback['state']]
+
+		self.assertNotIn(similar.ks.sto.ste, inputIds)
+		self.assertIn(similar.ks.sto.ste, stateIds)
+
 	def test_empty_similar_store_updates_do_not_return_http_500(self):
 		key = next(key for key in testApp.callback_map if 'sim-btn-fnd.disabled' in key)
 		callback = testApp.callback_map[key]

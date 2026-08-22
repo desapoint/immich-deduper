@@ -44,19 +44,33 @@ async function main() {
 	const syncs = []
 	const sourceClasses = new Set()
 	let selectorScans = 0
+	let currentTask = null
 	const sourceButton = {
 		attributes: {},
+		disabled: false,
 		classList: {toggle(name, enabled) { enabled ? sourceClasses.add(name) : sourceClasses.delete(name) }},
 		setAttribute(name, value) { this.attributes[name] = value },
+	}
+	const removeButton = {disabled: false, textContent: '', title: ''}
+	const keepButton = {disabled: false, textContent: '', title: ''}
+	const stackButton = {disabled: false}
+	const buttons = {
+		'sim-btn-SelectMns': sourceButton,
+		'sim-btn-RmSel': removeButton,
+		'sim-btn-OkSel': keepButton,
+		'sim-btn-Stack': stackButton,
 	}
 	const context = {
 		console,
 		setTimeout,
 		clearTimeout,
-		dsh: {syncSte(cnt, ids) { syncs.push([cnt, Array.from(ids)]) }},
+		dsh: {
+			getStore(id) { return id === 'store-tsk' ? currentTask : null },
+			syncSte(cnt, ids) { syncs.push([cnt, Array.from(ids)]) },
+		},
 		document: {
 			addEventListener() {},
-			getElementById(id) { return id === 'sim-btn-SelectMns' ? sourceButton : null },
+			getElementById(id) { return buttons[id] || null },
 			querySelector() { return null },
 			querySelectorAll(selector) {
 				selectorScans++
@@ -96,6 +110,19 @@ async function main() {
 	ste.updBtnMns()
 	assert.equal(sourceClasses.has('active'), false)
 	assert.equal(sourceButton.attributes['aria-pressed'], 'false')
+
+	ste.selectedIds = new Set([1])
+	currentTask = {id: 'task-1', cmd: 'running'}
+	ste.updBtns(1)
+	assert.equal(removeButton.disabled, true, 'local selection updates must not re-enable actions during a task')
+	assert.equal(keepButton.disabled, true)
+	assert.equal(stackButton.disabled, true)
+	assert.equal(sourceButton.disabled, true)
+	currentTask = null
+	ste.updBtns(1)
+	assert.equal(removeButton.disabled, false, 'selection actions should recover locally after the task gate clears')
+	assert.equal(keepButton.disabled, false)
+	assert.equal(stackButton.disabled, false)
 
 	const scansAfterCache = selectorScans
 	ste.toggle(2, cards[1])

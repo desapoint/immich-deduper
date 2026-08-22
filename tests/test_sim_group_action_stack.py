@@ -55,9 +55,9 @@ class TestManualGroupResolution(unittest.TestCase):
 		):
 			return similar.sim_UpdateButtons(
 				models.Now(sim=models.PgSim(assCur=list(assets))).toDict(),
-				models.Ste(cntTotal=len(assets), selectedIds=list(selectedIds)).toDict(),
 				(cnt or models.Cnt()).toDict(),
 				(task or models.Tsk()).toDict(),
+				models.Ste(cntTotal=len(assets), selectedIds=list(selectedIds)).toDict(),
 				groupButtons or [], groupActions or [], coverButtons or [],
 			)
 
@@ -83,7 +83,7 @@ class TestManualGroupResolution(unittest.TestCase):
 		self.assertTrue(modal.args['allowMarkResolved'])
 		self.assertEqual(modal.args['targetGroupId'], 1)
 
-	def test_selection_update_avoids_db_count_and_reconciles_group_buttons(self):
+	def test_selection_state_reconciles_group_buttons_without_being_a_callback_input(self):
 		assets = [asset(1, 1), asset(2, 1), asset(3, 2)]
 		now = models.Now(sim=models.PgSim(assCur=assets))
 		ste = models.Ste(cntTotal=3, selectedIds=[1])
@@ -95,19 +95,16 @@ class TestManualGroupResolution(unittest.TestCase):
 		]
 
 		with (
-			patch.object(similar, 'ctx', SimpleNamespace(triggered_id=similar.ks.sto.ste)),
 			patch.object(similar.db, 'dto', TEST_DTO),
-			patch.object(similar.db.pics, 'countHasSimIds') as countHasSimIds,
+			patch.object(similar.db.pics, 'countHasSimIds', return_value=0),
 		):
 			result = similar.sim_UpdateButtons(
-				now.toDict(), ste.toDict(), models.Cnt().toDict(), models.Tsk().toDict(),
+				now.toDict(), models.Cnt().toDict(), models.Tsk().toDict(), ste.toDict(),
 				groupButtons, groupActions, [],
 			)
 
-		countHasSimIds.assert_not_called()
 		self.assertEqual(len(result), 14)
-		self.assertTrue(all(item is dash.no_update for item in result[:5]))
-		self.assertEqual(result[5:9], (False, False, False, dash.no_update))
+		self.assertEqual(result[5:9], (False, False, False, False))
 		self.assertEqual(result[9], [False, True])
 		self.assertEqual(result[10], [False, True, False])
 		self.assertEqual(result[11:14], ([], [], []))

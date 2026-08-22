@@ -70,6 +70,14 @@ const Ste = window.Ste = {
 		return this.getDomCache().byAid.get( Number( aid ) )?.card || null
 	},
 
+	isTaskRunning()
+	{
+		const task = typeof dsh !== 'undefined' && typeof dsh.getStore === 'function'
+			? dsh.getStore( 'store-tsk' )
+			: null
+		return !!( task?.id && task?.cmd )
+	},
+
 	init( cnt )
 	{
 		this.invalidateDomCache()
@@ -159,6 +167,7 @@ const Ste = window.Ste = {
 		const cntAll = this.cntTotal
 		const cntDiff = Math.max(0, cntAll - cntSel)
 		const cache = this.getDomCache()
+		const isTaskRunning = this.isTaskRunning()
 
 		const btnRm = document.getElementById( 'sim-btn-RmSel' )
 		const btnRS = document.getElementById( 'sim-btn-OkSel' )
@@ -178,38 +187,38 @@ const Ste = window.Ste = {
 		if ( btnRm ) {
 			btnRm.textContent = 'Delete selected'
 			btnRm.title = `Delete ${ cntSel } selected images and keep ${ cntDiff } others`
-			btnRm.disabled = cntSel == 0
+			btnRm.disabled = isTaskRunning || cntSel == 0
 		}
 		if ( btnRS ) {
 			btnRS.textContent = 'Keep selected'
 			btnRS.title = `Keep ${ cntSel } selected images and delete ${ cntDiff } others`
-			btnRS.disabled = cntSel == 0
+			btnRS.disabled = isTaskRunning || cntSel == 0
 		}
 		if ( txtCntSel ) txtCntSel.textContent = `${ cntSel }/${ cntAll } selected`
-		if ( btnStack ) btnStack.disabled = cntSel == 0
+		if ( btnStack ) btnStack.disabled = isTaskRunning || cntSel == 0
 
-		if ( btnAllSelect ) btnAllSelect.disabled = ( cntSel >= cntAll || cntAll == 0 )
-		if ( btnAllCancel ) btnAllCancel.disabled = ( cntSel == 0 )
-		if ( btnSelStacked ) btnSelStacked.disabled = cache.stackedGroups.size === 0
-		if ( btnSelUnstacked ) btnSelUnstacked.disabled = cache.unstackedGroups.size === 0
+		if ( btnAllSelect ) btnAllSelect.disabled = isTaskRunning || cntSel >= cntAll || cntAll == 0
+		if ( btnAllCancel ) btnAllCancel.disabled = isTaskRunning || cntSel == 0
+		if ( btnSelStacked ) btnSelStacked.disabled = isTaskRunning || cache.stackedGroups.size === 0
+		if ( btnSelUnstacked ) btnSelUnstacked.disabled = isTaskRunning || cache.unstackedGroups.size === 0
 
 		const groupIds = groupId == null ? Array.from( cache.groups.keys() ) : [String( groupId )]
 		groupIds.forEach( currentGroupId => {
 			const stackSelect = document.getElementById( `sel-grp-stacked-${ currentGroupId }` )
 			const unstackSelect = document.getElementById( `sel-grp-unstacked-${ currentGroupId }` )
-			if ( stackSelect ) stackSelect.disabled = !cache.stackedGroups.has( currentGroupId )
-			if ( unstackSelect ) unstackSelect.disabled = !cache.unstackedGroups.has( currentGroupId )
+			if ( stackSelect ) stackSelect.disabled = isTaskRunning || !cache.stackedGroups.has( currentGroupId )
+			if ( unstackSelect ) unstackSelect.disabled = isTaskRunning || !cache.unstackedGroups.has( currentGroupId )
 
 			const hasSelection = selectedGroups.has( currentGroupId )
 			const stackButton = cache.groupStackButtons.get( currentGroupId )
-			if ( stackButton ) stackButton.disabled = !hasSelection
+			if ( stackButton ) stackButton.disabled = isTaskRunning || !hasSelection
 			;( cache.groupActionButtons.get( currentGroupId ) || [] ).forEach( item => {
-				if ( ['keep-selected', 'delete-selected'].includes( item.action ) ) item.button.disabled = !hasSelection
+				if ( ['keep-selected', 'delete-selected'].includes( item.action ) ) item.button.disabled = isTaskRunning || !hasSelection
 			} )
 		} )
 		if ( btnSelMns )
 		{
-			btnSelMns.disabled = ( cntAll == 0 )
+			btnSelMns.disabled = isTaskRunning || cntAll == 0
 			this.updBtnMns()
 		}
 	},
