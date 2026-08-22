@@ -6,6 +6,7 @@ on:
       - main
       - feat/similar-ui-improvements
       - feat/stack-selected-groups
+      - perf/interface-responsiveness
   workflow_dispatch:
 
 permissions:
