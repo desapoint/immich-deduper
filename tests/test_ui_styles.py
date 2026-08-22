@@ -33,6 +33,10 @@ class TestGlobalUiFoundation(unittest.TestCase):
 	def test_restrained_controls_remain_visibly_interactive(self):
 		main = (ROOT / 'src/scss/main.scss').read_text()
 		self.assertIn('background-image: var(--bs-form-check-bg-image) !important;', main)
+		self.assertIn('select.form-select {', main)
+		self.assertIn("stroke='%23aeb9c8'", main)
+		self.assertIn('.ui-slider-control {', main)
+		self.assertIn('.rc-slider-handle {', main)
 		self.assertIn('// Restrained application styling', main)
 		self.assertIn('opacity: 0.68;', main)
 

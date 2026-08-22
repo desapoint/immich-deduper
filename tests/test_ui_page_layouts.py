@@ -12,6 +12,7 @@ import dash
 dash.Dash(__name__, use_pages=True, pages_folder='')
 
 from pages import fetch, not_found_404, settings, vector, view
+from ui import cardSets
 
 
 def walk(node):
@@ -29,6 +30,18 @@ def props(node):
 
 
 class TestPageLayouts(unittest.TestCase):
+	def test_threshold_and_worker_controls_share_slider_markup(self):
+		thresholdNodes = list(walk(cardSets.renderThreshold()))
+		workerNodes = list(walk(cardSets.renderCpuSettings()))
+		threshold = next(node for node in thresholdNodes if props(node).get('id') == cardSets.k.id(cardSets.k.threshold))
+		worker = next(node for node in workerNodes if props(node).get('id') == cardSets.k.id(cardSets.k.cpuWorkers))
+
+		self.assertEqual(props(threshold).get('className'), 'ui-slider')
+		self.assertEqual(props(worker).get('className'), 'ui-slider')
+		self.assertEqual(props(threshold).get('included'), False)
+		self.assertEqual(props(worker).get('included'), False)
+		self.assertEqual(props(threshold).get('tooltip'), props(worker).get('tooltip'))
+
 	def test_maintenance_actions_use_solid_button_styles(self):
 		with (
 			patch.object(fetch.db.psql, 'fetchUsers', return_value=[]),

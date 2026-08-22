@@ -112,20 +112,38 @@ cpuCnt = multiprocessing.cpu_count()
 if cpuCnt is None: cpuCnt = multiprocessing.cpu_count()
 for i in range(1, min(cpuCnt + 1, 17)): optCpuWorkers[str(i)] = i
 
+
+def _renderSlider(label, controlId, *, value, minimum, maximum, step, marks, disabled=False):
+	return htm.Div([
+		htm.Label(label, className="ui-slider-label"),
+		dcc.Slider(
+			id=controlId,
+			min=minimum,
+			max=maximum,
+			step=step,
+			marks=marks,
+			value=value,
+			disabled=disabled,
+			included=False,
+			className="ui-slider",
+			tooltip={"placement": "top", "always_visible": True},
+		),
+	], className="ui-slider-control")
+
+
 def renderThreshold():
 	return dbc.Card([
 		dbc.CardHeader(["Threshold Min",htm.Small("sets minimum similarity for matching")]),
 		dbc.CardBody([
-			htm.Div([
-				htm.Div([
-					dcc.Slider(
-						id=k.id(k.threshold), min=optThresholdMin, max=0.999, step=0.005, marks=optThresholdMarks, #type: ignore
-						value=db.dto.thMin, included=False,
-						tooltip={"placement": "top", "always_visible": True, "style": {"padding": "0 1px 0 1px", "fontSize": "11px"},},
-					),
-				], className=""),
-				htm.Ul([])
-			], className="irow mb-0"),
+			_renderSlider(
+				"Minimum similarity",
+				k.id(k.threshold),
+				minimum=optThresholdMin,
+				maximum=0.999,
+				step=0.005,
+				marks=optThresholdMarks,
+				value=db.dto.thMin,
+			),
 		])
 	], className="ifns mb-1")
 
@@ -590,17 +608,16 @@ def renderCpuSettings():
 				htm.Div([
 					dbc.Checkbox(id=k.id(k.cpuAutoMode), label="Auto Workers", value=db.dto.cpuAutoMode),
 
-					htm.Div([
-						htm.Label("Worker Threads: "),
-						dcc.Slider(
-							id=k.id(k.cpuWorkers),
-							min=1, max=min(cpuCnt, 16), step=1,
-							value=db.dto.cpuWorkers,
-							marks=optCpuWorkers,
-							disabled=db.dto.cpuAutoMode,
-							tooltip={"placement": "top", "always_visible": True}
-						)
-					], className="mt-2"),
+					_renderSlider(
+						"Worker threads",
+						k.id(k.cpuWorkers),
+						minimum=1,
+						maximum=min(cpuCnt, 16),
+						step=1,
+						marks=optCpuWorkers,
+						value=db.dto.cpuWorkers,
+						disabled=db.dto.cpuAutoMode,
+					),
 
 				]),
 				htm.Ul([
