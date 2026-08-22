@@ -729,9 +729,8 @@ def _renderLibPathRows():
 
 
 def renderLibPaths():
-	return dbc.Row([
-		dbc.Col([
-			#------------------------------------------------------------------------
+	return htm.Div([
+		htm.Div([
 			dbc.Card([
 				dbc.CardHeader("Main Paths"),
 				dbc.CardBody([
@@ -772,10 +771,9 @@ def renderLibPaths():
 						], size="sm"),
 					]),
 				])
-			], className="ifns mb-2"),
-		], width=4),
-		dbc.Col([
-			#------------------------------------------------------------------------
+			], className="ifns h-100"),
+		], className="fetch-library-main"),
+		htm.Div([
 			dbc.Card([
 				dbc.CardHeader([
 					"Library Mapping",
@@ -788,12 +786,10 @@ def renderLibPaths():
 						htm.Li([htm.B("Local Path: "), "Override path if Deduper can't access original"]),
 					], className="mt-2 txt-sm text-muted")
 				])
-			], className="ifns mb-2"),
-			#------------------------------------------------------------------------
-			dcc.Store(id=k.id(k.libPathsData), data=json.dumps(db.dto.pathLibs or {})),
-
-		], width=8),
-	])
+			], className="ifns h-100"),
+		], className="fetch-library-mapping"),
+		dcc.Store(id=k.id(k.libPathsData), data=json.dumps(db.dto.pathLibs or {})),
+	], className="fetch-library-grid")
 
 
 

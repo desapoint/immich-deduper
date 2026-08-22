@@ -65,6 +65,9 @@ class TestPageLayouts(unittest.TestCase):
 		self.assertTrue(any('settings-intro' == value for value in classes))
 		self.assertTrue(any('settings-layout' == value for value in classes))
 		self.assertEqual(sum('settings-status-item' in value for value in classes), 7)
+		self.assertEqual(sum('settings-status-state' == value for value in classes), 7)
+		statusItems = [node for node in nodes if 'settings-status-item' in str(props(node).get('className', ''))]
+		self.assertTrue(all(props(node).get('data-check-status') == 'pending' for node in statusItems))
 
 	def test_fetch_page_explains_sync_and_separates_actions(self):
 		nodes = list(walk(fetch.layout()))
@@ -75,6 +78,9 @@ class TestPageLayouts(unittest.TestCase):
 		self.assertEqual(sum('fetch-sync-note' == value for value in classes), 4)
 		self.assertEqual(sum('fetch-action-unit' in value for value in classes), 3)
 		self.assertTrue(any('fetch-action-danger' in value for value in classes))
+		self.assertTrue(any('fetch-library-grid' == value for value in classes))
+		self.assertTrue(any('fetch-library-main' == value for value in classes))
+		self.assertTrue(any('fetch-library-mapping' == value for value in classes))
 
 	def test_vector_page_presents_pipeline_and_action_risk(self):
 		nodes = list(walk(vector.layout()))

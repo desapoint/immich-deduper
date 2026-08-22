@@ -21,11 +21,14 @@ def layout():
 	def statusItem(label, value, statusClass, iconClass):
 		return htm.Div([
 			htm.Div([
-				htm.I(className=f"bi {iconClass}"),
-				htm.Small(label),
+				htm.Span([
+					htm.I(className=f"bi {iconClass}"),
+					htm.Small(label),
+				], className="settings-status-name"),
+				htm.Span("Checking", className="settings-status-state", **{"aria-live": "polite"}),
 			], className="settings-status-label"),
 			htm.Div(value, className="settings-status-value"),
-		], className=f"settings-status-item {statusClass}")
+		], className=f"settings-status-item {statusClass}", **{"data-check-status": "pending"})
 
 	return ui.renderBody([
 		#====== top start =======================================================

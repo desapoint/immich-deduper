@@ -104,39 +104,79 @@ const dsh = {
 
 
 
+let latestSystemChecks = null
+let systemCheckObserver = null
+
+function applySystemCheckResults(sc, data){
+	if (!sc || !Array.isArray(data)) return
+	let expected = 0
+	let applied = 0
+
+	for ( const item of data){
+		if (item.key === 'ver') continue
+		expected++
+
+		const div = sc.querySelector(`.chk-${item.key}`)
+		if (!div) continue
+		applied++
+
+		const icon = div.querySelector('i')
+		const state = div.querySelector('.settings-status-state')
+		div.classList.remove('is-valid', 'is-invalid', 'bg-danger', 'text-white', 'divtip')
+
+		if (!item.ok) {
+			if (icon) icon.className = 'bi bi-x-circle-fill text-danger'
+			if (state) {
+				state.innerText = 'Issue'
+				state.className = 'settings-status-state is-invalid'
+			}
+			div.classList.add('is-invalid', 'divtip')
+			div.setAttribute('data-tooltip', (item.msg || []).join('\n'))
+			div.setAttribute('data-check-status', 'invalid')
+			div.style.cursor = 'help'
+		}
+		else {
+			if (icon) icon.className = 'bi bi-check-circle-fill text-success'
+			if (state) {
+				state.innerText = 'Valid'
+				state.className = 'settings-status-state is-valid'
+			}
+			div.classList.add('is-valid')
+			div.removeAttribute('data-tooltip')
+			div.setAttribute('data-check-status', 'valid')
+			div.style.cursor = 'default'
+		}
+	}
+
+	// Dash may attach the card before all status children exist. Keep retrying on
+	// DOM mutations until every result has a corresponding rendered item.
+	sc._systemChecks = applied === expected ? data : null
+}
+
+function syncSystemCheckResults(data){
+	latestSystemChecks = data
+	const applyCurrent = () =>{
+		const sc = document.querySelector('.card-system-cfgs')
+		if (sc && sc._systemChecks !== latestSystemChecks) applySystemCheckResults(sc, latestSystemChecks)
+	}
+
+	applyCurrent()
+	if (!systemCheckObserver) {
+		systemCheckObserver = new MutationObserver(applyCurrent)
+		systemCheckObserver.observe(document.body, {childList: true, subtree: true})
+	}
+}
+
 function onFetchedChk(loading, data){
 	console.info(`[load] check data: ${JSON.stringify(data)}`)
 
 	let errK = false
 	let verItem = null
-
-	let sc = document.querySelector('.card-system-cfgs')
-	if (sc) {
-		for ( let item of data){
-			if (item.key === 'ver') {verItem = item; continue}
-			if (!item.ok && !errK) errK = item.key
-
-			let div = sc.querySelector(`.chk-${item.key}`)
-			if (!div) continue
-
-			let i = div.querySelector(`i`)
-			if (!i) continue
-
-			if (!item.ok) {
-				i.className = `bi bi-x-circle-fill text-white me-2`
-				div.classList.add(`bg-danger`, `text-white`, `divtip`)
-				let errorMsg = item.msg.join('\n')
-				div.setAttribute('data-tooltip', errorMsg)
-				div.style.cursor = 'help'
-			}
-			else {
-				i.className = `bi bi-check-circle-fill text-success me-2`
-				div.classList.remove(`divtip`)
-				div.removeAttribute('data-tooltip')
-				div.style.cursor = 'default'
-			}
-		}
+	for (const item of data) {
+		if (item.key === 'ver') verItem = item
+		else if (!item.ok && !errK) errK = item.key
 	}
+	syncSystemCheckResults(data)
 
 	ui.mob.waitFor('#span-sys-chk', sp =>{
 
@@ -204,4 +244,3 @@ document.addEventListener('DOMContentLoaded', function(){
 	})
 
 })
-
