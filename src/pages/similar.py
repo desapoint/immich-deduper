@@ -11,7 +11,7 @@ import immich
 import db
 from db import psql
 from conf import ks, co
-from dsh import dash, htm, dcc, dbc, inp, out, ste, getTrgId, noUpd, ctx, ALL
+from dsh import dash, htm, dcc, dbc, inp, out, ste, getTrgId, TrgId, noUpd, ctx, ALL
 from dsh import cbk, ccbk, cbkFn
 from util import log
 from mod import mapFns, models, tskSvc
@@ -180,6 +180,7 @@ class k:
 	gvSim = "sim-gvSim"
 	gvPnd = 'sim-gvPnd'
 	renderState = 'sim-render-state'
+	actionTrigger = 'sim-action-trigger'
 
 	@staticmethod
 	def id(k): return {"type": "sim", "id": f"{k}"}
@@ -204,6 +205,7 @@ def layout(autoId=None):
 		#====== top start =======================================================
 		dcc.Store(id=k.assUrl, data=autoId),
 		dcc.Store(id=k.renderState, storage_type="memory"),
+		dcc.Store(id=k.actionTrigger, storage_type="memory"),
 
 		# 客戶端選擇狀態管理的 dummy 元素
 		htm.Div(id={"type": "dummy-output", "id": "selection"}, style={"display": "none"}),
@@ -806,18 +808,7 @@ def sim_OnSwitchViewGroup(clks, dta_now):
 		out(ks.sto.tsk, "data", allow_duplicate=True),
 		out(ks.sto.ste, "data", allow_duplicate=True),
 	],
-	[
-		inp(k.btnFind, "n_clicks"),
-		inp(k.btnClear, "n_clicks"),
-		inp(k.btnReset, "n_clicks"),
-		inp(k.btnRmSel, "n_clicks"),
-		inp(k.btnOkSel, "n_clicks"),
-		inp(k.btnStack, "n_clicks"),
-		inp(k.btnOkAll, "n_clicks"),
-		inp(k.btnRmAll, "n_clicks"),
-		inp({"type": gv.STACK_GROUP_BUTTON, "id": ALL}, "n_clicks"),
-		inp({"type": gv.GROUP_ACTION_BUTTON, "action": ALL, "id": ALL}, "n_clicks"),
-	],
+	inp(k.actionTrigger, "data"),
 	[
 		ste(ks.sto.now, "data"),
 		ste(ks.sto.cnt, "data"),
@@ -836,18 +827,14 @@ def sim_OnSwitchViewGroup(clks, dta_now):
 	prevent_initial_call=True
 )
 def sim_RunModal(
-	clk_fnd, clk_clr, clk_rst, clk_rm, clk_rs, clk_stack, clk_ok, clk_ra, clk_stack_groups, clk_group_actions,
+	actionTrigger,
 	dta_now, dta_cnt, dta_mdl, dta_tsk, dta_nfy, dta_ste,
 	nchkOkAll, nchkRmSel, ncRS, ncRA, stackDelete, groupDeleteValues, groupDeleteIds
 ):
-	if not ctx.triggered:
-		lg.info(f"[sim:RunModal] non clicked")
-		return noUpd.by(5)
-	triggerValue = ctx.triggered[0].get('value')
-	if (isinstance(triggerValue, list) and not any(triggerValue)) or (not isinstance(triggerValue, list) and not triggerValue):
+	if not actionTrigger or not actionTrigger.get('id'):
 		return noUpd.by(5)
 
-	trgId = getTrgId()
+	trgId = TrgId(actionTrigger['id'])
 	# if trgId: lg.info(f"[sim:RunModal] ---------->> trig: [ {trgId} ]")
 
 	now = Now.fromDic(dta_now)

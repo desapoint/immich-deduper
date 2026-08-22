@@ -4,6 +4,7 @@ const Ste = window.Ste = {
 	selectedIds: new Set(),
 	stackCoverIds: new Set(),
 	_lastSyncHash: null,
+	_actionNonce: 0,
 	_domCache: null,
 
 	invalidateDomCache()
@@ -121,6 +122,21 @@ const Ste = window.Ste = {
 	{
 		if ( typeof window.MdlImg?.syncSelectState === 'function' ) window.MdlImg.syncSelectState()
 		return dsh.syncSte( this.cntTotal, this.selectedIds, this.stackCoverIds )
+	},
+
+	dispatchAction( button )
+	{
+		if ( !button?.id || button.disabled ) return false
+		let actionId = button.id
+		if ( actionId.startsWith( '{' ) ) {
+			try { actionId = JSON.parse( actionId ) }
+			catch ( e ) {
+				console.error( '[Ste] Invalid action button id:', e )
+				return false
+			}
+		}
+		this._actionNonce++
+		return dsh.syncStore( 'sim-action-trigger', {id: actionId, nonce: this._actionNonce} )
 	},
 
 	init( cnt )
@@ -513,6 +529,11 @@ document.addEventListener( 'DOMContentLoaded', function(){
 	document.addEventListener( 'click', function( event ){
 
 		const ste = Ste
+		const actionButton = event.target.closest?.(
+			'#sim-btn-fnd, #sim-btn-clear, #sim-btn-reset, #sim-btn-RmSel, #sim-btn-OkSel, #sim-btn-Stack, #sim-btn-OkAll, #sim-btn-RmAll, '
+			+ '[id*=\'"type":"sim-stack-group"\'], [id*=\'"type":"sim-group-action"\']'
+		)
+		if ( actionButton && ste ) ste.dispatchAction( actionButton )
 		const coverButton = event.target.closest?.( '[id*=\'"type":"sim-stack-cover"\']' )
 		if ( coverButton )
 		{

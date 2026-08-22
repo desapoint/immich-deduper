@@ -54,6 +54,7 @@ async function main() {
 	const cards = [card(1, 1, true), card(2, 1, false), card(3, 2, false)]
 	const coverButtons = [coverButton(1, 1, 'owner-a'), coverButton(2, 1, 'owner-a')]
 	const syncs = []
+	const actionSyncs = []
 	const sourceClasses = new Set()
 	let selectorScans = 0
 	let currentTask = null
@@ -84,7 +85,8 @@ async function main() {
 		},
 		dsh: {
 			getStore(id) { return id === 'store-tsk' ? currentTask : null },
-		syncSte(cnt, ids, covers) { syncs.push([cnt, Array.from(ids), Array.from(covers || [])]) },
+			syncSte(cnt, ids, covers) { syncs.push([cnt, Array.from(ids), Array.from(covers || [])]) },
+			syncStore(id, data) { actionSyncs.push({id, data}); return true },
 		},
 		document: {
 			addEventListener() {},
@@ -188,6 +190,14 @@ async function main() {
 	assert.equal(syncs.length, syncCount + 1, 'a delegated card click must persist its local state once')
 	assert.equal(ste.handleStackCover(coverButtons[0]), true)
 	assert.deepEqual(syncs.at(-1)[2], [1], 'a delegated cover click must persist the chosen cover')
+
+	assert.equal(ste.dispatchAction({id: 'sim-btn-Stack', disabled: false}), true)
+	assert.equal(actionSyncs.at(-1).id, 'sim-action-trigger')
+	assert.equal(actionSyncs.at(-1).data.id, 'sim-btn-Stack')
+	assert.equal(ste.dispatchAction(groupStackButton), true)
+	assert.equal(actionSyncs.at(-1).data.id.type, 'sim-stack-group')
+	assert.equal(actionSyncs.at(-1).data.id.id, 1)
+	assert.ok(actionSyncs.at(-1).data.nonce > actionSyncs.at(-2).data.nonce)
 }
 
 

@@ -15,7 +15,6 @@ dash.Dash(__name__, use_pages=True, pages_folder='')
 from mod import models
 from pages import similar
 from ui import gv
-from dsh import TrgId
 
 
 def asset(autoId: int, groupId: int):
@@ -68,13 +67,9 @@ class TestManualGroupResolution(unittest.TestCase):
 		ste = models.Ste(cntTotal=3, selectedIds=[1])
 		trigger = {'type': gv.GROUP_ACTION_BUTTON, 'action': gv.GROUP_KEEP_SELECTED, 'id': 1}
 
-		with (
-			patch.object(similar, 'ctx', SimpleNamespace(triggered=[{'value': [1]}])),
-			patch.object(similar, 'getTrgId', return_value=trigger),
-			patch.object(similar.db, 'dto', TEST_DTO),
-		):
+		with patch.object(similar.db, 'dto', TEST_DTO):
 			result = similar.sim_RunModal(
-				0, 0, 0, 0, 0, 0, 0, 0, [], [1],
+				{'id': trigger, 'nonce': 1},
 				now.toDict(), models.Cnt().toDict(), models.Mdl().toDict(), models.Tsk().toDict(),
 				models.Nfy().toDict(), ste.toDict(),
 				False, False, False, False, False, [], [],
@@ -89,19 +84,15 @@ class TestManualGroupResolution(unittest.TestCase):
 		now = models.Now(sim=models.PgSim(assCur=assets))
 		ste = models.Ste(cntTotal=3, selectedIds=[1, 2])
 		cases = (
-			('global', TrgId(similar.k.btnStack), 1, [], None),
-			('group', {'type': gv.STACK_GROUP_BUTTON, 'id': 1}, 0, [1], 1),
+			('global', similar.k.btnStack, None),
+			('group', {'type': gv.STACK_GROUP_BUTTON, 'id': 1}, 1),
 		)
 
-		for name, trigger, globalClicks, groupClicks, targetGroupId in cases:
+		for name, trigger, targetGroupId in cases:
 			with self.subTest(name=name):
-				with (
-					patch.object(similar, 'ctx', SimpleNamespace(triggered=[{'value': groupClicks or globalClicks}])),
-					patch.object(similar, 'getTrgId', return_value=trigger),
-					patch.object(similar.db, 'dto', TEST_DTO),
-				):
+				with patch.object(similar.db, 'dto', TEST_DTO):
 					result = similar.sim_RunModal(
-						0, 0, 0, 0, 0, globalClicks, 0, 0, groupClicks, [],
+						{'id': trigger, 'nonce': 1},
 						now.toDict(), models.Cnt().toDict(), models.Mdl().toDict(), models.Tsk().toDict(),
 						models.Nfy().toDict(), ste.toDict(),
 						False, False, False, False, False, [], [],

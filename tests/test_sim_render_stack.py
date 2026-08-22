@@ -107,6 +107,16 @@ class TestSimilarPartialRendering(unittest.TestCase):
 			self.assertFalse(any(item['id'] == componentId for item in inputs))
 		self.assertFalse(any('img-pop' in str(item['id']) for item in inputs))
 
+		actionCallbacks = [
+			callback for callback in testApp.callback_map.values()
+			if any(item['id'] == similar.k.actionTrigger for item in callback['inputs'])
+		]
+		self.assertEqual(len(actionCallbacks), 1)
+		self.assertEqual(
+			actionCallbacks[0]['inputs'],
+			[{'id': similar.k.actionTrigger, 'property': 'data'}],
+		)
+
 		initKey = next(key for key in testApp.callback_map if 'init-selection' in key)
 		initInputs = [item['id'] for item in testApp.callback_map[initKey]['inputs']]
 		self.assertNotIn(similar.ks.sto.ste, initInputs)
