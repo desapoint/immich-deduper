@@ -73,6 +73,10 @@ class TestSimilarPartialRendering(unittest.TestCase):
 		self.assertTrue(any(value == 'similar-config-grid' for value in classes))
 		self.assertEqual(sum(value == 'similar-search-action' or value.startswith('similar-search-action ') for value in classes), 3)
 		self.assertTrue(any('similar-workspace' in value for value in classes))
+		clearButton = next(node for node in nodes if props(node).get('id') == similar.k.btnClear)
+		resetButton = next(node for node in nodes if props(node).get('id') == similar.k.btnReset)
+		self.assertFalse(props(clearButton).get('outline', False))
+		self.assertFalse(props(resetButton).get('outline', False))
 
 	def test_render_state_callback_is_registered(self):
 		self.assertTrue(any('sim-render-state.data' in key for key in testApp.callback_map))

@@ -30,6 +30,12 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn('@media (max-width: 767px)', main)
 		self.assertIn('grid-template-columns: 1fr;', main)
 
+	def test_restrained_controls_remain_visibly_interactive(self):
+		main = (ROOT / 'src/scss/main.scss').read_text()
+		self.assertIn('background-image: var(--bs-form-check-bg-image) !important;', main)
+		self.assertIn('// Restrained application styling', main)
+		self.assertIn('opacity: 0.68;', main)
+
 
 if __name__ == '__main__':
 	unittest.main()

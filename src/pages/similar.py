@@ -254,12 +254,12 @@ def layout(autoId=None):
 					searchAction(
 						"Keep resolved",
 						"Clear only active search records while preserving completed work.",
-						dbc.Button("Clear active records", id=k.btnClear, color="secondary", outline=True, className="w-100", disabled=True),
+						dbc.Button("Clear active records", id=k.btnClear, color="secondary", className="w-100", disabled=True),
 					),
 					searchAction(
 						"Start over",
 						"Reset all similarity records, including automatically resolved results.",
-						dbc.Button("Reset all records", id=k.btnReset, color="danger", outline=True, className="w-100", disabled=True),
+						dbc.Button("Reset all records", id=k.btnReset, color="danger", className="w-100", disabled=True),
 						"similar-search-action-danger",
 					),
 				], className="similar-search-actions"),

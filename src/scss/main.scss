@@ -2877,3 +2877,79 @@ textarea {
 		transition-duration: 0.01ms !important;
 	}
 }
+
+
+//========================================================================
+// Restrained application styling
+//========================================================================
+html,
+body {
+	background: var(--ui-bg);
+}
+
+.navbar {
+	background: var(--ui-bg-soft) !important;
+	box-shadow: none;
+	backdrop-filter: none;
+}
+
+.card,
+.fetch-action-unit,
+.vector-action-unit,
+.similar-config-primary,
+.similar-config-search,
+.similar-search-action,
+.view-filter-card,
+.view-results-shell {
+	background: var(--ui-surface);
+	box-shadow: none;
+}
+
+.card:hover {
+	transform: none;
+	box-shadow: none;
+}
+
+.btn {
+	box-shadow: none;
+
+	&:hover:not(:disabled):not(.disabled),
+	&:active:not(:disabled):not(.disabled) {
+		transform: none;
+		box-shadow: none !important;
+	}
+
+	&:disabled,
+	&.disabled {
+		filter: none;
+		opacity: 0.68;
+	}
+}
+
+.form-check-input[type="checkbox"]:checked {
+	background-image: var(--bs-form-check-bg-image) !important;
+	background-repeat: no-repeat !important;
+	background-position: center !important;
+	background-size: contain !important;
+}
+
+.settings-intro,
+.fetch-intro,
+.vector-intro,
+.similar-intro,
+.view-intro {
+	display: none;
+}
+
+.settings-eyebrow,
+.fetch-eyebrow,
+.vector-eyebrow,
+.similar-eyebrow,
+.view-eyebrow,
+.fetch-action-label,
+.vector-action-label,
+.similar-action-label,
+.view-results-eyebrow {
+	letter-spacing: 0;
+	text-transform: none;
+}

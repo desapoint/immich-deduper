@@ -1291,3 +1291,23 @@ body { background: radial-gradient(circle at 15% -10%, rgba(14, 165, 233, 0.12),
 @media (max-width: 520px) { .similar-workspace .sim-controls .btn { flex: 1 1 auto; } .similar-workspace .sim-control-label { flex: 0 0 100%; } .similar-workspace .sim-selection-count { margin-bottom: 0.1rem; } .similar-workspace .sim-stack-delete { flex: 1 1 auto; } .pager .lnk { padding-inline: 0.55rem; } .pager-info, .pager-size { margin-left: 0.35rem; } }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
+
+html, body { background: var(--ui-bg); }
+
+.navbar { background: var(--ui-bg-soft) !important; box-shadow: none; backdrop-filter: none; }
+
+.card, .fetch-action-unit, .vector-action-unit, .similar-config-primary, .similar-config-search, .similar-search-action, .view-filter-card, .view-results-shell { background: var(--ui-surface); box-shadow: none; }
+
+.card:hover { transform: none; box-shadow: none; }
+
+.btn { box-shadow: none; }
+
+.btn:hover:not(:disabled):not(.disabled), .btn:active:not(:disabled):not(.disabled) { transform: none; box-shadow: none !important; }
+
+.btn:disabled, .btn.disabled { filter: none; opacity: 0.68; }
+
+.form-check-input[type="checkbox"]:checked { background-image: var(--bs-form-check-bg-image) !important; background-repeat: no-repeat !important; background-position: center !important; background-size: contain !important; }
+
+.settings-intro, .fetch-intro, .vector-intro, .similar-intro, .view-intro { display: none; }
+
+.settings-eyebrow, .fetch-eyebrow, .vector-eyebrow, .similar-eyebrow, .view-eyebrow, .fetch-action-label, .vector-action-label, .similar-action-label, .view-results-eyebrow { letter-spacing: 0; text-transform: none; }

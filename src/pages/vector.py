@@ -86,12 +86,12 @@ def layout():
 			], className="vector-action-unit"),
 			htm.Div([
 				htm.Small("Recovery", className="vector-action-label text-warning"),
-				dbc.Button("Repair Index", id=K.btnRepairIdx, color="warning", outline=True, size="lg", className="w-100 vector-action-button", disabled=True, title="Scan Qdrant for HNSW index desync and repair, or clear vectored flag for unrepairable points"),
+				dbc.Button("Repair Index", id=K.btnRepairIdx, color="warning", size="lg", className="w-100 vector-action-button", disabled=True, title="Scan Qdrant for HNSW index desync and repair, or clear vectored flag for unrepairable points"),
 				htm.Small("Use independently only when search quality suggests an index issue."),
 			], className="vector-action-unit"),
 			htm.Div([
 				htm.Small("Destructive", className="vector-action-label text-danger"),
-				dbc.Button("Clear All Vectors", id=K.btnClear, color="danger", outline=True, size="lg", className="w-100 vector-action-button", disabled=True),
+				dbc.Button("Clear All Vectors", id=K.btnClear, color="danger", size="lg", className="w-100 vector-action-button", disabled=True),
 				htm.Small("Remove every generated embedding; assets will need processing again."),
 			], className="vector-action-unit vector-action-danger"),
 		], className="vector-action-grid"),

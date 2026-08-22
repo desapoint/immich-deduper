@@ -111,7 +111,6 @@ def layout():
 				],
 					id=k.btnReset,
 					color="danger",
-					outline=True,
 					className="w-100 fetch-action-button",
 				),
 				htm.Small("Use only when you want to rebuild every local record."),

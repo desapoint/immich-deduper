@@ -29,6 +29,21 @@ def props(node):
 
 
 class TestPageLayouts(unittest.TestCase):
+	def test_maintenance_actions_use_solid_button_styles(self):
+		with (
+			patch.object(fetch.db.psql, 'fetchUsers', return_value=[]),
+			patch.object(vector.cardSets.db.psql, 'fetchUsers', return_value=[]),
+		):
+			fetchNodes = list(walk(fetch.layout()))
+			vectorNodes = list(walk(vector.layout()))
+
+		fetchReset = next(node for node in fetchNodes if props(node).get('id') == fetch.k.btnReset)
+		vectorRepair = next(node for node in vectorNodes if props(node).get('id') == vector.K.btnRepairIdx)
+		vectorClear = next(node for node in vectorNodes if props(node).get('id') == vector.K.btnClear)
+		self.assertFalse(props(fetchReset).get('outline', False))
+		self.assertFalse(props(vectorRepair).get('outline', False))
+		self.assertFalse(props(vectorClear).get('outline', False))
+
 	def test_settings_page_has_reassuring_status_hierarchy(self):
 		nodes = list(walk(settings.layout()))
 		classes = [str(props(node).get('className', '')) for node in nodes]
