@@ -1171,11 +1171,13 @@ select.form-select { appearance: none; padding-right: 2rem !important; backgroun
 
 .similar-workspace .card.sim.main, .similar-workspace .card.sim.rels { background: var(--ui-surface); }
 
-.similar-workspace .card.sim.main .card-header { background: linear-gradient(90deg, rgba(14, 165, 233, 0.13), rgba(17, 29, 46, 0.84)); }
+.similar-workspace .card.sim.main .card-header { background: rgba(14, 165, 233, 0.1); }
 
 .similar-workspace .card.sim.has-stack { border-color: var(--sim-stack-color); box-shadow: inset 4px 0 0 var(--sim-stack-color), var(--ui-shadow-sm); }
 
-.similar-workspace .card.sim.checked { border-color: var(--ui-accent) !important; box-shadow: inset 0 0 0 2px var(--ui-accent), 0 12px 28px rgba(14, 165, 233, 0.18); }
+.similar-workspace .card.sim.checked { border-color: var(--ui-accent) !important; box-shadow: inset 0 0 0 1px var(--ui-accent); }
+
+.similar-workspace .card.sim.has-stack.checked { box-shadow: inset 4px 0 0 var(--sim-stack-color), inset 0 0 0 1px var(--ui-accent); }
 
 .similar-workspace .card.sim:hover:not(.checked):not(.has-stack), .similar-workspace .card.sim:focus-within:not(.checked):not(.has-stack) { border-color: var(--ui-border-strong); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16); }
 
@@ -1501,7 +1503,7 @@ body:has(#img-modal.show) .modal-backdrop.show { background: #02050a; opacity: 0
 
 .similar-workspace img.card-img, .view-results-shell img.card-img { background: #050b14; }
 
-@media (max-width: 520px) { .similar-workspace .sim-controls .btn { flex: 1 1 auto; } .similar-workspace .sim-control-label { flex: 0 0 100%; } .similar-workspace .sim-selection-count { margin-bottom: 0.1rem; } .similar-workspace .sim-stack-delete { flex: 1 1 auto; } .pager .lnk { padding-inline: 0.55rem; } }
+@media (max-width: 520px) { .similar-workspace .sim-controls .btn { flex: 1 1 auto; } .similar-workspace .sim-control-label { flex: 0 0 100%; } .similar-workspace .sim-selection-count { margin-bottom: 0.1rem; } .similar-workspace .sim-stack-delete { flex: 1 1 auto; } .similar-workspace .sim-group-card-list { grid-template-columns: minmax(0, 1fr) !important; } .similar-workspace .sim-card-detail-row { grid-template-columns: minmax(0, 1fr); gap: 0.15rem; } .pager .lnk { padding-inline: 0.55rem; } }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
 

@@ -140,7 +140,14 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 
 	similarCardBody = dbc.CardBody([
 		htm.Div([
-			htm.Span(fileName, className="tag sim-card-filename", title=fileName),
+			htm.Span(
+				fileName,
+				className="tag sim-card-filename",
+				title=f"{fileName} — select to copy",
+				tabIndex=0,
+				role="button",
+				**{"aria-label": f"Copy filename {fileName}"},
+			),
 			htm.Div([
 				htm.Span([htm.I(className="bi bi-calendar3"), captureLabel], className="sim-card-identity-item", title=str(captureDate) if captureDate else None),
 				htm.Span([htm.I(className="bi bi-person-circle"), ownerName or "Unknown owner"], className="sim-card-identity-item", title=ass.ownerId or None),

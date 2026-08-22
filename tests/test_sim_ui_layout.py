@@ -92,7 +92,10 @@ class TestSimilarUiLayout(unittest.TestCase):
 		self.assertEqual(len(groupContainers), 1)
 		self.assertEqual(len(cardLists), 1)
 		self.assertEqual(props(groupContainers[0]).get('data-group-id'), '7')
-		self.assertIn('290px', props(cardLists[0]).get('style', {}).get('gridTemplateColumns', ''))
+		cardColumns = props(cardLists[0]).get('style', {}).get('gridTemplateColumns', '')
+		self.assertIn('auto-fill', cardColumns)
+		self.assertIn('300px', cardColumns)
+		self.assertIn('360px', cardColumns)
 		self.assertEqual(props(titles[0]).get('data-group-id'), '7')
 		self.assertEqual([props(node).get('data-group-id') for node in cardSelects], ['7', '7'])
 		self.assertEqual([props(node).get('data-stack-id') for node in cardSelects], ['stack-a', 'stack-a'])
@@ -183,7 +186,10 @@ class TestSimilarUiLayout(unittest.TestCase):
 		detailRows = [node for node in nodes if props(node).get('className') == 'sim-card-detail-row']
 		metaItems = [node for node in walk(metadata) if 'sim-card-meta-item' in str(props(node).get('className', ''))]
 
-		self.assertTrue(any(props(node).get('className') == 'tag sim-card-filename' for node in walk(identity)))
+		filename = next(node for node in walk(identity) if props(node).get('className') == 'tag sim-card-filename')
+		self.assertEqual(props(filename).get('tabIndex'), 0)
+		self.assertEqual(props(filename).get('role'), 'button')
+		self.assertEqual(props(filename).get('aria-label'), 'Copy filename holiday-original-name.jpg')
 		self.assertTrue(any(getattr(node, 'children', None) == 'holiday-original-name.jpg' for node in walk(identity)))
 		self.assertTrue(any(node == 'Owner Name' or getattr(node, 'children', None) == 'Owner Name' for node in walk(identity)))
 		self.assertGreaterEqual(len(metaItems), 7)

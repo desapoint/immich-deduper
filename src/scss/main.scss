@@ -2606,7 +2606,7 @@ select.form-select {
 		&.rels { background: var(--ui-surface); }
 
 		&.main .card-header {
-			background: linear-gradient(90deg, rgba(14, 165, 233, 0.13), rgba(17, 29, 46, 0.84));
+			background: rgba(14, 165, 233, 0.10);
 		}
 
 		&.has-stack {
@@ -2616,7 +2616,11 @@ select.form-select {
 
 		&.checked {
 			border-color: var(--ui-accent) !important;
-			box-shadow: inset 0 0 0 2px var(--ui-accent), 0 12px 28px rgba(14, 165, 233, 0.18);
+			box-shadow: inset 0 0 0 1px var(--ui-accent);
+		}
+
+		&.has-stack.checked {
+			box-shadow: inset 4px 0 0 var(--sim-stack-color), inset 0 0 0 1px var(--ui-accent);
 		}
 
 		&:hover:not(.checked):not(.has-stack),
@@ -3690,6 +3694,8 @@ body:has(#img-modal.show) .modal-backdrop.show {
 		.sim-control-label { flex: 0 0 100%; }
 		.sim-selection-count { margin-bottom: 0.1rem; }
 		.sim-stack-delete { flex: 1 1 auto; }
+		.sim-group-card-list { grid-template-columns: minmax(0, 1fr) !important; }
+		.sim-card-detail-row { grid-template-columns: minmax(0, 1fr); gap: 0.15rem; }
 	}
 
 	.pager .lnk { padding-inline: 0.55rem; }

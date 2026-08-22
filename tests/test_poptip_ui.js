@@ -38,6 +38,8 @@ class MockElement {
 	getAttribute(name) { return this.attributes[name] ?? null }
 	hasAttribute(name) { return Object.hasOwn(this.attributes, name) }
 	addEventListener(name, callback) { this.listeners[name] = callback }
+	closest() { return null }
+	click() {}
 	remove() {
 		if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(item => item !== this)
 		this.parentNode = null
@@ -98,6 +100,14 @@ async function run() {
 	assert.equal(details.open, true, 'Show Grid Info should open the native card details')
 	vm.runInContext('window.dash_clientside.ui.toggleGridInfo(false)', sandbox)
 	assert.equal(details.open, false, 'hiding Grid Info should close the native card details')
+	let filenameClicks = 0
+	let prevented = false
+	const filename = new MockElement('filename')
+	filename.closest = selector => selector === 'span.sim-card-filename' ? filename : null
+	filename.click = () => { filenameClicks++ }
+	body.listeners.keydown({target: filename, key: 'Enter', preventDefault() { prevented = true }})
+	assert.equal(filenameClicks, 1, 'Enter should activate filename copying')
+	assert.equal(prevented, true)
 
 	vm.runInContext('ui.poptip.show("tip-1", document.body)', sandbox)
 	assert.equal(tip.parentNode, body, 'an active popup must escape card paint containment')

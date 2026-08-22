@@ -129,6 +129,14 @@ class TestGlobalUiFoundation(unittest.TestCase):
 			self.assertIn(selector, main)
 		self.assertIn("document.querySelectorAll('.sim-card-details')", appui)
 
+	def test_similar_cards_have_restrained_states_and_phone_layout(self):
+		main = (ROOT / 'src/scss/main.scss').read_text()
+		self.assertIn('&.has-stack.checked {', main)
+		self.assertIn('box-shadow: inset 0 0 0 1px var(--ui-accent);', main)
+		self.assertNotIn('0 12px 28px rgba(14, 165, 233, 0.18)', main)
+		self.assertIn('.sim-group-card-list { grid-template-columns: minmax(0, 1fr) !important; }', main)
+		self.assertIn('.sim-card-detail-row { grid-template-columns: minmax(0, 1fr); gap: 0.15rem; }', main)
+
 	def test_similar_review_tabs_match_shared_controls(self):
 		main = (ROOT / 'src/scss/main.scss').read_text()
 		self.assertIn('.similar-workspace {', main)

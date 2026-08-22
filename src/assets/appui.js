@@ -333,6 +333,14 @@ document.addEventListener('DOMContentLoaded', () =>{
 			}
 		}
 	})
+
+	root.addEventListener('keydown', event =>{
+		if (event.key !== 'Enter' && event.key !== ' ') return
+		const copyTarget = event.target.closest('span.sim-card-filename')
+		if (!copyTarget) return
+		event.preventDefault()
+		copyTarget.click()
+	})
 })
 
 ui.init()

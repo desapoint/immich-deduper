@@ -86,9 +86,9 @@ def mkCardRow(asset: models.Asset, groupId: int, style: Optional[dict] = None):
 	return htm.Div(cards.mk(asset, stackGroupId=groupId), className="sim-card-cell", style=style or {})
 
 
-def mkGroupContainer(groupId: int, assets: List[models.Asset], minW=290):
+def mkGroupContainer(groupId: int, assets: List[models.Asset], minW=300, maxW=360):
 	cardGridStyle = {
-		"gridTemplateColumns": f"repeat(auto-fit, minmax(min(100%, {minW}px), 1fr))",
+		"gridTemplateColumns": f"repeat(auto-fill, minmax(min(100%, {minW}px), {maxW}px))",
 	}
 	return htm.Section([
 		_mkGroupHeader(groupId, len(assets)),
@@ -147,7 +147,7 @@ def mkGrd(assets: list[models.Asset], minW=230, onEmpty=None, maker=cards.mk):
 	return htm.Div(rows, className="gv fsp", style=styGrid)
 
 
-def mkGrdGrps(assets: List[models.Asset], minW=290, maxW=380, onEmpty=None):
+def mkGrdGrps(assets: List[models.Asset], minW=300, maxW=360, onEmpty=None):
 	if not assets or len(assets) == 0:
 		if onEmpty:
 			if isinstance(onEmpty, str): return dbc.Alert(f"{onEmpty}", color="warning", className="text-center")
@@ -163,7 +163,7 @@ def mkGrdGrps(assets: List[models.Asset], minW=290, maxW=380, onEmpty=None):
 	groupContainers = []
 	for grpId in sorted(groups.keys()):
 		grpAssets = groups[grpId]
-		groupContainers.append(mkGroupContainer(grpId, grpAssets, minW))
+		groupContainers.append(mkGroupContainer(grpId, grpAssets, minW, maxW))
 
 	lg.info(f"[fsp:gv] assets[{len(assets)}] groups[{len(groups)}]")
 
