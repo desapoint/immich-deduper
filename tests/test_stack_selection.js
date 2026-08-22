@@ -25,26 +25,57 @@ function card(autoId, groupId, stacked) {
 }
 
 
+function coverButton(autoId, groupId, ownerId) {
+	const classes = new Set(['btn-outline-info'])
+	return {
+		id: JSON.stringify({type: 'sim-stack-cover', id: autoId, group: groupId, owner: ownerId}),
+		textContent: 'Set cover',
+		attributes: {},
+		classes,
+		classList: {toggle(name, enabled) { enabled ? classes.add(name) : classes.delete(name) }},
+		setAttribute(name, value) { this.attributes[name] = value },
+	}
+}
+
+
 async function main() {
 	const cards = [card(1, 1, true), card(2, 1, false), card(3, 2, false)]
+	const coverButtons = [coverButton(1, 1, 'owner-a'), coverButton(2, 1, 'owner-a')]
 	const syncs = []
 	const sourceClasses = new Set()
+	let selectorScans = 0
+	let currentTask = null
 	const sourceButton = {
 		attributes: {},
+		disabled: false,
 		classList: {toggle(name, enabled) { enabled ? sourceClasses.add(name) : sourceClasses.delete(name) }},
 		setAttribute(name, value) { this.attributes[name] = value },
+	}
+	const removeButton = {disabled: false, textContent: '', title: ''}
+	const keepButton = {disabled: false, textContent: '', title: ''}
+	const stackButton = {disabled: false}
+	const buttons = {
+		'sim-btn-SelectMns': sourceButton,
+		'sim-btn-RmSel': removeButton,
+		'sim-btn-OkSel': keepButton,
+		'sim-btn-Stack': stackButton,
 	}
 	const context = {
 		console,
 		setTimeout,
 		clearTimeout,
-		dsh: {syncSte(cnt, ids) { syncs.push([cnt, Array.from(ids)]) }},
+		dsh: {
+			getStore(id) { return id === 'store-tsk' ? currentTask : null },
+			syncSte(cnt, ids) { syncs.push([cnt, Array.from(ids)]) },
+		},
 		document: {
 			addEventListener() {},
-			getElementById(id) { return id === 'sim-btn-SelectMns' ? sourceButton : null },
+			getElementById(id) { return buttons[id] || null },
 			querySelector() { return null },
 			querySelectorAll(selector) {
+				selectorScans++
 				if (selector === '.sim.main [id*="card-select"]') return [cards[0], cards[2]]
+				if (selector.includes('"type":"sim-stack-cover"')) return coverButtons
 				if (selector.startsWith('[id*="card-select"]')) return cards
 				return []
 			},
@@ -79,6 +110,39 @@ async function main() {
 	ste.updBtnMns()
 	assert.equal(sourceClasses.has('active'), false)
 	assert.equal(sourceButton.attributes['aria-pressed'], 'false')
+
+	ste.selectedIds = new Set([1])
+	currentTask = {id: 'task-1', cmd: 'running'}
+	ste.updBtns(1)
+	assert.equal(removeButton.disabled, true, 'local selection updates must not re-enable actions during a task')
+	assert.equal(keepButton.disabled, true)
+	assert.equal(stackButton.disabled, true)
+	assert.equal(sourceButton.disabled, true)
+	currentTask = null
+	ste.updBtns(1)
+	assert.equal(removeButton.disabled, false, 'selection actions should recover locally after the task gate clears')
+	assert.equal(keepButton.disabled, false)
+	assert.equal(stackButton.disabled, false)
+
+	const scansAfterCache = selectorScans
+	ste.toggle(2, cards[1])
+	assert.equal(selectorScans, scansAfterCache, 'a card toggle must reuse the DOM cache instead of rescanning the grid')
+
+	ste.setStackCover(1, 1, 'owner-a')
+	assert.deepEqual(Array.from(ste.stackCoverIds), [1])
+	assert.equal(ste.selectedIds.has(1), true, 'choosing a cover must select its asset')
+	assert.equal(coverButtons[0].textContent, 'Cover choice')
+	assert.equal(coverButtons[0].classes.has('btn-info'), true)
+	assert.equal(coverButtons[0].classes.has('btn-outline-info'), false)
+	assert.equal(coverButtons[0].attributes['aria-pressed'], 'true')
+
+	ste.setStackCover(1, 1, 'owner-a')
+	assert.deepEqual(Array.from(ste.stackCoverIds), [], 'clicking the active cover must clear it')
+	assert.equal(ste.selectedIds.has(1), true, 'clearing a cover must not clear image selection')
+	assert.equal(coverButtons[0].textContent, 'Set cover')
+	assert.equal(coverButtons[0].classes.has('btn-info'), false)
+	assert.equal(coverButtons[0].classes.has('btn-outline-info'), true)
+	assert.equal(coverButtons[0].attributes['aria-pressed'], 'false')
 }
 
 

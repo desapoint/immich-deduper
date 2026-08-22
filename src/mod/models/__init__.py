@@ -30,6 +30,10 @@ class ITaskStore:
     ste: Ste
 
     _canceller: Optional[IFnCancel] = None
+    _nfyStart: int = field(init=False, repr=False)
+
+    def __post_init__(self):
+        self._nfyStart = len(self.nfy.msgs)
 
     def isCancelled(self) -> bool:
         if self._canceller: return self._canceller()
@@ -37,4 +41,3 @@ class ITaskStore:
 
     def setCancelChecker(self, checker: IFnCancel):
         self._canceller = checker
-

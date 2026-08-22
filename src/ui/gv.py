@@ -19,23 +19,35 @@ GROUP_MARK_RESOLVED = "mark-resolved"
 GROUP_DELETE_ALL = "delete-all"
 
 
-def _mkGroupAction(label: str, groupId: int, action: str, color: str, disabled: bool = False, title: str = ""):
+def _mkGroupAction(
+	label: str,
+	groupId: int,
+	action: str,
+	color: str,
+	disabled: bool = False,
+	title: str = "",
+	outline: bool = False,
+):
 	return dbc.Button(
 		label,
 		id={"type": GROUP_ACTION_BUTTON, "action": action, "id": groupId},
 		size="sm",
 		color=color,
-		className="txt-sm",
+		className="txt-sm sim-group-action",
 		disabled=disabled,
 		title=title,
+		outline=outline,
 	)
 
 
 def _mkGroupHeader(groupId: int, count: int):
 	return htm.Div([
 		htm.Div([
-			htm.Label(f"Group {groupId}"),
-			htm.Small(f"{count} images", className="text-muted"),
+			htm.Div([
+				htm.Small("Similarity group", className="sim-group-eyebrow"),
+				htm.Strong(f"#{groupId}"),
+			], className="sim-group-name"),
+			htm.Span(f"{count} images", className="sim-group-count"),
 		], className="sim-group-title", **{"data-group-id": str(groupId)}),
 		htm.Div([
 			htm.Small("Select", className="sim-control-label"),
@@ -66,18 +78,26 @@ def _mkGroupHeader(groupId: int, count: int):
 			_mkGroupAction("Mark resolved", groupId, GROUP_MARK_RESOLVED, "primary", title="Finish this group without deleting its remaining images"),
 			_mkGroupAction("Delete group", groupId, GROUP_DELETE_ALL, "danger", title="Delete every remaining image in this group"),
 		], className="sim-controls sim-group-actions"),
+		htm.Div(className="sim-group-auto-log", **{"data-group-id": str(groupId)}),
 	], className="hr sim-group-header", **{"data-group-id": str(groupId)})
 
 
 def mkCardRow(asset: models.Asset, groupId: int, style: Optional[dict] = None):
-	return htm.Div(cards.mk(asset, stackGroupId=groupId), style=style or {})
+	return htm.Div(cards.mk(asset, stackGroupId=groupId), className="sim-card-cell", style=style or {})
 
 
-def mkGroupRows(groupId: int, assets: List[models.Asset], style: Optional[dict] = None):
-	return [
+def mkGroupContainer(groupId: int, assets: List[models.Asset], minW=300, maxW=360):
+	cardGridStyle = {
+		"gridTemplateColumns": f"repeat(auto-fill, minmax(min(100%, {minW}px), {maxW}px))",
+	}
+	return htm.Section([
 		_mkGroupHeader(groupId, len(assets)),
-		*[mkCardRow(asset, groupId, style) for asset in assets],
-	]
+		htm.Div(
+			[mkCardRow(asset, groupId) for asset in assets],
+			className="sim-group-card-list",
+			style=cardGridStyle,
+		),
+	], className="sim-group-container", **{"data-group-id": str(groupId)})
 
 
 def mkGrd(assets: list[models.Asset], minW=230, onEmpty=None, maker=cards.mk):
@@ -127,30 +147,12 @@ def mkGrd(assets: list[models.Asset], minW=230, onEmpty=None, maker=cards.mk):
 	return htm.Div(rows, className="gv fsp", style=styGrid)
 
 
-def mkGrdGrps(assets: List[models.Asset], minW=250, maxW=300, onEmpty=None):
+def mkGrdGrps(assets: List[models.Asset], minW=300, maxW=360, onEmpty=None):
 	if not assets or len(assets) == 0:
 		if onEmpty:
 			if isinstance(onEmpty, str): return dbc.Alert(f"{onEmpty}", color="warning", className="text-center")
 			else: return onEmpty
 		return htm.Div(dbc.Alert("--------", color="warning"), className="text-center")
-
-	cntAss = len(assets)
-
-	if cntAss <= 4:
-		styGrid = {
-			"display": "flex",
-			"flexWrap": "wrap",
-			"gap": "1rem",
-			"justifyContent": "center"
-		}
-		styItem = {"flex": f"1 1 {minW}px"}
-	else:
-		styGrid = {
-			"display": "grid",
-			"gridTemplateColumns": f"repeat(auto-fit, minmax({minW}px, 1fr))",
-			"gap": "1rem"
-		}
-		styItem = {}
 
 	groups = {}
 	for asset in assets:
@@ -158,14 +160,14 @@ def mkGrdGrps(assets: List[models.Asset], minW=250, maxW=300, onEmpty=None):
 		if grpId not in groups: groups[grpId] = []
 		groups[grpId].append(asset)
 
-	rows = []
+	groupContainers = []
 	for grpId in sorted(groups.keys()):
 		grpAssets = groups[grpId]
-		rows.extend(mkGroupRows(grpId, grpAssets, styItem))
+		groupContainers.append(mkGroupContainer(grpId, grpAssets, minW, maxW))
 
-	lg.info(f"[fsp:gv] assets[{len(assets)}] groups[{len(groups)}] rows[{len(rows)}]")
+	lg.info(f"[fsp:gv] assets[{len(assets)}] groups[{len(groups)}]")
 
-	return htm.Div(rows, className="gv fsp", style=styGrid)
+	return htm.Div(groupContainers, className="gv fsp sim-group-list")
 
 
 

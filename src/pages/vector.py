@@ -23,6 +23,20 @@ class K:
 #========================================================================
 def layout():
 	import ui
+
+	def pipelineStep(number, phase, title, text, icon):
+		return htm.Div([
+			htm.Div(str(number), className="vector-step-number"),
+			htm.Div([
+				htm.Div([
+					htm.Small(phase),
+					htm.I(className=f"bi {icon}"),
+				], className="vector-step-meta"),
+				htm.Strong(title),
+				htm.P(text),
+			]),
+		], className="vector-step")
+
 	return ui.renderBody([
 		#====== top start =======================================================
 
@@ -31,98 +45,78 @@ def layout():
 			htm.Small(f"{ks.pg.vector.desc}", className="text-muted")
 		], className="body-header"),
 
-		dbc.Row([
-			dbc.Col([
-				dbc.Card([
-					dbc.CardHeader("Pipeline Steps"),
-					dbc.CardBody([
-						htm.Div("When you press Execute, the following steps run in sequence:", className="mb-3"),
-						dbc.ListGroup([
-							dbc.ListGroupItem([
-								htm.Div("Reconcile Step 1 — Backfill UUID", className="fw-bold mb-1"),
-								htm.Div("Scan Qdrant for points missing the uuid fingerprint, then backfill uuid for assets still marked vectored in SQLite.", className="text-muted small"),
-							]),
-							dbc.ListGroupItem([
-								htm.Div("Reconcile Step 2 — Cleanup Orphans", className="fw-bold mb-1"),
-								htm.Div("Delete Qdrant points whose corresponding asset is no longer marked vectored (removed from Immich, vector flag cleared, etc.).", className="text-muted small"),
-							]),
-							dbc.ListGroupItem([
-								htm.Div("Step 3 , Generate Vectors",className="fw-bold mb-1"),
-								htm.Div("Generate CLIP embeddings for all non-vectored assets and write them into Qdrant with the uuid fingerprint.",className="text-muted small"),
-							]),
-							dbc.ListGroupItem([
-								htm.Div("Step 4 , Post-Generate Index Repair",className="fw-bold mb-1"),
-								htm.Div("Wait for Qdrant HNSW index to finish building, then scan existing (non this-round) points for desync and repair. Broken points are cleared for regeneration on next run.",className="text-muted small"),
-							]),
-						],flush=True,className="mb-3"),
-						htm.Div("All steps run automatically. You can press Cancel mid-way to stop.", className="text-muted small fst-italic"),
-					])
-				], className="mb-4")
-			], width=12),
-		]),
-		dbc.Row([
-
+		htm.Div([
+			htm.Div(htm.I(className="bi bi-stars"), className="vector-intro-icon"),
 			htm.Div([
-				cardSets.renderGpuSettings() if conf.device.type in ['cuda','mps'] else cardSets.renderCpuSettings()
+				htm.Small("Similarity engine", className="vector-eyebrow"),
+				htm.H4("Prepare assets for fast, reliable duplicate search"),
+				htm.P("The pipeline reconciles existing data, generates missing embeddings, and verifies the index before it finishes."),
+		]),
+			htm.Span(f"{conf.device.type.upper()} runtime", className="vector-runtime-badge"),
+		], className="vector-intro"),
+
+		dbc.Card([
+			dbc.CardHeader([
+				htm.Span("Processing pipeline"),
+				htm.Small("Runs automatically in this order", className="text-muted"),
 			]),
-		]),
-		dbc.Row([
-			dbc.Col([
-				dbc.Button(
-					"Execute: Process Assets",
-					id=K.btnDoVec,
-					color="primary",
-					size="lg",
-					className="w-100",
-					disabled=True,
-				),
-			],width=4),
+			dbc.CardBody([
+				htm.Div([
+					pipelineStep(1, "Reconcile", "Backfill UUID fingerprints", "Identify Qdrant points that need a stable asset fingerprint and restore it from the local catalog.", "bi-fingerprint"),
+					pipelineStep(2, "Reconcile", "Clean orphaned points", "Remove vectors that no longer correspond to an active, vectored Immich asset.", "bi-node-minus"),
+					pipelineStep(3, "Generate", "Create missing embeddings", "Generate image embeddings for every asset that is not ready for similarity search yet.", "bi-cpu"),
+					pipelineStep(4, "Verify", "Repair the search index", "Wait for indexing to settle, detect desynchronization, and prepare broken points for regeneration.", "bi-shield-check"),
+				], className="vector-steps"),
+				htm.Div([
+					htm.I(className="bi bi-info-circle"),
+					"You can safely cancel a running task; completed work remains recorded.",
+				], className="vector-cancel-note"),
+			])
+		], className="vector-pipeline-card"),
 
-			dbc.Col([
-				dbc.Button(
-					"Repair Index",
-					id=K.btnRepairIdx,
-					color="warning",
-					size="lg",
-					className="w-100",
-					disabled=True,
-					title="Scan Qdrant for HNSW index desync and repair, or clear vectored flag for unrepairable points (rerun Process Assets to regenerate)",
-				),
-			],width=4),
+		htm.Div([
+			cardSets.renderGpuSettings() if conf.device.type in ['cuda','mps'] else cardSets.renderCpuSettings()
+		], className="vector-runtime-settings"),
 
-			dbc.Col([
-				dbc.Button(
-					"Clear All Vectors",
-					id=K.btnClear,
-					color="danger",
-					size="lg",
-					className="w-100",
-					disabled=True,
-				),
-			],width=4),
-		],className="mb-4"),
-		dbc.Row([
-			dbc.Col([
-				dbc.Card([
-					dbc.CardHeader(["When to use ",htm.B("Repair Index")," manually"]),
-					dbc.CardBody([
-						htm.Div("Post-Generate Index Repair (Step 4) already runs after every Process Assets. Trigger Repair Index on its own only when:",className="mb-2 small"),
-						htm.Ul([
-							htm.Li("Similar search misses obvious duplicates or ranks self behind unrelated results (HNSW might have missed a point)"),
-							htm.Li("Process Assets was cancelled mid-way and you want to verify remaining index integrity"),
-							htm.Li("Qdrant collection was restored/migrated and consistency needs verification"),
-							htm.Li("You suspect a crash or network partition interrupted a bulk upsert"),
-						],className="mb-0 small text-muted"),
-					]),
-				],color="warning",outline=True,className="mb-3"),
-			],width=12),
-		]),
+		htm.Div([
+			htm.Div([
+				htm.Small("Recommended", className="vector-action-label text-info"),
+				dbc.Button("Execute: Process Assets", id=K.btnDoVec, color="primary", size="lg", className="w-100 vector-action-button", disabled=True),
+				htm.Small("Run the complete reconcile, generate, and verify pipeline."),
+			], className="vector-action-unit"),
+			htm.Div([
+				htm.Small("Recovery", className="vector-action-label text-warning"),
+				dbc.Button("Repair Index", id=K.btnRepairIdx, color="warning", size="lg", className="w-100 vector-action-button", disabled=True, title="Scan Qdrant for HNSW index desync and repair, or clear vectored flag for unrepairable points"),
+				htm.Small("Use independently only when search quality suggests an index issue."),
+			], className="vector-action-unit"),
+			htm.Div([
+				htm.Small("Destructive", className="vector-action-label text-danger"),
+				dbc.Button("Clear All Vectors", id=K.btnClear, color="danger", size="lg", className="w-100 vector-action-button", disabled=True),
+				htm.Small("Remove every generated embedding; assets will need processing again."),
+			], className="vector-action-unit vector-action-danger"),
+		], className="vector-action-grid"),
+
+		htm.Details([
+			htm.Summary([
+				htm.I(className="bi bi-life-preserver"),
+				"When should I run Repair Index manually?",
+			]),
+			htm.Div([
+				htm.P("The complete pipeline already repairs the index. Run the standalone repair only when:"),
+				htm.Ul([
+					htm.Li("Similarity search misses obvious duplicates or ranks a source behind unrelated results."),
+					htm.Li("Processing was cancelled and you want to verify the remaining index."),
+					htm.Li("Qdrant was restored or migrated and consistency needs verification."),
+					htm.Li("A crash or network interruption may have stopped a bulk update."),
+				]),
+			], className="vector-repair-content"),
+		], className="vector-repair-note"),
 		#====== top end =========================================================
 	], [
 		#====== bottom start=====================================================
 
 		#====== bottom end ======================================================
-	])
+	], pageClass="page-vector")
 
 
 

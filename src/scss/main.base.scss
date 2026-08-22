@@ -488,7 +488,7 @@ $spac: ($pad * 2) + ($gx * 2) + $sideW + 10px;
 		margin-bottom: 10px;
 
 		.sim-global-selection { flex: 0 1 auto; }
-		.sim-global-actions { flex: 1 1 auto; justify-content: flex-end; }
+		.sim-global-actions { flex: 0 1 auto; justify-content: flex-start; }
 
 		padding-bottom: 5px;
 		border-bottom: #cccccc 1px dotted;
@@ -498,35 +498,6 @@ $spac: ($pad * 2) + ($gx * 2) + $sideW + 10px;
 			.sim-global-actions { justify-content: flex-start; }
 		}
 
-		&.floating {
-			position: fixed;
-			top: 0;
-			left: 0;
-			right: 0;
-			z-index: 999;
-			margin-bottom: 0;
-			padding: 10px 15px 8px 15px;
-			@include bg-gradient(#2d4a69, to bottom);
-			backdrop-filter: blur(8px);
-			border-bottom: 1px solid rgba(#cccccc, 0.3);
-			box-shadow: 0 2px 20px 10px rgba(0, 0, 0, 0.5);
-			transform: translateY(-100%);
-			transition: transform 0.3s ease-in-out;
-
-			&.show {
-				transform: translateY(0);
-			}
-
-		}
-	}
-
-	.tab-acts-placeholder {
-		height: 0;
-		transition: height 0.3s ease-in-out;
-
-		&.active {
-			height: 60px;
-		}
 	}
 
 	.tab-content {
@@ -632,7 +603,7 @@ $notify-colors: (
 			@include bgNfy("warn");
 		}
 		&.success {
-			@include bgNfy("info");
+			@include bgNfy("success");
 		}
 
 		&.fade-out {

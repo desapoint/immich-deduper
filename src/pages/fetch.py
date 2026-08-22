@@ -27,6 +27,16 @@ opts = []  #[{"label": "All Users", "value": ""}] # current no support
 #========================================================================
 def layout():
 	import ui
+
+	def syncNote(icon, title, text):
+		return htm.Div([
+			htm.I(className=f"bi {icon}"),
+			htm.Div([
+				htm.Strong(title),
+				htm.Small(text),
+			]),
+		], className="fetch-sync-note")
+
 	return ui.renderBody([
 		#====== top start =======================================================
 
@@ -35,54 +45,65 @@ def layout():
 			htm.Small(f"{ks.pg.fetch.desc}", className="text-muted")
 		], className="body-header"),
 
+		htm.Div([
+			htm.Div(htm.I(className="bi bi-cloud-arrow-down"), className="fetch-intro-icon"),
+			htm.Div([
+				htm.Small("Immich → Deduper", className="fetch-eyebrow"),
+				htm.H4("Bring your library into a safe local working set"),
+				htm.P("Choose an Immich user, review what will be synchronized, then fetch only the assets that need attention."),
+		]),
+		], className="fetch-intro"),
+
 		dbc.Card([
-			dbc.CardHeader("Fetch settings"),
+			dbc.CardHeader([
+				htm.Span("Fetch settings"),
+				htm.Small("Select the library owner", className="text-muted"),
+			]),
 			dbc.CardBody([
-				dbc.Row([
-					dbc.Col([
-						dbc.Label("Select User"),
-						dbc.Select(id=k.selectUsr, options=[], placeholder="Select user."),
-					], width=12),
-				],
-					className="mb-2"
-				),
-				htm.Ul([
-					htm.Li("Assets that already exist locally will be skipped"),
-					htm.Li("Assets without generated thumbnails in Immich will also be skipped"),
-					htm.Li("Updates may sync: paths, EXIF data, favorite/archive status. Re-fetch if these change in remote"),
-					htm.Li([
-						htm.Strong("Sync deletion: "),
-						"Local assets that are no longer in 'active' status in Immich (e.g., moved to trash) will be automatically removed along with their vectors"
-					]),
-				]),
+				htm.Div([
+					htm.Div([
+						dbc.Label("Immich user", html_for=k.selectUsr),
+						htm.Small("Fetch and clean operations stay scoped to this owner."),
+					], className="fetch-user-copy"),
+					dbc.Select(id=k.selectUsr, options=[], placeholder="Choose an Immich user"),
+				], className="fetch-user-field"),
+				htm.Div([
+					syncNote("bi-skip-forward", "Existing assets are skipped", "Only new or changed records need work."),
+					syncNote("bi-image", "Thumbnails are required", "Immich assets without a thumbnail are safely skipped."),
+					syncNote("bi-arrow-repeat", "Metadata stays current", "Paths, EXIF, favorite, and archive state can be refreshed."),
+					syncNote("bi-trash3", "Deleted assets are reconciled", "Inactive Immich assets and their vectors are removed locally."),
+				], className="fetch-sync-notes"),
 			])
-		], className="mb-4"),
+		], className="fetch-settings-card"),
 
-
-		dbc.Row([
-			dbc.Col([
+		htm.Div([
+			htm.Div([
+				htm.Small("Recommended", className="fetch-action-label text-info"),
 				dbc.Button(
 					"loading..",
 					id=k.btnFetch,
 					color="primary",
 					size="lg",
-					className="w-100",
+					className="w-100 fetch-action-button",
 					disabled=True,
 				),
+				htm.Small("Add new assets and refresh changed metadata."),
+			], className="fetch-action-unit"),
 
-			], width=5),
-
-			dbc.Col([
+			htm.Div([
+				htm.Small("Current user", className="fetch-action-label"),
 				dbc.Button(
 					"loading..",
 					id=k.btnClean,
-					color="danger",
+					color="secondary",
 					size="lg",
-					className="w-100",
+					className="w-100 fetch-action-button",
 				),
-			], width=4),
-			dbc.Col([
+				htm.Small("Remove this owner's local records and vectors."),
+			], className="fetch-action-unit"),
 
+			htm.Div([
+				htm.Small("Destructive", className="fetch-action-label text-danger"),
 				dbc.Button([
 					htm.Span("Reset All"),
 					htm.Br(),
@@ -90,20 +111,18 @@ def layout():
 				],
 					id=k.btnReset,
 					color="danger",
-					className="w-100",
+					className="w-100 fetch-action-button",
 				),
-			], width=3),
-
-		], className="mb-5"),
+				htm.Small("Use only when you want to rebuild every local record."),
+			], className="fetch-action-unit fetch-action-danger"),
+		], className="fetch-action-grid"),
 
 		#------------------------------------
 		# lib settings
 		#------------------------------------
-		dbc.Row([
-
+		htm.Div([
 			cardSets.renderLibPaths(),
-
-		], className="mt-4"),
+		], className="fetch-library"),
 
 
 		#====== top end =========================================================
@@ -115,7 +134,7 @@ def layout():
 
 		dcc.Store(id=k.initFetch),
 		#====== bottom end ======================================================
-	])
+	], pageClass="page-fetch")
 
 
 #========================================================================

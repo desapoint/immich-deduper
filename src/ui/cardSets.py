@@ -112,20 +112,38 @@ cpuCnt = multiprocessing.cpu_count()
 if cpuCnt is None: cpuCnt = multiprocessing.cpu_count()
 for i in range(1, min(cpuCnt + 1, 17)): optCpuWorkers[str(i)] = i
 
+
+def _renderSlider(label, controlId, *, value, minimum, maximum, step, marks, disabled=False):
+	return htm.Div([
+		htm.Label(label, className="ui-slider-label"),
+		dcc.Slider(
+			id=controlId,
+			min=minimum,
+			max=maximum,
+			step=step,
+			marks=marks,
+			value=value,
+			disabled=disabled,
+			included=False,
+			className="ui-slider",
+			tooltip={"placement": "top", "always_visible": True},
+		),
+	], className="ui-slider-control")
+
+
 def renderThreshold():
 	return dbc.Card([
 		dbc.CardHeader(["Threshold Min",htm.Small("sets minimum similarity for matching")]),
 		dbc.CardBody([
-			htm.Div([
-				htm.Div([
-					dcc.Slider(
-						id=k.id(k.threshold), min=optThresholdMin, max=0.999, step=0.005, marks=optThresholdMarks, #type: ignore
-						value=db.dto.thMin, included=False,
-						tooltip={"placement": "top", "always_visible": True, "style": {"padding": "0 1px 0 1px", "fontSize": "11px"},},
-					),
-				], className=""),
-				htm.Ul([])
-			], className="irow mb-0"),
+			_renderSlider(
+				"Minimum similarity",
+				k.id(k.threshold),
+				minimum=optThresholdMin,
+				maximum=0.999,
+				step=0.005,
+				marks=optThresholdMarks,
+				value=db.dto.thMin,
+			),
 		])
 	], className="ifns mb-1")
 
@@ -185,8 +203,22 @@ def renderAutoSelect():
 	hasDev=db.psql.getSchema().hasAssetDeviceId
 	disDev=dis or not hasDev
 	devTip="Immich 3.0+ removed device tracking; this criterion is unavailable" if not hasDev else None
+
+	def field(label, control, wide=False):
+		cls="auto-select-field"
+		if wide: cls += " auto-select-field-wide"
+		return htm.Div([htm.Label(label), control], className=cls)
+
+	def criterion(title, fields, className=""):
+		cls="icriteria"
+		if className: cls += f" {className}"
+		return htm.Div([
+			htm.Span(htm.Span(title, className="tag txt-smx"), className="auto-select-criterion-title"),
+			*fields,
+		], className=cls)
+
 	return dbc.Card([
-		dbc.CardHeader([htm.Span("Auto Selection"),htm.Small(["selects top point in group",htm.Br(),"auto-updates on change"])]),
+		dbc.CardHeader([htm.Span("Auto Selection"), htm.Small("Select preferred images automatically")]),
 		dbc.CardBody([
 			htm.Div([
 				# Main enable switch
@@ -195,108 +227,72 @@ def renderAutoSelect():
 					htm.Div([
 						htm.Span([htm.B("Points: "),"0=Ignore, 1=Low, 2=High priority"], className="text-muted")
 					]),
-				], className="icbxs single"),
+				], className="icbxs single auto-select-summary"),
 
-				dbc.Checkbox(id=k.ausl("skipLow"), label="Skip has sim(<0.96) group", value=a.skipLow, disabled=dis),
-				dbc.Checkbox(id=k.ausl("allLive"), label="All LivePhotos (ignore criteria)", value=a.allLive, disabled=dis),
-				dbc.Checkbox(id=k.ausl("kpCands"), label="Keep candidates, not empty (safer)", value=a.kpCands, disabled=dis), htm.Br(),
+				htm.Div([
+					dbc.Checkbox(id=k.ausl("skipLow"), label="Skip groups below 0.96 similarity", value=a.skipLow, disabled=dis),
+					dbc.Checkbox(id=k.ausl("allLive"), label="Select all Live Photos", value=a.allLive, disabled=dis),
+					dbc.Checkbox(id=k.ausl("kpCands"), label="Keep candidates when tied", value=a.kpCands, disabled=dis),
+				], className="auto-select-options"),
 
 				htm.Hr(),
 
 				htm.Div([
-					htm.Span(htm.Span("DateTime",className="tag txt-smx me-1")),
-					htm.Label("Earlier",className="me-2"),
-					dbc.Select(id=k.ausl("earlier"),options=toOpts(optWeights),value=a.earlier,disabled=dis,size="sm",className="me-1"),
-					htm.Label("Later",className="me-2"),
-					dbc.Select(id=k.ausl("later"),options=toOpts(optWeights),value=a.later,disabled=dis,size="sm"),
-				],className="icriteria"),
+				criterion("DateTime", [
+					field("Earlier", dbc.Select(id=k.ausl("earlier"), options=toOpts(optWeights), value=a.earlier, disabled=dis, size="sm")),
+					field("Later", dbc.Select(id=k.ausl("later"), options=toOpts(optWeights), value=a.later, disabled=dis, size="sm")),
+				]),
+				criterion("ModifiedAt", [
+					field("Earlier", dbc.Select(id=k.ausl("mdEarly"), options=toOpts(optWeights), value=a.mdEarly, disabled=dis, size="sm")),
+					field("Later", dbc.Select(id=k.ausl("mdLate"), options=toOpts(optWeights), value=a.mdLate, disabled=dis, size="sm")),
+				]),
+				criterion("Exif", [
+					field("Richer", dbc.Select(id=k.ausl("exRich"), options=toOpts(optWeights), value=a.exRich, disabled=dis, size="sm")),
+					field("Poorer", dbc.Select(id=k.ausl("exPoor"), options=toOpts(optWeights), value=a.exPoor, disabled=dis, size="sm")),
+				]),
+				criterion("Name Length", [
+					field("Longer", dbc.Select(id=k.ausl("namLon"), options=toOpts(optWeights), value=a.namLon, disabled=dis, size="sm")),
+					field("Shorter", dbc.Select(id=k.ausl("namSht"), options=toOpts(optWeights), value=a.namSht, disabled=dis, size="sm")),
+				]),
+				criterion("FileSize", [
+					field("Bigger", dbc.Select(id=k.ausl("ofsBig"), options=toOpts(optWeights), value=a.ofsBig, disabled=dis, size="sm")),
+					field("Smaller", dbc.Select(id=k.ausl("ofsSml"), options=toOpts(optWeights), value=a.ofsSml, disabled=dis, size="sm")),
+				]),
+				criterion("Dimensions", [
+					field("Bigger", dbc.Select(id=k.ausl("dimBig"), options=toOpts(optWeights), value=a.dimBig, disabled=dis, size="sm")),
+					field("Smaller", dbc.Select(id=k.ausl("dimSml"), options=toOpts(optWeights), value=a.dimSml, disabled=dis, size="sm")),
+				]),
+				criterion("File Type", [
+					field("Jpg", dbc.Select(id=k.ausl("typJpg"), options=toOpts(optWeights), value=a.typJpg, disabled=dis, size="sm")),
+					field("Png", dbc.Select(id=k.ausl("typPng"), options=toOpts(optWeights), value=a.typPng, disabled=dis, size="sm")),
+					field("Heic", dbc.Select(id=k.ausl("typHeic"), options=toOpts(optWeights), value=a.typHeic, disabled=dis, size="sm")),
+				]),
+				criterion("Immich", [
+					field("Favorited", dbc.Select(id=k.ausl("fav"), options=toOpts(optWeights), value=a.fav, disabled=dis, size="sm")),
+					field("In Album", dbc.Select(id=k.ausl("inAlb"), options=toOpts(optWeights), value=a.inAlb, disabled=dis, size="sm")),
+				]),
+				criterion("User", [
+					field("Name", dbc.Select(id=k.ausl("usrPri"), options=toOpts(_getUsrOpts()), value=a.usr.k, disabled=dis, size="sm")),
+					field("Weight", dbc.Select(id=k.ausl("usrWgt"), options=toOpts(optWeights), value=a.usr.v, disabled=dis, size="sm")),
+				]),
+				criterion("Path", [
+					field("Contains", dbc.Textarea(
+						id=k.ausl("pthVal"), value=a.pth.k, disabled=dis,
+						className="txt-smx auto-select-path-input",
+						placeholder="One path rule per line", rows=3, debounce=750,
+					), wide=True),
+					field("Weight", dbc.Select(id=k.ausl("pthWgt"), options=toOpts(optWeights), value=a.pth.v, disabled=dis, size="sm")),
+				], className="auto-select-path-criterion"),
+				criterion("Device", [
+					field("Source", dbc.Select(id=k.ausl("devPri"), options=toOpts(getDevOpts()), value=a.dev.k, disabled=disDev, size="sm")),
+					field("Weight", dbc.Select(id=k.ausl("devWgt"), options=toOpts(optWeights), value=a.dev.v, disabled=disDev, size="sm")),
+				], className="auto-select-device-criterion"),
+				], className="auto-select-criteria-grid"),
+				htm.Div(devTip,className="auto-select-device-note txt-smx text-muted") if devTip else None,
 
-				htm.Div([
-					htm.Span(htm.Span("ModifiedAt",className="tag txt-smx me-1")),
-					htm.Label("Earlier",className="me-2"),
-					dbc.Select(id=k.ausl("mdEarly"),options=toOpts(optWeights),value=a.mdEarly,disabled=dis,size="sm",className="me-1"),
-					htm.Label("Later",className="me-2"),
-					dbc.Select(id=k.ausl("mdLate"),options=toOpts(optWeights),value=a.mdLate,disabled=dis,size="sm"),
-				],className="icriteria"),
-
-				htm.Div([
-					htm.Span(htm.Span("Exif",className="tag txt-smx me-1")),
-					htm.Label("Richer", className="me-2"),
-					dbc.Select(id=k.ausl("exRich"), options=toOpts(optWeights), value=a.exRich, disabled=dis, size="sm", className="me-1"),
-					htm.Label("Poorer", className="me-2"),
-					dbc.Select(id=k.ausl("exPoor"), options=toOpts(optWeights), value=a.exPoor, disabled=dis, size="sm"),
-				], className="icriteria"),
-
-				htm.Div([
-					htm.Span(htm.Span("Name Length", className="tag txt-smx me-1")),
-					htm.Label("Longer", className="me-2"),
-					dbc.Select(id=k.ausl("namLon"), options=toOpts(optWeights), value=a.namLon, disabled=dis, size="sm", className="me-1"),
-					htm.Label("Shorter", className="me-2"),
-					dbc.Select(id=k.ausl("namSht"), options=toOpts(optWeights), value=a.namSht, disabled=dis, size="sm"),
-				], className="icriteria"),
-
-				htm.Div([
-					htm.Span(htm.Span("FileSize", className="tag txt-smx me-1")),
-					htm.Label("Bigger", className="me-2"),
-					dbc.Select(id=k.ausl("ofsBig"), options=toOpts(optWeights), value=a.ofsBig, disabled=dis, size="sm", className="me-1"),
-					htm.Label("Smaller", className="me-2"),
-					dbc.Select(id=k.ausl("ofsSml"), options=toOpts(optWeights), value=a.ofsSml, disabled=dis, size="sm"),
-				], className="icriteria"),
-
-				htm.Div([
-					htm.Span(htm.Span("Dimensions", className="tag txt-smx me-1")),
-					htm.Label("Bigger", className="me-2"),
-					dbc.Select(id=k.ausl("dimBig"), options=toOpts(optWeights), value=a.dimBig, disabled=dis, size="sm", className="me-1"),
-					htm.Label("Smaller", className="me-2"),
-					dbc.Select(id=k.ausl("dimSml"), options=toOpts(optWeights), value=a.dimSml, disabled=dis, size="sm"),
-				], className="icriteria"),
-
-				htm.Div([
-					htm.Span(htm.Span("File Type", className="tag txt-smx me-1")),
-					htm.Label("Jpg", className="me-2"),
-					dbc.Select(id=k.ausl("typJpg"), options=toOpts(optWeights), value=a.typJpg, disabled=dis, size="sm", className="me-1"),
-					htm.Label("Png", className="me-2"),
-					dbc.Select(id=k.ausl("typPng"), options=toOpts(optWeights), value=a.typPng, disabled=dis, size="sm", className="me-1"),
-					htm.Label("Heic", className="me-2"),
-					dbc.Select(id=k.ausl("typHeic"), options=toOpts(optWeights), value=a.typHeic, disabled=dis, size="sm"),
-				], className="icriteria wrap"),
-
-				htm.Div([
-					htm.Span(htm.Span("Immich", className="tag txt-smx me-1")),
-					htm.Label("Favorited", className="me-2"),
-					dbc.Select(id=k.ausl("fav"), options=toOpts(optWeights), value=a.fav, disabled=dis, size="sm", className="me-1"),
-					htm.Label("In Album", className="me-2"),
-					dbc.Select(id=k.ausl("inAlb"), options=toOpts(optWeights), value=a.inAlb, disabled=dis, size="sm"),
-				], className="icriteria"),
-
-				htm.Div([
-					htm.Span(htm.Span("User", className="tag txt-smx me-1")),
-					htm.Label("name", className="me-2"),
-					dbc.Select(id=k.ausl("usrPri"), options=toOpts(_getUsrOpts()), value=a.usr.k, disabled=dis, size="sm", className="me-1", style={"minWidth": "60px"}),
-					htm.Label("Weight", className="me-2"),
-					dbc.Select(id=k.ausl("usrWgt"), options=toOpts(optWeights), value=a.usr.v, disabled=dis, size="sm"),
-				], className="icriteria"),
-
-				htm.Div([
-					htm.Span(htm.Span("Path", className="tag txt-smx me-1")),
-					htm.Label("Contains", className="me-2"),
-					dbc.Input(id=k.ausl("pthVal"), value=a.pth.k, disabled=dis, className="me-1 txt-smx", style={"maxWidth": "80%"}, placeholder="e.g. /library/clean", debounce=1000),
-					htm.Label("Weight", className="me-2"),
-					dbc.Select(id=k.ausl("pthWgt"), options=toOpts(optWeights), value=a.pth.v, disabled=dis, size="sm"),
-				], className="icriteria"),
-
-				htm.Div([
-					htm.Span(htm.Span("Device",className="tag txt-smx me-1")),
-					htm.Label("Source",className="me-2"),
-					dbc.Select(id=k.ausl("devPri"),options=toOpts(getDevOpts()),value=a.dev.k,disabled=disDev,size="sm",className="me-1",style={"minWidth":"60px"}),
-					htm.Label("Weight",className="me-2"),
-					dbc.Select(id=k.ausl("devWgt"),options=toOpts(optWeights),value=a.dev.v,disabled=disDev,size="sm"),
-				],className="icriteria",title=devTip),
-				htm.Div(devTip,className="txt-smx text-muted",style={"marginTop":"-2px","marginBottom":"4px"}) if devTip else None,
-
-			], className="mb-2 igrid txt-sm"),
+			], className="mb-2 igrid txt-sm auto-select-grid"),
 		])
-	], className="ifns mb-0")
+	], className="ifns auto-select-card mb-0")
 
 
 def renderCard():
@@ -612,17 +608,16 @@ def renderCpuSettings():
 				htm.Div([
 					dbc.Checkbox(id=k.id(k.cpuAutoMode), label="Auto Workers", value=db.dto.cpuAutoMode),
 
-					htm.Div([
-						htm.Label("Worker Threads: "),
-						dcc.Slider(
-							id=k.id(k.cpuWorkers),
-							min=1, max=min(cpuCnt, 16), step=1,
-							value=db.dto.cpuWorkers,
-							marks=optCpuWorkers,
-							disabled=db.dto.cpuAutoMode,
-							tooltip={"placement": "top", "always_visible": True}
-						)
-					], className="mt-2"),
+					_renderSlider(
+						"Worker threads",
+						k.id(k.cpuWorkers),
+						minimum=1,
+						maximum=min(cpuCnt, 16),
+						step=1,
+						marks=optCpuWorkers,
+						value=db.dto.cpuWorkers,
+						disabled=db.dto.cpuAutoMode,
+					),
 
 				]),
 				htm.Ul([
@@ -734,9 +729,8 @@ def _renderLibPathRows():
 
 
 def renderLibPaths():
-	return dbc.Row([
-		dbc.Col([
-			#------------------------------------------------------------------------
+	return htm.Div([
+		htm.Div([
 			dbc.Card([
 				dbc.CardHeader("Main Paths"),
 				dbc.CardBody([
@@ -777,10 +771,9 @@ def renderLibPaths():
 						], size="sm"),
 					]),
 				])
-			], className="ifns mb-2"),
-		], width=4),
-		dbc.Col([
-			#------------------------------------------------------------------------
+			], className="ifns h-100"),
+		], className="fetch-library-main"),
+		htm.Div([
 			dbc.Card([
 				dbc.CardHeader([
 					"Library Mapping",
@@ -793,12 +786,10 @@ def renderLibPaths():
 						htm.Li([htm.B("Local Path: "), "Override path if Deduper can't access original"]),
 					], className="mt-2 txt-sm text-muted")
 				])
-			], className="ifns mb-2"),
-			#------------------------------------------------------------------------
-			dcc.Store(id=k.id(k.libPathsData), data=json.dumps(db.dto.pathLibs or {})),
-
-		], width=8),
-	])
+			], className="ifns h-100"),
+		], className="fetch-library-mapping"),
+		dcc.Store(id=k.id(k.libPathsData), data=json.dumps(db.dto.pathLibs or {})),
+	], className="fetch-library-grid")
 
 
 

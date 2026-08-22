@@ -6,6 +6,17 @@ from mod import models
 
 lg = log.get(__name__)
 
+def mkCardTip(tipId: str, title: str, content, contentClass: str = ""):
+	contentCss = "sim-card-poptip-content"
+	if contentClass: contentCss += f" {contentClass}"
+
+	return htm.Div([
+		htm.Div([
+			htm.Div(title, className="sim-card-poptip-title"),
+			htm.Div(content, className=contentCss),
+		], className="sim-card-poptip-surface"),
+	], className="poptip sim-card-poptip", id=tipId, role="dialog", **{"aria-label": title})
+
 def mkExifRows(asset:models.Asset):
 	rows = []
 
@@ -55,19 +66,11 @@ def mkTipExif(autoId, dicExif: Optional[models.AssetExif]):
 	table = mkExifGrid(dicExif.toDict())
 
 	if len(table) > 0:
-		return htm.Div([
-			htm.Div([
-				htm.Table(
-					htm.Tbody(table),
-					className="table-sm table-striped",
-					style={
-						"backgroundColor": "white",
-						"color": "black",
-						"width": "100%",
-						"borderRadius": "4px"
-					}
-				),
-			], style={"maxWidth": "400px", "maxHeight": "400px", "overflow": "auto"})
-		], className="poptip", id=f'exif-{autoId}')
+		return mkCardTip(
+			f'exif-{autoId}',
+			"EXIF details",
+			htm.Table(htm.Tbody(table), className="sim-card-poptip-table"),
+			"sim-card-poptip-content-scroll",
+		)
 
 	return None

@@ -91,16 +91,38 @@ const ui = window.ui = {
 			clearTimeout(this._hideTimer)
 		},
 
+		attachToDocument(tipEl){
+			if (!tipEl || tipEl.parentNode === document.body) return
+			tipEl._poptipHomeParent = tipEl.parentNode
+			tipEl._poptipHomeNext = tipEl.nextSibling
+			document.body.appendChild(tipEl)
+		},
+
+		restoreHome(tipEl){
+			if (!tipEl || !tipEl._poptipHomeParent) return
+			const parent = tipEl._poptipHomeParent
+			const next = tipEl._poptipHomeNext
+			if (parent.isConnected !== false) {
+				parent.insertBefore(tipEl, next && next.parentNode === parent ? next : null)
+			}
+			else tipEl.remove()
+			tipEl._poptipHomeParent = null
+			tipEl._poptipHomeNext = null
+		},
+
 		hide(tipEl){
 			if (!tipEl) return
+			clearTimeout(tipEl._poptipHideTimer)
 			tipEl.style.transition = 'opacity 0.3s ease'
 			tipEl.style.opacity = '0'
-			setTimeout(() =>{
+			tipEl._poptipHideTimer = setTimeout(() =>{
 				tipEl.style.display = 'none'
 				tipEl.style.opacity = '1'
 				tipEl.style.transition = ''
 				const arrow = tipEl.querySelector('.poptip-arrow')
 				if (arrow) arrow.remove()
+				this.restoreHome(tipEl)
+				tipEl._poptipHideTimer = null
 			}, 300)
 		},
 
@@ -109,6 +131,10 @@ const ui = window.ui = {
 			if (!tipEl) return
 
 			this.cancelHide()
+			clearTimeout(tipEl._poptipHideTimer)
+			tipEl._poptipHideTimer = null
+			tipEl.style.opacity = '1'
+			tipEl.style.transition = ''
 
 			if (this._activeTipId && this._activeTipId !== tipId) {
 				const prevTip = document.getElementById(this._activeTipId)
@@ -123,6 +149,7 @@ const ui = window.ui = {
 				return
 			}
 
+			this.attachToDocument(tipEl)
 			tipEl.style.display = 'block'
 
 			requestAnimationFrame(() =>{
@@ -172,46 +199,37 @@ const ui = window.ui = {
 
 			const triggerRect = triggerEl.getBoundingClientRect()
 			const tipRect = tipEl.getBoundingClientRect()
-			const scrollX = window.pageXOffset || document.documentElement.scrollLeft
-			const scrollY = window.pageYOffset || document.documentElement.scrollTop
 			const viewWidth = window.innerWidth
+			const viewHeight = window.innerHeight
+			const pad = 8
+			const gap = 12
+			const clamp = (value, min, max) => Math.min(Math.max(value, min), Math.max(min, max))
+			let direction = 'bottom'
+			let left
+			let top
 
-
-			let direction
-
-			if (triggerRect.right + tipRect.width + 25 <= viewWidth) {
+			if (triggerRect.right + tipRect.width + gap <= viewWidth - pad) {
 				direction = 'right'
-				tipEl.style.left = `${triggerRect.right + scrollX + 15}px`
-				tipEl.style.top = `${triggerRect.top + scrollY + triggerRect.height / 2}px`
-				tipEl.style.transform = 'translateY(-50%)'
+				left = triggerRect.right + gap
+				top = triggerRect.top + (triggerRect.height - tipRect.height) / 2
 			}
-			else if (triggerRect.top - tipRect.height - 25 >= 0) {
+			else if (triggerRect.top - tipRect.height - gap >= pad) {
 				direction = 'top'
-				tipEl.style.left = `${triggerRect.left + scrollX + triggerRect.width / 2}px`
-				tipEl.style.top = `${triggerRect.top + scrollY - 15}px`
-				tipEl.style.transform = 'translate(-50%, -100%)'
+				left = triggerRect.left + (triggerRect.width - tipRect.width) / 2
+				top = triggerRect.top - tipRect.height - gap
 			}
 			else {
-				direction = 'bottom'
-				tipEl.style.left = `${triggerRect.left + scrollX + triggerRect.width / 2}px`
-				tipEl.style.top = `${triggerRect.bottom + scrollY + 15}px`
-				tipEl.style.transform = 'translateX(-50%)'
+				left = triggerRect.left + (triggerRect.width - tipRect.width) / 2
+				top = triggerRect.bottom + gap
 			}
 
-			tipEl.style.position = 'absolute'
+			left = clamp(left, pad, viewWidth - tipRect.width - pad)
+			top = clamp(top, pad, viewHeight - tipRect.height - pad)
+			tipEl.style.position = 'fixed'
+			tipEl.style.left = `${left}px`
+			tipEl.style.top = `${top}px`
+			tipEl.style.transform = 'none'
 			tipEl.style.zIndex = this.baseZIndex++
-
-			// viewport boundary clamp
-			tipEl.offsetHeight
-			const finalRect = tipEl.getBoundingClientRect()
-			const pad = 8
-			if (finalRect.right > viewWidth - pad) {
-				const ov = finalRect.right - (viewWidth - pad)
-				tipEl.style.left = `${parseFloat(tipEl.style.left) - ov}px`
-			}
-			if (finalRect.left < pad) {
-				tipEl.style.left = `${parseFloat(tipEl.style.left) + (pad - finalRect.left)}px`
-			}
 
 			return {direction}
 		},
@@ -227,37 +245,31 @@ document.addEventListener('DOMContentLoaded', () =>{
 	const root = document.body
 
 	function bindEvts(){
-		const sps = document.querySelectorAll('span[class*="tag"]:not(.no)')
+		const sps = document.querySelectorAll('span[data-tip-id]')
 		sps.forEach(span =>{
-			if (span._hoverEventsBound) return
+			if (span._poptipEventsBound) return
 
-			if (span.hasAttribute('data-tip-id')) {
-				span.addEventListener('mouseenter', function(){
-					const tipId = this.getAttribute('data-tip-id')
-					ui.poptip.cancelHide()
-					ui.poptip.show(tipId, this)
-					this.style.cursor = 'pointer'
-				})
-				span.addEventListener('mouseleave', function(){
-					const tipId = this.getAttribute('data-tip-id')
-					ui.poptip.delayHide(tipId)
-				})
-			}
-			else {
-				span.addEventListener('mouseenter', function(){
-					this.style.opacity = '0.6'
-					this.style.transition = 'opacity 0.3s ease'
-					this.style.cursor = 'pointer'
-				})
+			span.tabIndex = 0
+			span.setAttribute('role', 'button')
+			span.setAttribute('aria-haspopup', 'true')
+			span.addEventListener('mouseenter', function(){
+				const tipId = this.getAttribute('data-tip-id')
+				ui.poptip.cancelHide()
+				ui.poptip.show(tipId, this)
+			})
+			span.addEventListener('mouseleave', function(){
+				const tipId = this.getAttribute('data-tip-id')
+				ui.poptip.delayHide(tipId)
+			})
+			span.addEventListener('focus', function(){
+				ui.poptip.cancelHide()
+				ui.poptip.show(this.getAttribute('data-tip-id'), this)
+			})
+			span.addEventListener('blur', function(){
+				ui.poptip.delayHide(this.getAttribute('data-tip-id'))
+			})
 
-				span.addEventListener('mouseleave', function(){
-					this.style.opacity = '1'
-					this.style.transition = 'opacity 0.3s ease'
-					this.style.cursor = 'default'
-				})
-			}
-
-			span._hoverEventsBound = true
+			span._poptipEventsBound = true
 		})
 	}
 
@@ -319,6 +331,7 @@ ui.init()
 window.dash_clientside.ui = {
 	toggleGridInfo(checked){
 		document.body.classList.toggle('show-grid-info', checked)
+		document.querySelectorAll('.sim-card-details').forEach(details => { details.open = !!checked })
 		return dash_clientside.no_update
 	}
 }
@@ -332,5 +345,8 @@ ui.mob.waitFor('#sets-showGridInfo', cbx =>{
 
 	if (inp.checked) document.body.classList.add('show-grid-info')
 
-	inp.addEventListener('change', () => document.body.classList.toggle('show-grid-info', inp.checked))
+	inp.addEventListener('change', () =>{
+		document.body.classList.toggle('show-grid-info', inp.checked)
+		document.querySelectorAll('.sim-card-details').forEach(details => { details.open = inp.checked })
+	})
 })

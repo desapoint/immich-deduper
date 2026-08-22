@@ -50,10 +50,75 @@ def props(node):
 
 
 class TestSimilarPartialRendering(unittest.TestCase):
-	def test_render_state_callback_is_registered(self):
+	@classmethod
+	def setUpClass(cls):
+		for page in dash.page_registry.values():
+			module = sys.modules.get(page['module'])
+			if module is not None and hasattr(module, 'layout'):
+				page['layout'] = module.layout
 		testApp.layout = dash.html.Div()
 		testApp._setup_server()
+		cls.client = testApp.server.test_client()
+
+	def test_similar_page_has_guided_review_hierarchy(self):
+		with (
+			patch.object(similar.immich, 'isMergeAvailable', return_value=(True, None)),
+			patch.object(similar.cardSets.db.psql, 'fetchUsers', return_value=[]),
+		):
+			nodes = list(walk(similar.layout()))
+
+		classes = [str(props(node).get('className', '')) for node in nodes]
+		self.assertTrue(any('main page-similar' in value for value in classes))
+		self.assertTrue(any(value == 'similar-intro' for value in classes))
+		self.assertTrue(any(value == 'similar-config-grid' for value in classes))
+		self.assertEqual(sum(value == 'similar-search-action' or value.startswith('similar-search-action ') for value in classes), 3)
+		self.assertTrue(any('similar-workspace' in value for value in classes))
+		clearButton = next(node for node in nodes if props(node).get('id') == similar.k.btnClear)
+		resetButton = next(node for node in nodes if props(node).get('id') == similar.k.btnReset)
+		self.assertFalse(props(clearButton).get('outline', False))
+		self.assertFalse(props(resetButton).get('outline', False))
+
+	def test_render_state_callback_is_registered(self):
 		self.assertTrue(any('sim-render-state.data' in key for key in testApp.callback_map))
+
+	def test_selection_store_does_not_trigger_server_button_reconciliation(self):
+		key = next(key for key in testApp.callback_map if 'sim-btn-fnd.disabled' in key)
+		callback = testApp.callback_map[key]
+		inputIds = [item['id'] for item in callback['inputs']]
+		stateIds = [item['id'] for item in callback['state']]
+
+		self.assertNotIn(similar.ks.sto.ste, inputIds)
+		self.assertIn(similar.ks.sto.ste, stateIds)
+
+	def test_empty_similar_store_updates_do_not_return_http_500(self):
+		key = next(key for key in testApp.callback_map if 'sim-btn-fnd.disabled' in key)
+		callback = testApp.callback_map[key]
+		now = models.Now(sim=models.PgSim(
+			pagerPnd=models.Pager(idx=1, size=25, cnt=0),
+			activeTab=similar.k.tabCur,
+		)).toDict()
+		outputs = [output.to_dict() for output in callback['output'][:9]] + [[], [], [], [], []]
+		payload = {
+			'output': key,
+			'outputs': outputs,
+			'changedPropIds': ['store-now.data'],
+			'inputs': [
+				{'id': 'store-now', 'property': 'data', 'value': now},
+				{'id': 'store-state', 'property': 'data', 'value': models.Ste().toDict()},
+				{'id': 'store-count', 'property': 'data', 'value': models.Cnt().toDict()},
+				{'id': 'store-tsk', 'property': 'data', 'value': models.Tsk().toDict()},
+			],
+			'state': [
+				{'id': callback['state'][0]['id'], 'property': 'id', 'value': []},
+				{'id': callback['state'][1]['id'], 'property': 'id', 'value': []},
+				{'id': callback['state'][2]['id'], 'property': 'id', 'value': []},
+			],
+		}
+
+		with patch.object(similar.db.pics, 'countHasSimIds', return_value=0):
+			response = self.client.post('/_dash-update-component', json=payload)
+
+		self.assertEqual(response.status_code, 200, response.get_data(as_text=True))
 
 	def test_unchanged_store_update_does_not_replace_grid(self):
 		assets = [asset(1, 1), asset(2, 1), asset(3, 2), asset(4, 2)]
@@ -72,6 +137,59 @@ class TestSimilarPartialRendering(unittest.TestCase):
 		self.assertIs(result[0], similar.noUpd)
 		self.assertIs(result[7], similar.noUpd)
 
+	def test_pending_tab_renders_cached_assets_immediately(self):
+		pending = [asset(7, 1)]
+		now = models.Now(sim=models.PgSim(
+			assPend=pending,
+			pagerPnd=models.Pager(idx=1, size=25, cnt=1),
+			activeTab=similar.k.tabCur,
+		))
+
+		with patch.object(similar.db.pics, 'getPagedPending') as getPending:
+			nowData, grid = similar.sim_OnTabChange(similar.k.tabPnd, now.toDict())
+
+		getPending.assert_not_called()
+		self.assertEqual(models.Now.fromDic(nowData).sim.activeTab, similar.k.tabPnd)
+		self.assertTrue(any(
+			props(node).get('id') == {'type': 'img-pop', 'aid': 7}
+			for node in walk(grid)
+		))
+
+	def test_pending_tab_fetches_and_renders_missing_page(self):
+		pending = [asset(8, 1)]
+		now = models.Now(sim=models.PgSim(
+			pagerPnd=models.Pager(idx=2, size=15, cnt=20),
+			activeTab=similar.k.tabCur,
+		))
+
+		with patch.object(similar.db.pics, 'getPagedPending', return_value=pending) as getPending:
+			nowData, grid = similar.sim_OnTabChange(similar.k.tabPnd, now.toDict())
+
+		getPending.assert_called_once_with(page=2, size=15)
+		updated = models.Now.fromDic(nowData)
+		self.assertEqual(updated.sim.activeTab, similar.k.tabPnd)
+		self.assertEqual([item.autoId for item in updated.sim.assPend], [8])
+		self.assertTrue(any(
+			props(node).get('id') == {'type': 'img-pop', 'aid': 8}
+			for node in walk(grid)
+		))
+
+	def test_empty_grouped_results_use_compact_status(self):
+		now = models.Now(sim=models.PgSim(assCur=[]))
+		dto = SimpleNamespace(muod=SimpleNamespace(on=True))
+
+		with (
+			patch.object(similar, 'getTrgId', return_value='store-now'),
+			patch.object(similar.db, 'dto', dto),
+			patch.object(similar.db.pics, 'getPagedPending', return_value=[]),
+		):
+			result = similar.sim_Load(now.toDict(), models.Cnt().toDict(), None)
+
+		nodes = list(walk(result[0]))
+		emptyState = next(node for node in nodes if props(node).get('className') == 'sim-empty-state')
+		self.assertEqual(props(emptyState).get('role'), 'status')
+		self.assertTrue(any(getattr(node, 'children', None) == 'No grouped results found' for node in nodes))
+
 	def test_stack_metadata_patches_only_changed_group_cards(self):
 		oldAssets = [asset(1, 1), asset(2, 1), asset(3, 2), asset(4, 2)]
 		newAssets = [asset(1, 1, 'stack-a'), asset(2, 1, 'stack-a'), asset(3, 2), asset(4, 2)]
@@ -85,7 +203,10 @@ class TestSimilarPartialRendering(unittest.TestCase):
 		self.assertEqual([operation['operation'] for operation in operations], ['Assign', 'Assign'])
 		self.assertEqual(
 			[operation['location'] for operation in operations],
-			[['props', 'children', 1], ['props', 'children', 2]],
+			[
+				['props', 'children', 0, 'props', 'children', 1, 'props', 'children', 0],
+				['props', 'children', 0, 'props', 'children', 1, 'props', 'children', 1],
+			],
 		)
 
 	def test_removed_group_deletes_only_its_existing_rows(self):
@@ -96,11 +217,24 @@ class TestSimilarPartialRendering(unittest.TestCase):
 
 		gridPatch = similar._patchMultiGrid(oldState, newState, newAssets)
 		operations = gridPatch.to_plotly_json()['operations']
-		self.assertEqual([operation['operation'] for operation in operations], ['Delete', 'Delete', 'Delete'])
+		self.assertEqual([operation['operation'] for operation in operations], ['Delete'])
 		self.assertEqual(
 			[operation['location'] for operation in operations],
-			[['props', 'children', 2], ['props', 'children', 1], ['props', 'children', 0]],
+			[['props', 'children', 0]],
 		)
+
+	def test_changed_group_membership_replaces_only_that_group_container(self):
+		oldAssets = [asset(1, 1), asset(2, 1), asset(3, 2), asset(4, 2)]
+		newAssets = [asset(1, 1), asset(3, 2), asset(4, 2)]
+		oldState = similar._similarRenderState(oldAssets, True)
+		newState = similar._similarRenderState(newAssets, True)
+
+		with patch('ui.cards.db.psql.getUsrName', return_value='Owner'):
+			gridPatch = similar._patchMultiGrid(oldState, newState, newAssets)
+
+		operations = gridPatch.to_plotly_json()['operations']
+		self.assertEqual([operation['operation'] for operation in operations], ['Assign'])
+		self.assertEqual([operation['location'] for operation in operations], [['props', 'children', 0]])
 
 	def test_global_controls_share_group_control_structure(self):
 		with (
@@ -133,6 +267,27 @@ class TestSimilarPartialRendering(unittest.TestCase):
 		self.assertIn('sim-controls', props(actions).get('className', ''))
 		self.assertFalse(any('sim-action-unit' in str(props(node).get('className', '')) for node in actionNodes))
 		self.assertTrue(any('sim-confirm-menu' in str(props(node).get('className', '')) for node in actionNodes))
+
+	def test_auto_selection_uses_responsive_field_grid(self):
+		with patch.object(similar.cardSets.db.psql, 'fetchUsers', return_value=[]):
+			nodes = list(walk(similar.cardSets.renderAutoSelect()))
+
+		classes = [str(props(node).get('className', '')) for node in nodes]
+		self.assertTrue(any('auto-select-card' in value for value in classes))
+		self.assertTrue(any('auto-select-options' == value for value in classes))
+		self.assertTrue(any('auto-select-criteria-grid' == value for value in classes))
+		self.assertEqual(sum(value.startswith('icriteria') for value in classes), 11)
+		self.assertEqual(sum(value == 'auto-select-field' for value in classes), 22)
+		self.assertEqual(sum('auto-select-field-wide' in value for value in classes), 1)
+
+		pathInput = next(
+			node for node in nodes
+			if isinstance(props(node).get('id'), dict) and props(node)['id'].get('field') == 'pthVal'
+		)
+		self.assertEqual(type(pathInput).__name__, 'Textarea')
+		self.assertEqual(props(pathInput).get('rows'), 3)
+		self.assertIn('auto-select-path-input', props(pathInput).get('className', ''))
+		self.assertNotIn('maxWidth', props(pathInput).get('style', {}))
 
 
 if __name__ == '__main__':

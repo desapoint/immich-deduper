@@ -7,6 +7,7 @@ const keyc = `.${key}`
 const LivePhoto = window.LivePhoto = {
 	hoveredVideo: null,
 	modalVideo: null,
+	visibilityObserver: null,
 
 	init()
 	{
@@ -17,14 +18,16 @@ const LivePhoto = window.LivePhoto = {
 	setupVideoErrorHandling()
 	{
 		const handleVdoList = (video) => {
+			if (!video || video.tagName?.toLowerCase() !== 'video') return
 
 			if (video.dataset.livephotoHandled) return
 			video.dataset.livephotoHandled = 'true'
+			this.observeGridVideo(video)
 			video.addEventListener('error', () => {
 				console.warn('[LivePhoto] load failed, hidden:', video.src)
 
 				video.style.display = 'none'
-				const span = video.closest('.viewer').querySelector(`span.livePhoto`)
+				const span = video.closest('.viewer')?.querySelector(`span.livePhoto`)
 				if(!span) {
 					console.warn(`not found ${keyc} in viewer`)
 					return
@@ -89,6 +92,26 @@ const LivePhoto = window.LivePhoto = {
 		observer.observe(document.body, { childList: true, subtree: true })
 	},
 
+	observeGridVideo(video)
+	{
+		if (!('IntersectionObserver' in window)) {
+			video.play()?.catch(() => {})
+			return
+		}
+
+		if (!this.visibilityObserver) {
+			this.visibilityObserver = new IntersectionObserver(entries => {
+				entries.forEach(entry => {
+					const target = entry.target
+					if (entry.isIntersecting) target.play()?.catch(() => {})
+					else target.pause()
+				})
+			}, {rootMargin: '160px 0px', threshold: 0.01})
+		}
+
+		this.visibilityObserver.observe(video)
+	},
+
 	setupModalControls()
 	{
 		document.addEventListener( 'click', ( e ) => {
@@ -115,12 +138,12 @@ const LivePhoto = window.LivePhoto = {
 		if ( video.paused )
 		{
 			video.play()
-			button.textContent = '⏸️'
+			button.textContent = 'Pause'
 		}
 		else
 		{
 			video.pause()
-			button.textContent = '▶️'
+			button.textContent = 'Play'
 		}
 	},
 

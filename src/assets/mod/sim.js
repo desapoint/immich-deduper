@@ -2,6 +2,9 @@
 //========================================================================
 // Auto Selection
 //========================================================================
+const AUSL_DEBUG = false
+function auslDebug(...args){if (AUSL_DEBUG) console.debug(...args)}
+
 function _groupByMuodId(assets){
 	const groups = {}
 	for ( const ass of assets){
@@ -74,14 +77,26 @@ function _extractMetric(ass){
 	}
 }
 
+function _pathRules(value){
+	return String(value || '')
+		.split(/\r?\n|\r/)
+		.map(rule => rule.trim())
+		.filter((rule, index, rules) => rule && rules.indexOf(rule) === index)
+}
+
+function _matchesPathRule(path, value){
+	const rules = _pathRules(value)
+	return rules.length > 0 && rules.some(rule => String(path || '').includes(rule))
+}
+
 function _selectBestAsset(grpAssets, ausl){
 	if (!grpAssets?.length) return null
 
 	const metrics = grpAssets.map(ass => _extractMetric(ass))
 
-	console.log(`[ausl] Group comparison:`)
+	auslDebug(`[ausl] Group comparison:`)
 	for ( const m of metrics){
-		console.log(`[ausl]   #${m.aid}: date[${m.dt}] mdate[${m.mdt}] exif[${m.exfCnt}] fsize[${m.fileSz}] dim[${m.dim}] name[${m.nameLen}] type[${m.fileType}] fav[${m.isFav}] alb[${m.hasAlb}] owner[${m.ownerId?.slice(0, 8) || ''}] path[${m.path?.slice(-30) || ''}] dev[${m.deviceId}]`)
+		auslDebug(`[ausl]   #${m.aid}: date[${m.dt}] mdate[${m.mdt}] exif[${m.exfCnt}] fsize[${m.fileSz}] dim[${m.dim}] name[${m.nameLen}] type[${m.fileType}] fav[${m.isFav}] alb[${m.hasAlb}] owner[${m.ownerId?.slice(0, 8) || ''}] path[${m.path?.slice(-30) || ''}] dev[${m.deviceId}]`)
 	}
 
 	const add = (idx, vals, isMax, weight, label) =>{
@@ -189,7 +204,7 @@ function _selectBestAsset(grpAssets, ausl){
 			scr += pts
 			reasons.push(`Owner+${pts}`)
 		}
-		if (ausl.pth?.v > 0 && ausl.pth?.k && m.path.includes(ausl.pth.k)) {
+		if (ausl.pth?.v > 0 && _matchesPathRule(m.path, ausl.pth?.k)) {
 			const pts = ausl.pth.v * 10
 			scr += pts
 			reasons.push(`Path+${pts}`)
@@ -202,7 +217,7 @@ function _selectBestAsset(grpAssets, ausl){
 
 		allScores[m.aid] = {score: scr, reasons, metrics: m}
 		scores.push({aid: m.aid, scr, reasons})
-		console.log(`[ausl] #${m.aid}: score[${scr}] (${reasons.length ? reasons.join(', ') : 'no matches'})`)
+		auslDebug(`[ausl] #${m.aid}: score[${scr}] (${reasons.length ? reasons.join(', ') : 'no matches'})`)
 	}
 
 	const maxScr = Math.max(...scores.map(s => s.scr))
@@ -211,19 +226,19 @@ function _selectBestAsset(grpAssets, ausl){
 	if (topScorers.length > 1) {
 		if (ausl.kpCands) {
 			const tiedAids = topScorers.map(s => s.aid)
-			console.log(`[ausl] Tie kept: ${topScorers.length} assets at score ${maxScr}, keeping all [${tiedAids.join(', ')}]`)
+			auslDebug(`[ausl] Tie kept: ${topScorers.length} assets at score ${maxScr}, keeping all [${tiedAids.join(', ')}]`)
 			for (const s of topScorers){
 				if (!s.reasons.includes('Tie')) s.reasons.push('Tie')
 				if (allScores[s.aid]) allScores[s.aid].reasons = s.reasons
 			}
 			return {aids: tiedAids, score: maxScr, reasons: ['Tie'], allScores, tied: true}
 		}
-		console.log(`[ausl] No winner: ${topScorers.length} assets tied at score ${maxScr}`)
+		auslDebug(`[ausl] No winner: ${topScorers.length} assets tied at score ${maxScr}`)
 		return {aids: [], score: maxScr, reasons: [], allScores}
 	}
 
 	const winner = topScorers[0]
-	console.log(`[ausl] Winner: #${winner.aid} score[${winner.scr}] (${winner.reasons.join(', ')})`)
+	auslDebug(`[ausl] Winner: #${winner.aid} score[${winner.scr}] (${winner.reasons.join(', ')})`)
 
 	return {aids: [winner.aid], score: winner.scr, reasons: winner.reasons, allScores}
 }
@@ -296,9 +311,11 @@ function waitForCardsAndUpdate(ids, assets, isAutoSelection){
 		if (updated) return
 		updated = true
 		cleanup()
-		const realCnt = await Ste.updAllCss()
+		Ste.refreshDomCache()
+		const realCnt = isAutoSelection ? await Ste.updAllCss() : Ste.selectedIds.size
+		Ste.updStackCoverButtons()
 		Ste.updBtns()
-		await updAuslTips()
+		await updAuslTips(isAutoSelection)
 		updAuslLog()
 		if (isAutoSelection) {
 			dsh.syncSte(Ste.cntTotal, Ste.selectedIds)
@@ -332,12 +349,17 @@ function waitForCardsAndUpdate(ids, assets, isAutoSelection){
 			doUpdate()
 		}
 	}, 2500)
-	_auslObserver.observe(gv, {childList: true, subtree: true, attributes: true})
+	_auslObserver.observe(gv, {
+		childList: true,
+		subtree: true,
+		attributes: true,
+		attributeFilter: ['data-stack-id', 'data-stacked', 'data-group-id'],
+	})
 }
 
 function getAutoSelectAuids(assets, ausl){
-	console.log(`[ausl] Starting auto-selection, ausl.on[${ausl?.on}], assets count=${assets?.length || 0}`)
-	console.log(`[ausl] Weights: Earlier[${ausl?.earlier}] Later[${ausl?.later}] MdEarly[${ausl?.mdEarly}] MdLate[${ausl?.mdLate}] ExifRich[${ausl?.exRich}] ExifPoor[${ausl?.exPoor}] BigSize[${ausl?.ofsBig}] SmallSize[${ausl?.ofsSml}] BigDim[${ausl?.dimBig}] SmallDim[${ausl?.dimSml}] SkipLow[${ausl?.skipLow}] AllLive[${ausl?.allLive}] KpEmpty[${ausl?.kpCands}] JPG[${ausl?.typJpg}] PNG[${ausl?.typPng}] HEIC[${ausl?.typHeic}] Fav[${ausl?.fav}] InAlb[${ausl?.inAlb}] User[${ausl?.usr?.k}:${ausl?.usr?.v}] Path[${ausl?.pth?.k}:${ausl?.pth?.v}] Dev[${ausl?.dev?.k}:${ausl?.dev?.v}]`)
+	auslDebug(`[ausl] Starting auto-selection, ausl.on[${ausl?.on}], assets count=${assets?.length || 0}`)
+	auslDebug(`[ausl] Weights: Earlier[${ausl?.earlier}] Later[${ausl?.later}] MdEarly[${ausl?.mdEarly}] MdLate[${ausl?.mdLate}] ExifRich[${ausl?.exRich}] ExifPoor[${ausl?.exPoor}] BigSize[${ausl?.ofsBig}] SmallSize[${ausl?.ofsSml}] BigDim[${ausl?.dimBig}] SmallDim[${ausl?.dimSml}] SkipLow[${ausl?.skipLow}] AllLive[${ausl?.allLive}] KpEmpty[${ausl?.kpCands}] JPG[${ausl?.typJpg}] PNG[${ausl?.typPng}] HEIC[${ausl?.typHeic}] Fav[${ausl?.fav}] InAlb[${ausl?.inAlb}] User[${ausl?.usr?.k}:${ausl?.usr?.v}] Path[${ausl?.pth?.k}:${ausl?.pth?.v}] Dev[${ausl?.dev?.k}:${ausl?.dev?.v}]`)
 
 	window.auslReasons = {}
 	window.auslLogs = {}
@@ -347,21 +369,21 @@ function getAutoSelectAuids(assets, ausl){
 	const hasActive=ausl.earlier>0||ausl.later>0||ausl.mdEarly>0||ausl.mdLate>0||ausl.exRich>0||ausl.exPoor>0||ausl.ofsBig>0||ausl.ofsSml>0||ausl.dimBig>0||ausl.dimSml>0||ausl.namLon>0||ausl.namSht>0||ausl.typJpg>0||ausl.typPng>0||ausl.typHeic>0||ausl.fav>0||ausl.inAlb>0||ausl.usr?.v>0||ausl.pth?.v>0||ausl.dev?.v>0
 
 	if (!hasActive) {
-		console.log(`[ausl] No active weights, skipping`)
+		auslDebug(`[ausl] No active weights, skipping`)
 		return []
 	}
 
 	const groups = _groupByMuodId(assets)
-	console.log(`[ausl] Grouped ${assets.length} assets into ${Object.keys(groups).length} groups`)
+	auslDebug(`[ausl] Grouped ${assets.length} assets into ${Object.keys(groups).length} groups`)
 
 	const selIds = []
 
 	for ( const [gid, grpAss] of Object.entries(groups) ){
-		console.log(`[ausl] Processing group ${gid} with ${grpAss.length} assets: [${grpAss.map(a => a.autoId).join(', ')}]`)
+		auslDebug(`[ausl] Processing group ${gid} with ${grpAss.length} assets: [${grpAss.map(a => a.autoId).join(', ')}]`)
 
 		const liveIds = _checkLivePhoto(grpAss, ausl)
 		if (liveIds.length) {
-			console.log(`[ausl] Group ${gid}: Selected ALL LivePhoto assets [${liveIds.join(', ')}]`)
+			auslDebug(`[ausl] Group ${gid}: Selected ALL LivePhoto assets [${liveIds.join(', ')}]`)
 			for ( const lid of liveIds ) window.auslReasons[lid] = ['LivePhoto']
 			window.auslLogs[gid] = {status: 'livephoto', selectedAids: liveIds, reason: 'All LivePhotos selected', details: []}
 			selIds.push(...liveIds)
@@ -380,13 +402,13 @@ function getAutoSelectAuids(assets, ausl){
 			})
 			if (ausl.kpCands) {
 				const keepAids = grpAss.map(a => a.autoId)
-				console.log(`[ausl] Group ${gid}: Low sim kept (${lowList}), keeping all [${keepAids.join(', ')}]`)
+				auslDebug(`[ausl] Group ${gid}: Low sim kept (${lowList}), keeping all [${keepAids.join(', ')}]`)
 				selIds.push(...keepAids)
 				for (const aid of keepAids) window.auslReasons[aid] = ['LowSimKept']
 				window.auslLogs[gid] = {status: 'low_sim_kept', selectedAids: keepAids, reason: `Selected all ${keepAids.length} (low similarity, disable "Keep candidates, not empty" to skip this group)`, details}
 				continue
 			}
-			console.log(`[ausl] Group ${gid}: SKIPPING due to low similarity: ${lowList}`)
+			auslDebug(`[ausl] Group ${gid}: SKIPPING due to low similarity: ${lowList}`)
 			window.auslLogs[gid] = {status: 'skipped', selectedAids: [], reason: `Skipped: low similarity (<0.96)`, details}
 			continue
 		}
@@ -413,7 +435,7 @@ function getAutoSelectAuids(assets, ausl){
 				reasonText = `Selected #${rst.aids[0]} (score: ${rst.score})`
 			}
 			window.auslLogs[gid]={status:rst.tied ? 'tied_kept' :'selected',selectedAids:rst.aids,reason:reasonText,details:Object.entries(rst.allScores).map(([aid,d])=>({aid:parseInt(aid),score:d.score,reasons:d.reasons,metrics:d.metrics}))}
-			console.log(`[ausl] Group ${gid}: ${reasonText}`)
+			auslDebug(`[ausl] Group ${gid}: ${reasonText}`)
 		} else {
 			let reason = rst?.score>0 ?
 				`No winner: tied at score ${rst.score}.<br/>Adjust ausl weights to break the tie,<br/>or enable "Keep candidates, not empty" to keep all.` :
@@ -422,7 +444,7 @@ function getAutoSelectAuids(assets, ausl){
 		}
 	}
 
-	console.log(`[ausl] Final selection: ${selIds.length} assets: [${selIds.join(', ')}]`)
+	auslDebug(`[ausl] Final selection: ${selIds.length} assets: [${selIds.join(', ')}]`)
 
 	try{
 		fetch('/api/log/ausl',{
@@ -439,7 +461,7 @@ function getAutoSelectAuids(assets, ausl){
 //========================================================================
 // Auto-Select Tooltip UI
 //========================================================================
-async function updAuslTips(){
+async function updAuslTips(applySelection = true){
 	document.querySelectorAll('.ausl-tip').forEach(el => el.remove())
 
 	const reasons = window.auslReasons || {}
@@ -447,20 +469,20 @@ async function updAuslTips(){
 
 	let selCnt = 0
 	for (const [aid, reasonList] of Object.entries(reasons)){
-		const card = await getCardById(aid)
+		const card = Ste.getCard(aid) || await getCardById(aid)
 		if (!card) continue
 
-		const cbx = card.querySelector('input[type="checkbox"]')
-		if (cbx) {
-			cbx.checked = true
-			selCnt++
-		}
-		else{
-			console.error( `item not found checkbox` )
-		}
+		if (applySelection) {
+			const cbx = card.querySelector('input[type="checkbox"]')
+			if (cbx) {
+				cbx.checked = true
+				selCnt++
+			}
+			else console.error( `item not found checkbox` )
 
-		const par = card.closest('.card')
-		if (par) par.classList.add('checked')
+			const par = card.closest('.card')
+			if (par) par.classList.add('checked')
+		}
 
 		const label = card.querySelector('label')
 		if (!label) continue
@@ -470,43 +492,35 @@ async function updAuslTips(){
 		const tipText = reasonList.join(', ')
 		const tip = document.createElement('span')
 		tip.className = 'ausl-tip'
-		tip.textContent = 'Auto?'
+		tip.textContent = 'Auto'
+		tip.tabIndex = 0
+		tip.setAttribute('role', 'note')
+		tip.setAttribute('aria-label', `Auto-selected: ${tipText}`)
 		tip.setAttribute('data-tip', tipText)
 		label.appendChild(tip)
 	}
 
-	console.log(`[ausl] Updated ${Object.keys(reasons).length} tooltip(s), checked ${selCnt} cbx`)
+	auslDebug(`[ausl] Updated ${Object.keys(reasons).length} tooltip(s), checked ${selCnt} cbx`)
 }
 
 //========================================================================
 // Auto-Select Group Log Buttons
 //========================================================================
 function updAuslLog(){
-	document.querySelectorAll('.ausl-log-tag').forEach(el => el.remove())
-	document.querySelectorAll('.ausl-log-poptip').forEach(el => el.remove())
+	document.querySelectorAll('.sim-group-auto-log').forEach(slot => slot.replaceChildren())
 
 	const logs = window.auslLogs || {}
 	if (!Object.keys(logs).length){
-		console.debug( `[ausl] no logs ...` )
+		auslDebug( `[ausl] no logs ...` )
 		return
 	}
 
-	ui.mob.waitAll('.gv.fsp > .sim-group-header > .sim-group-title[data-group-id]', titles => {
+	ui.mob.waitAll('.gv.fsp .sim-group-auto-log[data-group-id]', slots => {
 
-		titles.forEach(title =>{
-			const gid = title.getAttribute('data-group-id')
+		slots.forEach(slot =>{
+			const gid = slot.getAttribute('data-group-id')
 			const log = logs[gid]
 			if (!log) return
-			const header = title.closest('.sim-group-header')
-			if (!header) return
-
-			const tipId = `ausl-log-${gid}`
-
-			const tag = document.createElement('span')
-			tag.className = 'ausl-log-tag'
-			tag.setAttribute('data-tip-id', tipId)
-			tag.textContent = 'Auto log'
-			title.appendChild(tag)
 
 			let detailsHtml = ''
 			if (log.details?.length) {
@@ -518,14 +532,13 @@ function updAuslLog(){
 				detailsHtml += '</tbody></table>'
 			}
 
-			const tip = document.createElement('div')
-			tip.className = 'poptip ausl-log-poptip'
-			tip.id = tipId
-			tip.innerHTML = `<div class="ausl-log-wrap"><div class="ausl-log-title">Group ${gid}</div><div class="ausl-log-reason">${log.reason}</div>${detailsHtml}</div>`
-			header.appendChild(tip)
+			const details = document.createElement('details')
+			details.className = 'ausl-log'
+			details.innerHTML = `<summary class="ausl-log-summary">Auto-selection details</summary><div class="ausl-log-panel"><div class="ausl-log-title">Group ${gid}</div><div class="ausl-log-reason">${log.reason}</div><div class="ausl-log-table-wrap">${detailsHtml}</div></div>`
+			slot.appendChild(details)
 		})
 
-		console.log(`[ausl] Positioned logs in ${titles.length} group header(s)`)
+		auslDebug(`[ausl] Rendered logs in ${slots.length} group header(s)`)
 	})
 }
 
@@ -584,8 +597,9 @@ window.dash_clientside.similar = {
 		if (dash_clientside.callback_context.triggered.length > 0) {
 			let triggered = dash_clientside.callback_context.triggered[0]
 			if (triggered.prop_id && triggered.value > 0) {
-				let triggeredId = JSON.parse(triggered.prop_id.split('.')[0])
-				Ste.toggle(triggeredId.id)
+				const componentId = triggered.prop_id.split('.')[0]
+				let triggeredId = JSON.parse(componentId)
+				Ste.toggle(triggeredId.id, document.getElementById(componentId))
 
 				let steData = {
 					cntTotal: Ste.cntTotal,
@@ -593,7 +607,6 @@ window.dash_clientside.similar = {
 					stackCoverIds: Array.from(Ste.stackCoverIds),
 				}
 
-				console.log('[Ste] Syncing to ste store on selection:', steData)
 				return steData
 			}
 		}
@@ -604,8 +617,11 @@ window.dash_clientside.similar = {
 		if (dash_clientside.callback_context.triggered.length > 0) {
 			const triggered = dash_clientside.callback_context.triggered[0]
 			if (triggered.prop_id && triggered.value > 0) {
-				const triggeredId = JSON.parse(triggered.prop_id.split('.')[0])
-				Ste.setStackCover(triggeredId.id, triggeredId.group, triggeredId.owner)
+				const componentId = triggered.prop_id.split('.')[0]
+				const triggeredId = JSON.parse(componentId)
+				const coverButton = document.getElementById(componentId)
+				const card = coverButton?.closest('.card')?.querySelector('[id*="card-select"]') || null
+				Ste.setStackCover(triggeredId.id, triggeredId.group, triggeredId.owner, card)
 				return {
 					cntTotal: Ste.cntTotal,
 					selectedIds: Array.from(Ste.selectedIds),
@@ -618,19 +634,17 @@ window.dash_clientside.similar = {
 
 	onSimJs(now_data, ste_data, sets_data){
 		const triggered = dash_clientside.callback_context.triggered
-		const propId = triggered?.[0]?.prop_id
+		const triggeredProps = new Set((triggered || []).map(item => item.prop_id))
+		const stateOnly = triggeredProps.size === 1 && triggeredProps.has('store-state.data')
 		if (Ste && ste_data) {
 			Ste.cntTotal = ste_data.cntTotal || 0
 			Ste.selectedIds = new Set(ste_data.selectedIds || [])
 			Ste.stackCoverIds = new Set(ste_data.stackCoverIds || [])
 		}
-		if (triggered?.length > 0) {
-			if (propId === 'store-state.data') {
-				Ste.updAllCss()
-				Ste.updBtns()
-				console.log('[Ste] Restored selection from ste store')
-				return dash_clientside.no_update
-			}
+		if (stateOnly) {
+			// The originating client action already updated its card, cover, and buttons.
+			// Persisting the store must not trigger a second visual pass.
+			return dash_clientside.no_update
 		}
 
 		const assets = now_data?.sim?.assCur
@@ -640,14 +654,14 @@ window.dash_clientside.similar = {
 		const existingResultUpdate = isExistingResultUpdate(assetIds, configSig)
 		_lastAutoSelAssetIds = assetIds
 		_lastAutoSelConfigSig = configSig
-		console.log(`[NowSync] ==================== triggered[${JSON.stringify(triggered)}] =====================`)
+		auslDebug('[sim] state sync triggers', triggered)
 
 		if (assets && Ste) {
 			Ste.cntTotal = assets.length
 			if (existingResultUpdate) {
 				pruneAuslState(assets)
 				waitForCardsAndUpdate(Array.from(Ste.selectedIds), assets, false)
-				console.log('[ausl] Preserved selection after existing-result update')
+				auslDebug('[ausl] Preserved selection after existing-result update')
 				return dash_clientside.no_update
 			}
 
@@ -688,6 +702,31 @@ function groupAssetsByVisualGroups(data){
 	}
 
 	const children = Array.from(gvContainer.children)
+	const groupContainers = children.filter(child => child.classList.contains('sim-group-container'))
+	if (groupContainers.length) {
+		return groupContainers.map((group, index) =>{
+			const assets = []
+			group.querySelectorAll('.card-meta').forEach(metaDiv =>{
+				if (!metaDiv.dataset.meta) return
+				try {
+					const meta = JSON.parse(metaDiv.dataset.meta)
+					assets.push({
+						assetId: meta.id,
+						autoId: parseInt(meta.autoId),
+						filename: meta.originalFileName,
+						path: meta.originalPath,
+					})
+				}
+				catch (e) { console.error('[Export] Error parsing group asset meta:', e) }
+			})
+
+			return {
+				group: parseInt(group.getAttribute('data-group-id')) || index + 1,
+				assets,
+			}
+		})
+	}
+
 	let currentGroupAssets = []
 
 	children.forEach(child =>{
@@ -823,97 +862,19 @@ window.exportIdsToCSV = function exportIdsToCSV(){
 
 
 //------------------------------------------------------------------------
-// Tab Acts Floating Bar
-//------------------------------------------------------------------------
-function initTabActsFloating(){
-	const tabActs = document.querySelector('.tab-acts')
-	if (!tabActs) throw new Error( `[tabActs] NotFound??` )
-
-	let placeholder = document.createElement('div')
-	placeholder.className = 'tab-acts-placeholder'
-	tabActs.parentNode.insertBefore(placeholder, tabActs.nextSibling)
-
-	let originalTop = null
-	let isFloating = false
-
-	function updateOriginalTop(){
-		if (!isFloating) {
-			const rect = tabActs.getBoundingClientRect()
-			originalTop = rect.top + window.scrollY
-		}
-	}
-
-	function toggleFloatingBar(){
-		const currentTab = document.querySelector('.nav-tabs .nav-link.active')
-		const isCurrentTab = currentTab && currentTab.textContent.trim() == 'current'
-		const scrollY = window.scrollY
-
-		if (!isCurrentTab) {
-			if (isFloating) {
-				tabActs.classList.remove('floating', 'show')
-				placeholder.classList.remove('active')
-				isFloating = false
-			}
-			return
-		}
-
-		if (originalTop === null) updateOriginalTop()
-
-		const shouldFloat = scrollY > originalTop + 50
-
-		if (shouldFloat !== isFloating) {
-			if (shouldFloat) {
-				tabActs.classList.add('floating')
-				placeholder.classList.add('active')
-				setTimeout(() => tabActs.classList.add('show'), 10)
-				isFloating = true
-			}
-			else {
-				tabActs.classList.remove('show')
-				setTimeout(() =>{
-					tabActs.classList.remove('floating')
-					placeholder.classList.remove('active')
-				}, 300)
-				isFloating = false
-			}
-		}
-	}
-
-	window.addEventListener('scroll', toggleFloatingBar)
-	window.addEventListener('resize', () =>{
-		originalTop = null
-		updateOriginalTop()
-	})
-
-	document.addEventListener('click', function(e){
-		if (e.target && e.target.matches('.nav-link')) {
-			setTimeout(() =>{
-				originalTop = null
-				updateOriginalTop()
-				toggleFloatingBar()
-			}, 100)
-		}
-	})
-
-	updateOriginalTop()
-	setTimeout(toggleFloatingBar, 100)
-}
-
-//------------------------------------------------------------------------
 // Goto Top Button
 //------------------------------------------------------------------------
 function initBtnTop(btn){
 
 	function toggleGotoTopBtn(){
 		const currentTab = document.querySelector('.nav-tabs .nav-link.active')
-		const isCurrentTab = currentTab && currentTab.textContent.trim() == 'current'
+		const isCurrentTab = currentTab && currentTab.textContent.trim().toLowerCase().startsWith('current')
 		const scrollY = window.scrollY
 
 		// console.log('[GotoTop] Toggle check - isCurrentTab:', isCurrentTab, 'scrollY:', scrollY)
 
 		if (isCurrentTab && scrollY > 200) {
 			btn.classList.add('show')
-			btn.style.display = 'block'
 		}
 		else {
 			btn.classList.remove('show')
@@ -947,7 +908,6 @@ document.addEventListener('DOMContentLoaded', function(){
 	//------------------------------------------------------------------------
 	// for pages
 	//------------------------------------------------------------------------
-	ui.mob.waitFor('.tab-acts', initTabActsFloating)
 	ui.mob.waitFor('#sim-goto-top-btn', initBtnTop)
 
 })

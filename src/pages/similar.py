@@ -80,7 +80,6 @@ def _similarRenderState(assets: list[models.Asset], multiMode: bool) -> dict:
 def _patchMultiGrid(oldState: dict, newState: dict, assets: list[models.Asset]):
 	if not oldState or not oldState.get('multi') or not newState.get('multi'): return None
 	if not oldState.get('groups') or not newState.get('groups'): return None
-	if (oldState.get('count', 0) <= 4) != (newState.get('count', 0) <= 4): return None
 
 	oldGroups = oldState['groups']
 	newGroups = newState['groups']
@@ -94,46 +93,46 @@ def _patchMultiGrid(oldState: dict, newState: dict, assets: list[models.Asset]):
 		for groupId, groupAssets in sim_stack.groupAssets(assets, True).items()
 	}
 	newGroupsById = {str(group['id']): group for group in newGroups}
-	style = {'flex': '1 1 250px'} if len(assets) <= 4 else {}
-
-	starts = []
-	start = 0
-	for group in oldGroups:
-		starts.append((start, group))
-		start += 1 + len(group['assets'])
-
 	patch = dash.Patch()
-	rows = patch['props']['children']
+	groupRows = patch['props']['children']
 	changed = False
 
-	for start, oldGroup in reversed(starts):
+	for groupIndex in range(len(oldGroups) - 1, -1, -1):
+		oldGroup = oldGroups[groupIndex]
 		groupId = str(oldGroup['id'])
 		newGroup = newGroupsById.get(groupId)
 		oldAssetIds = [str(asset['id']) for asset in oldGroup['assets']]
 		newAssetIds = [str(asset['id']) for asset in newGroup['assets']] if newGroup else []
 
+		if not newGroup:
+			del groupRows[groupIndex]
+			changed = True
+			continue
+
 		if newGroup and oldAssetIds == newAssetIds:
 			assetsById = {str(asset.autoId): asset for asset in groupedAssets[groupId][1]}
-			for offset, (oldAsset, newAsset) in enumerate(zip(oldGroup['assets'], newGroup['assets']), start=1):
+			cardRows = groupRows[groupIndex]['props']['children'][1]['props']['children']
+			for cardIndex, (oldAsset, newAsset) in enumerate(zip(oldGroup['assets'], newGroup['assets'])):
 				if oldAsset['signature'] == newAsset['signature']: continue
-				rows[start + offset] = gv.mkCardRow(
+				cardRows[cardIndex] = gv.mkCardRow(
 					assetsById[str(newAsset['id'])],
 					groupedAssets[groupId][0],
-					style,
 				)
 				changed = True
 			continue
 
-		for rowIndex in range(start + len(oldGroup['assets']), start - 1, -1):
-			del rows[rowIndex]
+		actualGroupId, groupAssets = groupedAssets[groupId]
+		groupRows[groupIndex] = gv.mkGroupContainer(actualGroupId, groupAssets)
 		changed = True
 
-		if newGroup:
-			actualGroupId, groupAssets = groupedAssets[groupId]
-			for offset, row in enumerate(gv.mkGroupRows(actualGroupId, groupAssets, style)):
-				rows.insert(start + offset, row)
-
 	return patch if changed else None
+
+
+def _emptyResult(title: str, detail: str):
+	return htm.Div([
+		htm.Strong(title),
+		htm.Small(detail),
+	], className="sim-empty-state", role="status")
 
 dash.register_page(
 	__name__,
@@ -193,6 +192,14 @@ def layout(autoId=None):
 
 
 	import ui
+
+	def searchAction(label, detail, button, tone=""):
+		return htm.Div([
+			htm.Small(label, className="similar-action-label"),
+			button,
+			htm.Small(detail, className="similar-action-detail"),
+		], className=f"similar-search-action {tone}".strip())
+
 	return ui.renderBody([
 		#====== top start =======================================================
 		dcc.Store(id=k.assUrl, data=autoId),
@@ -207,41 +214,56 @@ def layout(autoId=None):
 			htm.Small(f"{ks.pg.similar.desc}", className="text-muted")
 		], className="body-header"),
 
+		htm.Div([
+			htm.Div(htm.I(className="bi bi-intersect"), className="similar-intro-icon"),
+			htm.Div([
+				htm.Small("Review workspace", className="similar-eyebrow"),
+				htm.H4("Compare confidently, then decide per group"),
+				htm.P("Tune the search once, select the right images, and keep each group open until you are ready to mark it resolved."),
+			]),
+			htm.Div([
+				htm.I(className="bi bi-lightning-charge"),
+				"Actions update in place",
+			], className="similar-runtime-badge"),
+		], className="similar-intro"),
 
-		dbc.Row([
-			dbc.Col([
-				#------------------------------------------------------------------------
+		htm.Div([
+			htm.Div([
+				htm.Div([
+					htm.Span("Decision settings"),
+					htm.Small("Matching, merge, and automatic selection", className="text-muted"),
+				], className="similar-section-heading"),
 				cardSets.renderThreshold(),
 				cardSets.renderMerge(),
 				cardSets.renderAutoSelect(),
-				#------------------------------------------------------------------------
-			], width=5),
+			], className="similar-config-primary"),
 
-			dbc.Col([
-
+			htm.Div([
+				htm.Div([
+					htm.Span("Search scope"),
+					htm.Small("Control which groups and records enter this workspace", className="text-muted"),
+				], className="similar-section-heading"),
 				cardSets.renderCard(),
-
-				dbc.Row([
-					dbc.Col([
-						dbc.Button([
-							htm.Span(f"Find Similar"),
-							htm.Br(),
-							htm.Small("No similar found → auto-mark resolved"),
-						], id=k.btnFind, color="primary", className="w-100", disabled=True),
-					], width=6),
-
-					dbc.Col([
-						dbc.Button("Clear record & Keep resolved", id=k.btnClear, color="danger me-1", className="w-100 mb-1", disabled=True),
-						dbc.Button([
-							htm.Span("Reset records"),
-							htm.Br(),
-							htm.Small("re-search auto-resolved"),
-						], id=k.btnReset, color="danger", className="w-100", disabled=True),
-					], width=6, className="text-end"),
-				], className="mt-3"),
-
-			], width=7),
-		], className=""),
+				htm.Div([
+					searchAction(
+						"Recommended",
+						"Find the next review set; unmatched assets are marked resolved automatically.",
+						dbc.Button("Find similar", id=k.btnFind, color="primary", className="w-100", disabled=True),
+					),
+					searchAction(
+						"Keep resolved",
+						"Clear only active search records while preserving completed work.",
+						dbc.Button("Clear active records", id=k.btnClear, color="secondary", className="w-100", disabled=True),
+					),
+					searchAction(
+						"Start over",
+						"Reset all similarity records, including automatically resolved results.",
+						dbc.Button("Reset all records", id=k.btnReset, color="danger", className="w-100", disabled=True),
+						"similar-search-action-danger",
+					),
+				], className="similar-search-actions"),
+			], className="similar-config-search"),
+		], className="similar-config-grid"),
 
 		#====== top end =========================================================
 	], [
@@ -257,7 +279,7 @@ def layout(autoId=None):
 				active_tab=k.tabCur,
 				children=[
 					dbc.Tab(
-						label="current", tab_id=k.tabCur,
+						label="Current review", tab_id=k.tabCur,
 						children=[
 
 							# Action buttons
@@ -312,15 +334,15 @@ def layout(autoId=None):
 
 							# Floating Goto Top Button
 							htm.Button(
-								"↑ Top",
+								[htm.I(className="bi bi-arrow-up"), htm.Span("Back to top")],
 								id="sim-goto-top-btn",
 								className="goto-top-btn",
-								style={"display": ""}
+								**{"aria-label": "Back to top"},
 							),
 						]
 					),
 					dbc.Tab(
-						label="pending",
+						label="Pending",
 						tab_id=k.tabPnd,
 						id=k.tabPnd,
 						disabled=True,
@@ -345,11 +367,11 @@ def layout(autoId=None):
 				]
 			)
 		],
-			className="ITab"
+			className="ITab similar-workspace"
 		),
 
 		#====== bottom end ======================================================
-	])
+	], pageClass="page-similar")
 
 
 
@@ -364,23 +386,36 @@ pager.regCallbacks(k.pagerPnd)
 # Sync tab changes to now state
 #------------------------------------------------------------------------
 @cbk(
-	out(ks.sto.now, "data", allow_duplicate=True),
+	[
+		out(ks.sto.now, "data", allow_duplicate=True),
+		out(k.gvPnd, "children", allow_duplicate=True),
+	],
 	inp(k.tabs, "active_tab",),
 	ste(ks.sto.now, "data"),
 	prevent_initial_call=True
 )
 def sim_OnTabChange(active_tab, dta_now):
-	if not active_tab or not dta_now: return noUpd
+	if not active_tab or not dta_now: return noUpd.by(2)
 
 	now = Now.fromDic(dta_now)
 
-	if now.sim.activeTab == active_tab: return noUpd
+	if now.sim.activeTab == active_tab: return noUpd.by(2)
 
 	lg.info(f"[sim:tab] Tab changed to: {active_tab} (from: {now.sim.activeTab})")
 
+	if active_tab == k.tabPnd:
+		pgr = now.sim.pagerPnd or Pager()
+		if not now.sim.assPend:
+			now.sim.assPend = db.pics.getPagedPending(page=pgr.idx, size=pgr.size)
+		now.sim.pagerPnd = pgr
+		now.sim.activeTab = active_tab
+		return now.toDict(), gv.mkPndGrd(now.sim.assPend, onEmpty=[
+			dbc.Alert("No pending items on this page", color="secondary", className="text-center"),
+		])
+
 	patch = dash.Patch()
 	patch['sim']['activeTab'] = active_tab
-	return patch
+	return patch, noUpd
 
 
 
@@ -532,11 +567,11 @@ def sim_Load(dta_now, dta_cnt, oldRenderState):
 		gview = _patchMultiGrid(oldRenderState, renderState, now.sim.assCur)
 		if gview is None:
 			gview = gv.mkGrdGrps(now.sim.assCur, onEmpty=[
-				dbc.Alert("No grouped results found..", color="secondary", className="text-center m-5"),
+				_emptyResult("No grouped results found", "Run a search or adjust the Similar settings."),
 			])
 	else:
-		gview = gv.mkGrd(now.sim.assCur, onEmpty=[
-			dbc.Alert("Please find the similar images..", color="secondary", className="text-center m-5"),
+		gview = gv.mkGrd(now.sim.assCur, minW=280, onEmpty=[
+			_emptyResult("No similar images to review", "Run a search to load results."),
 		])
 
 	# Initialize or get pager
@@ -654,11 +689,11 @@ ccbk(
 	],
 	[
 		inp(ks.sto.now, "data"),
-		inp(ks.sto.ste, "data"),
 		inp(ks.sto.cnt, "data"),
 		inp(ks.sto.tsk, "data"),
 	],
 	[
+		ste(ks.sto.ste, "data"),
 		ste({"type": gv.STACK_GROUP_BUTTON, "id": ALL}, "id"),
 		ste({"type": gv.GROUP_ACTION_BUTTON, "action": ALL, "id": ALL}, "id"),
 		ste({"type": gv.STACK_COVER_BUTTON, "id": ALL, "group": ALL, "owner": ALL}, "id"),
@@ -666,14 +701,13 @@ ccbk(
 	prevent_initial_call="initial_duplicate"
 )
 def sim_UpdateButtons(
-	dta_now, dta_ste, dta_cnt, dta_tsk,
+	dta_now, dta_cnt, dta_tsk, dta_ste,
 	groupButtonIds, groupActionButtonIds, coverButtonIds,
 ):
 	now = Now.fromDic(dta_now)
 	ste = Ste.fromDic(dta_ste) if dta_ste else Ste()
 	cnt = Cnt.fromDic(dta_cnt)
 	tsk = Tsk.fromDic(dta_tsk)
-	selectionOnly = ctx.triggered_id == ks.sto.ste
 
 	from mod.mgr.tskSvc import mgr
 	isTaskRunning = False
@@ -685,23 +719,20 @@ def sim_UpdateButtons(
 	if tsk.id and tsk.cmd: isTaskRunning = True
 
 	cntAssets = len(now.sim.assCur) if now.sim.assCur else 0
-	if selectionOnly:
-		disFind = disClear = disReset = disOk = disDel = disExport = dash.no_update
-	else:
-		cntNo = cnt.ass - cnt.simOk if cnt else 0
-		cntPn = cnt.simPnd if cnt else 0
-		disFind = cntNo <= 0 or (cntPn >= cntNo) or isTaskRunning
-		cntSrchd = db.pics.countHasSimIds(isOk=0) if not isTaskRunning else 0
-		disClear = cntSrchd <= 0 or isTaskRunning
-		cntOk = cnt.simOk if cnt else 0
-		disReset = cntOk <= 0 and cntPn <= 0 or isTaskRunning
-		disOk = cntAssets <= 0
-		disDel = cntAssets <= 0
-		disExport = cntAssets <= 0
+	cntNo = cnt.ass - cnt.simOk if cnt else 0
+	cntPn = cnt.simPnd if cnt else 0
+	disFind = cntNo <= 0 or (cntPn >= cntNo) or isTaskRunning
+	cntSrchd = db.pics.countHasSimIds(isOk=0) if not isTaskRunning else 0
+	disClear = cntSrchd <= 0 or isTaskRunning
+	cntOk = cnt.simOk if cnt else 0
+	disReset = (cntOk <= 0 and cntPn <= 0) or isTaskRunning
+	disOk = cntAssets <= 0 or isTaskRunning
+	disDel = cntAssets <= 0 or isTaskRunning
+	disExport = cntAssets <= 0
 
 	cntSel = len(ste.selectedIds) if ste.selectedIds else 0
-	disRm = cntSel == 0
-	disRS = cntSel == 0
+	disRm = isTaskRunning or cntSel == 0
+	disRS = isTaskRunning or cntSel == 0
 	disStack = isTaskRunning or cntSel == 0
 	selectedIds = set(ste.selectedIds)
 	selectedGroupIds = {
@@ -722,10 +753,13 @@ def sim_UpdateButtons(
 			disabled = str(buttonId.get('id')) not in selectedGroupIds
 		groupActionDisabled.append(disabled)
 
+	# Wildcard outputs must always return one value per rendered component.
+	# Returning a scalar no_update here causes Dash 3.4 to respond with HTTP 500
+	# when a page has no group or cover buttons.
 	stackCoverIds = set(ste.stackCoverIds)
 	coverOutline = [buttonId.get('id') not in stackCoverIds for buttonId in coverButtonIds or []]
 	coverChildren = [
-		"☆ Cover" if buttonId.get('id') not in stackCoverIds else "★ Cover choice"
+		"Cover choice" if buttonId.get('id') in stackCoverIds else "Set cover"
 		for buttonId in coverButtonIds or []
 	]
 	coverDisabled = [isTaskRunning for _ in coverButtonIds or []]
@@ -923,13 +957,15 @@ def sim_RunModal(
 			mdl.id = ks.pg.similar
 			mdl.cmd = ks.cmd.sim.selRm
 			mdl.args = {'targetGroupId': groupTargetId}
+			if groupTargetId is not None and assKeep:
+				mdl.args['allowMarkResolved'] = True
 			mdl.msg = [
 				f"Are you sure you want to Delete selected images( {cnt} ) and Keep others( {len(assKeep)} )"
 				f" in {'group ' + str(groupTargetId) if groupTargetId is not None else 'the current results'}?", htm.Br(),
 				htm.B("This operation cannot be undone"),
 			]
 			if groupTargetId is not None:
-				mdl.msg.extend([htm.Br(), "Surviving images stay in this group until you click Mark resolved."])
+				mdl.msg.extend([htm.Br(), "Choose Confirm to leave survivors open, or Confirm & mark resolved to finish this group now."])
 
 			if db.dto.mrg.on: mdl.msg.extend(_mkMrgMsg(assKeep))
 
@@ -959,13 +995,15 @@ def sim_RunModal(
 			mdl.id = ks.pg.similar
 			mdl.cmd = ks.cmd.sim.selOk
 			mdl.args = {'targetGroupId': groupTargetId}
+			if groupTargetId is not None:
+				mdl.args['allowMarkResolved'] = True
 			mdl.msg = [
 				f"Are you sure you want to Keep selected images( {cnt} ) and Delete others( {len(assOthers)} )"
 				f" in {'group ' + str(groupTargetId) if groupTargetId is not None else 'the current results'}?", htm.Br(),
 				htm.B("This operation cannot be undone"),
 			]
 			if groupTargetId is not None:
-				mdl.msg.extend([htm.Br(), "Surviving images stay in this group until you click Mark resolved."])
+				mdl.msg.extend([htm.Br(), "Choose Confirm to leave survivors open, or Confirm & mark resolved to finish this group now."])
 
 			if db.dto.mrg.on: mdl.msg.extend(_mkMrgMsg(ass))
 
@@ -1010,6 +1048,8 @@ def sim_RunModal(
 			'targetGroupId': targetGroupId,
 			'deleteOthers': deleteOthers,
 		}
+		if targetGroupId is not None:
+			mdl.args['allowMarkResolved'] = True
 		mdl.msg = [
 			f"Finalize {len(plan.stacks)} Immich stack(s) from {len(plan.selected)} selected assets across {len(plan.groups)} group(s)?",
 			htm.Br(),
@@ -1028,6 +1068,8 @@ def sim_RunModal(
 		if deleteOthers:
 			mdl.msg.extend([htm.Br(), htm.B("Deleting unselected assets cannot be undone here.")])
 			if db.dto.mrg.on: mdl.msg.extend(_mkMrgMsg(plan.selected))
+		if targetGroupId is not None:
+			mdl.msg.extend([htm.Br(), "Choose Confirm to leave the group open, or Confirm & mark resolved to finish it now."])
 	#------------------------------------------------------------------------
 	elif trgId == k.btnRmAll or groupAction == gv.GROUP_DELETE_ALL:
 		try: ass = sim_stack.assetsForGroup(now.sim.assCur, db.dto.muod.on, groupTargetId)
@@ -1228,7 +1270,7 @@ def sim_FindSimilar(doReport: IFnProg, sto: models.ITaskStore):
 			cntAll = len(assets)
 			hasRoot = any(a.autoId == root.autoId for a in assets)
 			msg = [f"Found {cntInfos} similar, displaying {cntAll} for #{root.autoId} ({root.id})"]
-			if not hasRoot: msg.append(f"⚠️ Root #{root.autoId} missing from display!")
+			if not hasRoot: msg.append(f"Root #{root.autoId} missing from display!")
 			if cntAll > cntInfos: msg.append(f"include ({cntAll - cntInfos}) asset extra tree in similar tree.")
 			if cntAll >= maxItems: msg.append(f"Reached maximum search limit ({maxItems} items).")
 
@@ -1325,6 +1367,20 @@ def _removeHandledAssets(sto: models.ITaskStore, handledAssets: list[models.Asse
 		else: queueAutoNext(sto)
 
 
+def _resolveTargetGroupIfRequested(sto: models.ITaskStore, targetGroupId: Optional[int]) -> int:
+	if targetGroupId is None or not sto.tsk.args.get('markResolved'): return 0
+
+	try:
+		remainingAssets = sim_stack.assetsForGroup(sto.now.sim.assCur, db.dto.muod.on, targetGroupId)
+	except ValueError:
+		return 0
+
+	if not remainingAssets: return 0
+	db.pics.setResolveBy(remainingAssets)
+	_removeHandledAssets(sto, remainingAssets)
+	return len(remainingAssets)
+
+
 def sim_SelectedDelete(doReport: IFnProg, sto: models.ITaskStore):
 	nfy, now, ste = sto.nfy, sto.now, sto.ste
 	targetGroupId = sto.tsk.args.get('targetGroupId')
@@ -1365,7 +1421,10 @@ def sim_SelectedDelete(doReport: IFnProg, sto: models.ITaskStore):
 		if xmpInfos: immich.cleanupXmpBak(xmpInfos)
 
 		_removeHandledAssets(sto, assAlls if targetGroupId is None else assSels)
-		if targetGroupId is not None and assLefts:
+		resolvedCount = _resolveTargetGroupIfRequested(sto, targetGroupId)
+		if resolvedCount:
+			msg += f" Marked group {targetGroupId} resolved with {resolvedCount} remaining image(s)."
+		elif targetGroupId is not None and assLefts:
 			msg += f" Group {targetGroupId} remains open with {len(assLefts)} image(s)."
 
 		nfy.success(msg)
@@ -1428,7 +1487,10 @@ def sim_SelectedResolve(doReport: IFnProg, sto: models.ITaskStore):
 		if xmpInfos: immich.cleanupXmpBak(xmpInfos)
 
 		_removeHandledAssets(sto, assAlls if targetGroupId is None else assOthers)
-		if targetGroupId is not None:
+		resolvedCount = _resolveTargetGroupIfRequested(sto, targetGroupId)
+		if resolvedCount:
+			msg += f" Marked group {targetGroupId} resolved with {resolvedCount} kept image(s)."
+		elif targetGroupId is not None:
 			msg += f" Group {targetGroupId} remains open with {len(assSels)} image(s)."
 
 		return sto, msg
@@ -1534,11 +1596,15 @@ def sim_StackSelected(doReport: IFnProg, sto: models.ITaskStore):
 		stackedAutoIds = {asset.autoId for asset in plan.selected}
 		ste.selectedIds = [autoId for autoId in ste.selectedIds if autoId not in stackedAutoIds]
 		ste.stackCoverIds = [autoId for autoId in ste.stackCoverIds if autoId not in stackedAutoIds]
+		resolvedTargetCount = _resolveTargetGroupIfRequested(sto, targetGroupId)
 
 		apiStacks = sum(method == 'api' for method in stackMethods.values())
 		dbStacks = sum(method == 'database' for method in stackMethods.values())
 		doReport(100, f"Finalized {len(stackMethods)} stack(s)")
-		if targetGroupId is not None:
+		if resolvedTargetCount:
+			assetResult = f"marked group {targetGroupId} resolved with {resolvedTargetCount} remaining asset(s)"
+			if deleteAssets: assetResult = f"deleted {len(deleteAssets)} remaining asset(s) and {assetResult}"
+		elif targetGroupId is not None:
 			assetResult = f"deleted {len(deleteAssets)} remaining asset(s)" if deleteOthers else "kept remaining assets"
 			assetResult += f" and left group {targetGroupId} open for Mark resolved"
 		elif deleteOthers:

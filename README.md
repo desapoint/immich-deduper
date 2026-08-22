@@ -407,7 +407,7 @@ Using Docker Compose is the easiest installation method, automatically including
    - `DEDUP_DATA`: Directory for Deduper data storage
    - `DEDUP_IMAGE`: Deduper image tag to run (see [Docker Image Tags](#docker-image-tags--gpu-support))
    - `QDRANT_URL`: (Optional) Custom Qdrant database URL for non-Docker environments or custom container setups
-   - `IMMICH_URL`: (Optional) Immich server URL used for API-first stacking
+   - `IMMICH_URL`: (Optional) Immich server URL used for API-first stacking and Similar-card asset links; use a browser-reachable URL if you want the links to open from the interface
    - `IMMICH_API_KEY`: (Optional) API key for single-user stacking
    - `IMMICH_API_KEYS`: (Optional) JSON object mapping Immich owner UUIDs to API keys for cross-user stacking; owner-specific keys take priority over `IMMICH_API_KEY`
    - `OFFLINE`: (Optional) Set to `true` for air-gapped environments (see [Offline Mode](#offline-mode))
@@ -584,7 +584,7 @@ For custom environments and development needs.
 - **Source**: `IMMICH_PATH`, `IMMICH_THUMB` refer directly to your filesystem paths.
 
 **Optional API-first stacking:**
-- `IMMICH_URL`: An Immich server URL reachable from Deduper, for example `https://immich.example.com`.
+- `IMMICH_URL`: An Immich server URL reachable from Deduper, for example `https://immich.example.com`. Similar-card filenames also use this URL to open the matching asset in Immich, so it should be browser-reachable when that shortcut is wanted.
 - `IMMICH_API_KEY`: Default API key. The key needs `stack.create` and `asset.update` access.
 - `IMMICH_API_KEYS`: Per-owner keys as JSON, for example `{"owner-uuid":"api-key"}`. This is recommended for cross-user groups.
 - API credentials are used only for creating stacks. Existing direct database behavior remains the fallback and is still used for other Deduper actions.

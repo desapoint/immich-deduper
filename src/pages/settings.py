@@ -18,6 +18,18 @@ dash.register_page(
 def layout():
 	import ui
 
+	def statusItem(label, value, statusClass, iconClass):
+		return htm.Div([
+			htm.Div([
+				htm.Span([
+					htm.I(className=f"bi {iconClass}"),
+					htm.Small(label),
+				], className="settings-status-name"),
+				htm.Span("Checking", className="settings-status-state", **{"aria-live": "polite"}),
+			], className="settings-status-label"),
+			htm.Div(value, className="settings-status-value"),
+		], className=f"settings-status-item {statusClass}", **{"data-check-status": "pending"})
+
 	return ui.renderBody([
 		#====== top start =======================================================
 
@@ -27,54 +39,34 @@ def layout():
 		], className="body-header"),
 
 		htm.Div([
+			htm.Div(htm.I(className="bi bi-shield-check"), className="settings-intro-icon"),
+			htm.Div([
+				htm.Small("System readiness", className="settings-eyebrow"),
+				htm.H4("Configure once, then work with confidence"),
+				htm.P("Connections and local services are checked automatically. Review the status below before fetching or processing assets."),
+		]),
+		], className="settings-intro"),
+
+		htm.Div([
 			htm.Div([
 				dbc.Card([
 					dbc.CardHeader([
-						"System Configuration"
+						htm.Span("System configuration"),
+						htm.Small("Live environment checks", className="text-muted"),
 					]),
 					dbc.CardBody([
-
 						htm.Div([
-							dbc.Row([
-								dbc.Col(htm.Div([
-									htm.I(), htm.Small("Deduper Data", className="text-muted ms-2"),
-									htm.Div(envs.ddupData or "(Not configured)", className="fw-semibold text-break small")
-								], className="p-2 rounded chk-data"), width=6),
-								dbc.Col(htm.Div([
-									htm.I(), htm.Small("Immich Logic", className="text-muted ms-2"),
-									htm.Div("GitHub Repository", className="fw-semibold small")
-								], className="p-2 rounded chk-logic"), width=6),
-							], className="mb-2"),
-							dbc.Row([
-								dbc.Col(htm.Div([
-									htm.I(), htm.Small("Qdrant", className="text-muted ms-2"),
-									htm.Div(envs.qdrantUrl or "(Not configured)", className="fw-semibold text-break small")
-								], className="p-2 rounded chk-vec"), width=6),
-								dbc.Col(htm.Div([
-									htm.I(), htm.Small("PostgreSQL", className="text-muted ms-2"),
-									htm.Div(f"{envs.psqlHost}:{envs.psqlPort}", className="fw-semibold small")
-								], className="p-2 rounded chk-psql"), width=6),
-							], className="mb-2"),
-							dbc.Row([
-								dbc.Col(htm.Div([
-									htm.I(), htm.Small("Immich Path", className="text-muted ms-2"),
-									htm.Div(rtm.immichPath or "(Not configured)", className="fw-semibold text-break small")
-								], className="p-2 rounded chk-path"), width=6),
-								dbc.Col(htm.Div([
-									htm.I(), htm.Small("ResNet152", className="text-muted ms-2"),
-									htm.Div("Feature Extraction", className="fw-semibold small")
-								], className="p-2 rounded chk-model"), width=6),
-							], className="mb-2"),
-							dbc.Row([
-								dbc.Col(htm.Div([
-									htm.I(), htm.Small("ExifTool", className="text-muted ms-2"),
-									htm.Div("Metadata Editor", className="fw-semibold small")
-								], className="p-2 rounded chk-exiftool"), width=6),
-							], className="mb-2"),
-						], className="card-system-cfgs")
+							statusItem("Deduper data", envs.ddupData or "Not configured", "chk-data", "bi-database"),
+							statusItem("Immich logic", "Repository integration", "chk-logic", "bi-github"),
+							statusItem("Qdrant", envs.qdrantUrl or "Not configured", "chk-vec", "bi-boxes"),
+							statusItem("PostgreSQL", f"{envs.psqlHost}:{envs.psqlPort}", "chk-psql", "bi-server"),
+							statusItem("Immich path", rtm.immichPath or "Not configured", "chk-path", "bi-folder2-open"),
+							statusItem("ResNet152", "Feature extraction", "chk-model", "bi-cpu"),
+							statusItem("ExifTool", "Metadata editor", "chk-exiftool", "bi-card-list"),
+						], className="card-system-cfgs settings-status-grid")
 					])
-				], className="border-0 shadow-sm")
-			], className="col-lg-10 mb-4"),
+				], className="settings-system-card")
+			], className="settings-overview"),
 
 
 			htm.Div([
@@ -84,12 +76,12 @@ def layout():
 				cardSets.renderCard(),
 
 
-			], className="border-0 shadow-sm")
+			], className="settings-controls")
 
-		], className="row"),
+		], className="settings-layout"),
 		#====== top end =========================================================
 	], [
 		#====== bottom start=====================================================
 
 		#====== bottom end ======================================================
-	])
+	], pageClass="page-settings")
