@@ -78,6 +78,30 @@ const Ste = window.Ste = {
 		return !!( task?.id && task?.cmd )
 	},
 
+	setDisabled( element, disabled )
+	{
+		if ( !element ) return
+		const nextDisabled = !!disabled
+		if ( element.disabled === nextDisabled ) return
+
+		// Keep the immediate DOM response, then synchronize Dash/React's component
+		// prop. A DOM-only change makes a button look enabled while React still
+		// suppresses its n_clicks callback because its prop remains disabled.
+		element.disabled = nextDisabled
+		if ( typeof window.dash_clientside?.set_props !== 'function' ) return
+
+		let componentId = element.id
+		if ( !componentId ) return
+		if ( componentId?.startsWith( '{' ) ) {
+			try { componentId = JSON.parse( componentId ) }
+			catch ( e ) {
+				console.error( '[Ste] Invalid pattern button id:', e )
+				return
+			}
+		}
+		window.dash_clientside.set_props( componentId, {disabled: nextDisabled} )
+	},
+
 	init( cnt )
 	{
 		this.invalidateDomCache()
@@ -187,38 +211,39 @@ const Ste = window.Ste = {
 		if ( btnRm ) {
 			btnRm.textContent = 'Delete selected'
 			btnRm.title = `Delete ${ cntSel } selected images and keep ${ cntDiff } others`
-			btnRm.disabled = isTaskRunning || cntSel == 0
+			this.setDisabled( btnRm, isTaskRunning || cntSel == 0 )
 		}
 		if ( btnRS ) {
 			btnRS.textContent = 'Keep selected'
 			btnRS.title = `Keep ${ cntSel } selected images and delete ${ cntDiff } others`
-			btnRS.disabled = isTaskRunning || cntSel == 0
+			this.setDisabled( btnRS, isTaskRunning || cntSel == 0 )
 		}
 		if ( txtCntSel ) txtCntSel.textContent = `${ cntSel }/${ cntAll } selected`
-		if ( btnStack ) btnStack.disabled = isTaskRunning || cntSel == 0
+		this.setDisabled( btnStack, isTaskRunning || cntSel == 0 )
 
-		if ( btnAllSelect ) btnAllSelect.disabled = isTaskRunning || cntSel >= cntAll || cntAll == 0
-		if ( btnAllCancel ) btnAllCancel.disabled = isTaskRunning || cntSel == 0
-		if ( btnSelStacked ) btnSelStacked.disabled = isTaskRunning || cache.stackedGroups.size === 0
-		if ( btnSelUnstacked ) btnSelUnstacked.disabled = isTaskRunning || cache.unstackedGroups.size === 0
+		this.setDisabled( btnAllSelect, isTaskRunning || cntSel >= cntAll || cntAll == 0 )
+		this.setDisabled( btnAllCancel, isTaskRunning || cntSel == 0 )
+		this.setDisabled( btnSelStacked, isTaskRunning || cache.stackedGroups.size === 0 )
+		this.setDisabled( btnSelUnstacked, isTaskRunning || cache.unstackedGroups.size === 0 )
 
 		const groupIds = groupId == null ? Array.from( cache.groups.keys() ) : [String( groupId )]
 		groupIds.forEach( currentGroupId => {
 			const stackSelect = document.getElementById( `sel-grp-stacked-${ currentGroupId }` )
 			const unstackSelect = document.getElementById( `sel-grp-unstacked-${ currentGroupId }` )
-			if ( stackSelect ) stackSelect.disabled = isTaskRunning || !cache.stackedGroups.has( currentGroupId )
-			if ( unstackSelect ) unstackSelect.disabled = isTaskRunning || !cache.unstackedGroups.has( currentGroupId )
+			this.setDisabled( stackSelect, isTaskRunning || !cache.stackedGroups.has( currentGroupId ) )
+			this.setDisabled( unstackSelect, isTaskRunning || !cache.unstackedGroups.has( currentGroupId ) )
 
 			const hasSelection = selectedGroups.has( currentGroupId )
 			const stackButton = cache.groupStackButtons.get( currentGroupId )
-			if ( stackButton ) stackButton.disabled = isTaskRunning || !hasSelection
+			this.setDisabled( stackButton, isTaskRunning || !hasSelection )
 			;( cache.groupActionButtons.get( currentGroupId ) || [] ).forEach( item => {
-				if ( ['keep-selected', 'delete-selected'].includes( item.action ) ) item.button.disabled = isTaskRunning || !hasSelection
+				if ( ['keep-selected', 'delete-selected'].includes( item.action ) )
+					this.setDisabled( item.button, isTaskRunning || !hasSelection )
 			} )
 		} )
 		if ( btnSelMns )
 		{
-			btnSelMns.disabled = isTaskRunning || cntAll == 0
+			this.setDisabled( btnSelMns, isTaskRunning || cntAll == 0 )
 			this.updBtnMns()
 		}
 	},

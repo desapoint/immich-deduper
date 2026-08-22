@@ -15,6 +15,7 @@ dash.Dash(__name__, use_pages=True, pages_folder='')
 from mod import models
 from pages import similar
 from ui import gv
+from dsh import TrgId
 
 
 def asset(autoId: int, groupId: int):
@@ -82,6 +83,35 @@ class TestManualGroupResolution(unittest.TestCase):
 		modal = models.Mdl.fromDic(result[2])
 		self.assertTrue(modal.args['allowMarkResolved'])
 		self.assertEqual(modal.args['targetGroupId'], 1)
+
+	def test_stack_actions_route_selected_assets_to_confirmation(self):
+		assets = [asset(1, 1), asset(2, 1), asset(3, 2)]
+		now = models.Now(sim=models.PgSim(assCur=assets))
+		ste = models.Ste(cntTotal=3, selectedIds=[1, 2])
+		cases = (
+			('global', TrgId(similar.k.btnStack), 1, [], None),
+			('group', {'type': gv.STACK_GROUP_BUTTON, 'id': 1}, 0, [1], 1),
+		)
+
+		for name, trigger, globalClicks, groupClicks, targetGroupId in cases:
+			with self.subTest(name=name):
+				with (
+					patch.object(similar, 'ctx', SimpleNamespace(triggered=[{'value': groupClicks or globalClicks}])),
+					patch.object(similar, 'getTrgId', return_value=trigger),
+					patch.object(similar.db, 'dto', TEST_DTO),
+				):
+					result = similar.sim_RunModal(
+						0, 0, 0, 0, 0, globalClicks, 0, 0, groupClicks, [],
+						now.toDict(), models.Cnt().toDict(), models.Mdl().toDict(), models.Tsk().toDict(),
+						models.Nfy().toDict(), ste.toDict(),
+						False, False, False, False, False, [], [],
+					)
+
+				modal = models.Mdl.fromDic(result[2])
+				self.assertEqual(modal.cmd, similar.ks.cmd.sim.stack)
+				self.assertEqual(modal.args['selectedIds'], [1, 2])
+				self.assertEqual(modal.args['targetGroupId'], targetGroupId)
+				self.assertFalse(modal.args['deleteOthers'])
 
 	def test_selection_state_reconciles_group_buttons_without_being_a_callback_input(self):
 		assets = [asset(1, 1), asset(2, 1), asset(3, 2)]
