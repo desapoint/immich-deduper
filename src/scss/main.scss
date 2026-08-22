@@ -3005,16 +3005,29 @@ select.form-select {
 
 
 //========================================================================
-// Full-screen image viewer
+// Image preview dialog
 //========================================================================
+body:has(#img-modal.show) .modal-backdrop.show {
+	background: #02050a;
+	opacity: 0.72;
+}
+
 #img-modal.img-pop {
+	.modal-dialog {
+		width: calc(100vw - 3rem);
+		max-width: 1180px;
+		height: calc(100vh - 3rem);
+		margin: 1.5rem auto;
+	}
+
 	.modal-content {
-		height: 100vh;
-		max-height: 100vh;
-		border: 0;
-		border-radius: 0;
+		height: 100%;
+		max-height: calc(100vh - 3rem);
+		border: 1px solid var(--ui-border-strong);
+		border-radius: var(--ui-radius-lg);
 		background: #050b14;
-		box-shadow: none;
+		box-shadow: 0 22px 60px rgba(0, 0, 0, 0.48);
+		overflow: hidden;
 	}
 
 	.modal-header {
@@ -3032,8 +3045,19 @@ select.form-select {
 		font-weight: 680;
 	}
 
+	.img-viewer-header-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+
 	.img-viewer-mode,
-	.img-viewer-panel-toggle {
+	.img-viewer-header-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.4rem;
+		min-height: 2.15rem;
 		border: 1px solid var(--ui-border-strong) !important;
 		border-radius: var(--ui-radius-sm);
 		background: var(--ui-surface-raised) !important;
@@ -3051,9 +3075,24 @@ select.form-select {
 	}
 
 	.img-viewer-mode {
-		margin-left: auto;
-		min-width: 6.25rem;
+		min-width: 7rem;
 	}
+
+	.img-viewer-header-icon {
+		width: 2.15rem;
+		padding: 0;
+		font-size: 0.9rem;
+	}
+
+	&:has(.info:not(.collapsed):not(.hide)) #btn-img-info,
+	&:has(.help:not(.collapsed):not(.hide)) #btn-img-help {
+		border-color: var(--ui-accent) !important;
+		background: var(--ui-surface-hover) !important;
+		color: #bae6fd !important;
+	}
+
+	&:has(#img-modal-info.hide) #btn-img-info,
+	&:has(#img-modal-help.hide) #btn-img-help { display: none; }
 
 	.btn-close {
 		margin: 0 0 0 0.55rem;
@@ -3071,20 +3110,37 @@ select.form-select {
 
 	.modal-body {
 		position: relative;
+		display: grid;
+		grid-template-rows: minmax(0, 1fr) auto auto;
+		gap: 0.55rem;
 		flex: 1 1 auto;
 		min-height: 0;
-		max-height: calc(100vh - 3.5rem);
-		padding: 0;
-		overflow: auto;
+		max-height: none;
+		padding: 0.75rem;
+		overflow: hidden;
 		background: #050b14;
 	}
 
-	#img-modal-content {
+	.img-viewer-media {
+		position: relative;
 		display: grid;
+		min-height: 0;
+		overflow: hidden;
+		border: 1px solid rgba(174, 185, 200, 0.14);
+		border-radius: var(--ui-radius);
+		background: #02050a;
+	}
+
+	#img-modal-content {
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		place-items: center;
 		width: 100%;
-		min-height: calc(100vh - 3.5rem);
-		padding: 1rem 4.75rem 7rem;
+		height: 100%;
+		min-height: 0;
+		padding: 0.75rem 3.5rem;
+		overflow: auto;
 	}
 
 	#img-modal-content > img,
@@ -3095,14 +3151,16 @@ select.form-select {
 		margin: auto;
 		border-radius: 0.35rem;
 		background: #02050a;
-		box-shadow: 0 0 0 1px rgba(174, 185, 200, 0.18), 0 10px 28px rgba(0, 0, 0, 0.28);
+		box-shadow: 0 0 0 1px rgba(174, 185, 200, 0.16);
 		object-fit: contain;
 	}
+
+	&.auto #img-modal-content { overflow: hidden; }
 
 	&.auto #img-modal-content > img,
 	&.auto #img-modal-content > .livephoto,
 	&.auto #img-modal-content > .livephoto video {
-		max-height: calc(100vh - 6.5rem);
+		max-height: 100%;
 	}
 
 	.livephoto {
@@ -3135,14 +3193,9 @@ select.form-select {
 	}
 
 	.img-viewer-primary-actions {
-		position: fixed;
-		z-index: 1070;
-		left: 50%;
-		bottom: 0.9rem;
 		display: flex;
 		justify-content: center;
 		margin: 0;
-		transform: translateX(-50%);
 	}
 
 	.img-viewer-select {
@@ -3158,15 +3211,11 @@ select.form-select {
 	}
 
 	.viewer-asset-status {
-		position: fixed;
-		z-index: 1060;
-		left: 50%;
-		bottom: 4rem;
 		display: flex;
+		justify-self: center;
 		gap: 0;
 		padding: 0;
 		overflow: hidden;
-		transform: translateX(-50%);
 		border: 1px solid var(--ui-border-strong);
 		border-radius: var(--ui-radius-sm);
 		background: #0b1524;
@@ -3183,22 +3232,26 @@ select.form-select {
 		.viewer-asset-id { color: #bae6fd; }
 		.viewer-position { color: var(--ui-text); }
 		.viewer-groups { color: var(--ui-text-muted); }
+
+		&:empty { display: none; }
 	}
 
-	.img-viewer-side-host { display: contents; }
-
 	.img-viewer-nav {
+		position: absolute;
+		top: 50%;
+		z-index: 4;
 		display: grid;
 		place-items: center;
-		width: 3rem;
-		height: 3rem;
+		width: 2.6rem;
+		height: 3.2rem;
 		margin: 0 !important;
 		padding: 0;
 		border: 1px solid var(--ui-border-strong);
-		border-radius: 999px;
-		background: #111d2e;
+		border-radius: var(--ui-radius-sm);
+		background: rgba(17, 29, 46, 0.94);
 		color: var(--ui-text);
-		box-shadow: var(--ui-shadow-sm);
+		box-shadow: 0 6px 18px rgba(0, 0, 0, 0.30);
+		transform: translateY(-50%);
 		transition: background-color 120ms ease, border-color 120ms ease;
 
 		&:hover:not(:disabled),
@@ -3209,46 +3262,34 @@ select.form-select {
 		}
 	}
 
-	#btn-img-prev { left: 1rem !important; }
-	#btn-img-next { right: 1rem !important; }
+	#btn-img-prev { left: 0.65rem; }
+	#btn-img-next { right: 0.65rem; }
 
 	.help,
 	.info {
-		top: 4.5rem;
+		position: absolute;
+		top: 0.75rem;
 		bottom: auto;
-		z-index: 1050;
-		max-height: calc(100vh - 10rem);
+		z-index: 6;
+		max-height: calc(100% - 1.5rem);
 		padding: 0.75rem;
+		overflow: auto;
 		border: 1px solid var(--ui-border-strong);
 		border-radius: var(--ui-radius);
 		background: #0b1524;
 		box-shadow: var(--ui-shadow);
 	}
 
-	.help { right: 1rem; max-width: 19rem; }
-	.info { left: 1rem; width: 42vw; max-width: 24rem; }
+	.help { right: 0.75rem; max-width: 19rem; }
+	.info { left: 0.75rem; width: 42vw; max-width: 24rem; }
 
 	.help.collapsed,
 	.info.collapsed {
-		min-width: 0;
-		padding: 0;
-		border: 0;
-		background: transparent;
-		box-shadow: none;
+		display: none;
 	}
 
-	.img-viewer-panel-toggle {
-		float: right;
-		margin: 0 0 0.55rem 0.65rem;
-		min-height: 2.15rem;
-		font-size: 0.68rem;
-	}
-
-	.help.collapsed .img-viewer-panel-toggle,
-	.info.collapsed .img-viewer-panel-toggle { margin: 0; }
-
-	.help-content h6,
-	.info-content h6 { color: var(--ui-text); font-size: 0.78rem; }
+	.help > h6,
+	.info > h6 { color: var(--ui-text); font-size: 0.78rem; }
 
 	.help-content,
 	.info-content { clear: both; }
@@ -3261,7 +3302,7 @@ select.form-select {
 
 	.info-content {
 		overflow: auto;
-		max-height: calc(100vh - 13rem);
+		max-height: calc(100% - 2rem);
 		border-top: 1px solid var(--ui-border);
 
 		table td {
@@ -3277,29 +3318,32 @@ select.form-select {
 
 @media (max-width: 720px) {
 	#img-modal.img-pop {
+		.modal-dialog {
+			width: calc(100vw - 1rem);
+			height: calc(100vh - 1rem);
+			margin: 0.5rem auto;
+		}
+		.modal-content { max-height: calc(100vh - 1rem); }
 		.modal-header { padding-inline: 0.65rem; }
 		.img-viewer-title { font-size: 0.82rem; }
-		.img-viewer-mode { min-width: 5.5rem; }
-		#img-modal-content { padding: 0.5rem 3.25rem 6.5rem; }
+		.img-viewer-header-actions { gap: 0.3rem; }
+		.img-viewer-mode { min-width: 2.15rem; width: 2.15rem; padding: 0; }
+		.img-viewer-mode-label { display: none; }
+		.modal-body { padding: 0.5rem; gap: 0.4rem; }
+		#img-modal-content { padding: 0.5rem 2.75rem; }
 		#btn-img-prev,
-		#btn-img-next { width: 2.5rem; height: 2.5rem; }
-		#btn-img-prev { left: 0.45rem !important; }
-		#btn-img-next { right: 0.45rem !important; }
+		#btn-img-next { width: 2.15rem; height: 2.8rem; }
+		#btn-img-prev { left: 0.35rem; }
+		#btn-img-next { right: 0.35rem; }
 
 		.help,
 		.info {
-			top: 4.25rem;
-			max-width: calc(100vw - 1.5rem);
+			top: 0.5rem;
+			max-width: calc(100% - 1rem);
 		}
-		.help { right: 0.75rem; }
-		.info { left: 0.75rem; width: calc(100vw - 1.5rem); }
-		.help:not(.collapsed) {
-			top: auto;
-			bottom: 5.25rem;
-			max-height: calc(50vh - 3rem);
-			overflow: auto;
-		}
-		.viewer-asset-status { max-width: calc(100vw - 1.5rem); }
+		.help { right: 0.5rem; }
+		.info { left: 0.5rem; width: calc(100% - 1rem); }
+		.viewer-asset-status { max-width: 100%; }
 		.viewer-groups { display: none; }
 	}
 }

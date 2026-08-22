@@ -121,15 +121,20 @@ class TestGlobalUiFoundation(unittest.TestCase):
 
 	def test_image_preview_uses_distinct_readable_control_surfaces(self):
 		main = (ROOT / 'src/scss/main.scss').read_text()
+		self.assertIn('body:has(#img-modal.show) .modal-backdrop.show {', main)
 		self.assertIn('#img-modal.img-pop {', main)
+		self.assertIn('width: calc(100vw - 3rem);', main)
+		self.assertIn('grid-template-rows: minmax(0, 1fr) auto auto;', main)
+		self.assertIn('.img-viewer-media {', main)
 		self.assertIn('.img-viewer-primary-actions {', main)
-		self.assertIn('.img-viewer-side-host { display: contents; }', main)
 		self.assertIn('.viewer-asset-status {', main)
+		self.assertIn('&:empty { display: none; }', main)
 		self.assertIn('background: #0b1524;', main)
 		self.assertIn('.img-viewer-nav {', main)
 		self.assertIn('.img-viewer-mode,', main)
-		self.assertIn('.img-viewer-panel-toggle {', main)
-		self.assertIn('.help:not(.collapsed) {', main)
+		self.assertIn('.img-viewer-header-icon {', main)
+		self.assertIn('position: absolute;', main)
+		self.assertIn('display: none;', main)
 
 
 if __name__ == '__main__':

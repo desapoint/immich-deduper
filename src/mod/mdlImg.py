@@ -16,6 +16,7 @@ class k:
 	modal = "img-modal"
 	store = ks.sto.mdlImg
 	content = "img-modal-content"
+	status = "img-modal-status"
 	floatL = "img-modal-floatL"
 	floatR = "img-modal-floatR"
 
@@ -42,71 +43,23 @@ class k:
 # ui
 #------------------------------------------------------------------------
 layoutHelp = htm.Div([
-
-	htm.Div([
-		dbc.Button(
-			"Shortcuts",
-			id=k.btnHelp,
-			color="secondary",
-			outline=False,
-			size="sm",
-			className="img-viewer-panel-toggle",
-			title="Show or hide keyboard shortcuts",
-		),
-		htm.Div([
-			htm.H6("Keyboard Shortcuts", className="mb-2"),
-			htm.Table([
-				htm.Tbody([
-					htm.Tr([
-						htm.Td(htm.Code("Space")),
-						htm.Td("Toggle selection", className="ps-3")
-					]),
-					htm.Tr([
-						htm.Td(htm.Code("← / h")),
-						htm.Td("Previous image", className="ps-3")
-					]),
-					htm.Tr([
-						htm.Td(htm.Code("→ / l")),
-						htm.Td("Next image", className="ps-3")
-					]),
-					htm.Tr([
-						htm.Td(htm.Code("i")),
-						htm.Td("Toggle info table", className="ps-3")
-					]),
-					htm.Tr([
-						htm.Td(htm.Code("m")),
-						htm.Td("Toggle scale mode", className="ps-3")
-					]),
-					htm.Tr([
-						htm.Td(htm.Code("ESC / q")),
-						htm.Td("Close modal", className="ps-3")
-					]),
-					htm.Tr([
-						htm.Td(htm.Code("?")),
-						htm.Td("Toggle help", className="ps-3")
-					]),
-				])
-			], className="small")
-		], className="help-content")
-	], className="desc"),
+	htm.H6("Keyboard shortcuts", className="mb-2"),
+	htm.Table([
+		htm.Tbody([
+			htm.Tr([htm.Td(htm.Code("Space")), htm.Td("Toggle selection", className="ps-3")]),
+			htm.Tr([htm.Td(htm.Code("← / h")), htm.Td("Previous image", className="ps-3")]),
+			htm.Tr([htm.Td(htm.Code("→ / l")), htm.Td("Next image", className="ps-3")]),
+			htm.Tr([htm.Td(htm.Code("i")), htm.Td("Toggle details", className="ps-3")]),
+			htm.Tr([htm.Td(htm.Code("m")), htm.Td("Toggle scale mode", className="ps-3")]),
+			htm.Tr([htm.Td(htm.Code("ESC / q")), htm.Td("Close preview", className="ps-3")]),
+			htm.Tr([htm.Td(htm.Code("?")), htm.Td("Toggle shortcuts", className="ps-3")]),
+		])
+	], className="small help-content"),
 ], id=k.imgHelp, className="help")
 
 layoutInfo = htm.Div([
-	htm.Div([
-		dbc.Button(
-			"Details",
-			id=k.btnInfo,
-			color="secondary",
-			outline=False,
-			size="sm",
-			className="img-viewer-panel-toggle",
-			title="Show or hide image details",
-		),
-		htm.Div([
-			htm.H6("Image Information", className="mb-2"),
-			htm.Div(id=f"{k.imgInfo}-content")
-		], className="info-content")
-	], className="desc"),
+	htm.H6("Image details", className="mb-2"),
+	htm.Div(id=f"{k.imgInfo}-content", className="info-content"),
 ], id=k.imgInfo, className="info")
 
 
@@ -118,18 +71,57 @@ def render():
 		dbc.Modal([
 			dbc.ModalHeader([
 				htm.Div("Image preview", className="img-viewer-title me-auto"),
-				dbc.Button(
-					"Fit screen",
-					id=k.btnMode,
-					color="secondary",
-					outline=False,
-					size="sm",
-					className="img-viewer-mode",
-					title="Toggle between fit-to-screen and actual-size viewing",
-				),
+				htm.Div([
+					dbc.Button(
+						[htm.I(className="bi bi-arrows-fullscreen"), htm.Span("Fit screen", className="img-viewer-mode-label")],
+						id=k.btnMode,
+						color="secondary",
+						outline=False,
+						size="sm",
+						className="img-viewer-mode",
+						title="Toggle between fit-to-screen and actual-size viewing",
+					),
+					dbc.Button(
+						[htm.I(className="bi bi-info-circle"), htm.Span("Details", className="visually-hidden")],
+						id=k.btnInfo,
+						color="secondary",
+						outline=False,
+						size="sm",
+						className="img-viewer-header-icon",
+						title="Show or hide image details",
+					),
+					dbc.Button(
+						[htm.I(className="bi bi-keyboard"), htm.Span("Shortcuts", className="visually-hidden")],
+						id=k.btnHelp,
+						color="secondary",
+						outline=False,
+						size="sm",
+						className="img-viewer-header-icon",
+						title="Show or hide keyboard shortcuts",
+					),
+				], className="img-viewer-header-actions"),
 			], close_button=True),
 			dbc.ModalBody([
-				htm.Div(id=k.content, className="img img-viewer-stage"),
+				htm.Div([
+					htm.Div(id=k.content, className="img img-viewer-stage"),
+					htm.Button(
+						htm.I(className="bi bi-chevron-left"),
+						id=k.btnPrev,
+						className="btn btn-secondary img-viewer-nav img-viewer-nav-prev",
+						style={"zIndex": 1000, "display": "none"},
+						title="Previous image",
+						**{"aria-label": "Previous image"},
+					),
+					htm.Button(
+						htm.I(className="bi bi-chevron-right"),
+						id=k.btnNext,
+						className="btn btn-secondary img-viewer-nav img-viewer-nav-next",
+						style={"zIndex": 1000, "display": "none"},
+						title="Next image",
+						**{"aria-label": "Next image"},
+					),
+				], className="img-viewer-media"),
+				htm.Div(id=k.status, className="viewer-asset-status"),
 				htm.Div([
 					dbc.Button(
 						"Select image",
@@ -139,31 +131,13 @@ def render():
 						style={"display": "none"}
 					),
 				], className="img-viewer-primary-actions"),
-				htm.Div([layoutInfo], id=k.floatL, className="img-viewer-side-host L"),
-				htm.Div(id=k.floatR, className="img-viewer-side-host R"),
+				layoutInfo,
 				layoutHelp,
-				htm.Button(
-					htm.I(className="bi bi-chevron-left"),
-					id=k.btnPrev,
-					className="btn btn-secondary btn-lg img-viewer-nav img-viewer-nav-prev position-fixed start-0 top-50 translate-middle-y ms-3",
-					style={"zIndex": 1000, "display": "none"},
-					title="Previous image",
-					**{"aria-label": "Previous image"},
-				),
-				htm.Button(
-					htm.I(className="bi bi-chevron-right"),
-					id=k.btnNext,
-					className="btn btn-secondary btn-lg img-viewer-nav img-viewer-nav-next position-fixed end-0 top-50 translate-middle-y me-3",
-					style={"zIndex": 1000, "display": "none"},
-					title="Next image",
-					**{"aria-label": "Next image"},
-				),
 			]),
 		],
 			id=k.modal,
 			size="xl",
 			centered=True,
-			fullscreen=True,
 			className="img-pop",
 		),
 
@@ -255,6 +229,7 @@ ccbk(
 	[
 		out(k.modal, "is_open"),
 		out(k.content, "children"),
+		out(k.status, "children"),
 		out(k.btnPrev, "style"),
 		out(k.btnNext, "style"),
 		out(k.btnSelect, "style"),
@@ -285,6 +260,7 @@ ccbk(
 	[
 		out(k.store, "data", allow_duplicate=True),
 		out(k.content, "children", allow_duplicate=True),
+		out(k.status, "children", allow_duplicate=True),
 		out(k.btnPrev, "style", allow_duplicate=True),
 		out(k.btnNext, "style", allow_duplicate=True),
 		out(k.btnSelect, "children", allow_duplicate=True),

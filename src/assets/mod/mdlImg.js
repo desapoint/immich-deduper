@@ -20,14 +20,14 @@ const MdlImg = window.MdlImg = {
 
 	navigate(direction){
 		if (!this.state.mdl || !this.state.mdl.isMulti || !this.state.now?.sim?.assCur)
-			return this.noUpdate(6)
+			return this.noUpdate(7)
 
 		const assets = this.state.now.sim.assCur
 		let newIdx = this.state.mdl.curIdx
 
 		if (direction == 'prev' && newIdx > 0) newIdx = newIdx - 1
 		else if (direction == 'next' && newIdx < assets.length - 1) newIdx = newIdx + 1
-		else return this.noUpdate(6)
+		else return this.noUpdate(7)
 
 		const curAss = assets[newIdx]
 		const newMdl = {
@@ -37,6 +37,7 @@ const MdlImg = window.MdlImg = {
 		}
 
 		const htms = this.buildImageContent(newMdl)
+		const status = this.buildAssetStatus(newMdl)
 		const prevStyle = this.getPrevButtonStyle(newMdl)
 		const nextStyle = this.getNextButtonStyle(newMdl)
 		const selectText = this.getSelectButtonText(newMdl, curAss)
@@ -44,7 +45,7 @@ const MdlImg = window.MdlImg = {
 
 		console.log(`[MdlImg] navigated to idx[${newIdx}] autoId[${curAss.autoId}]`)
 
-		return [newMdl, htms, prevStyle, nextStyle, selectText, selectColor]
+		return [newMdl, htms, status, prevStyle, nextStyle, selectText, selectColor]
 	},
 
 	buildImageContent(mdl){
@@ -76,21 +77,25 @@ const MdlImg = window.MdlImg = {
 			}
 			if (mdl.imgUrl) htms.push(R.mk('img', {src: mdl.imgUrl}))
 
-			if (ass) {
-				htms.push(
-					R.mk('div', {className: 'viewer-asset-status'},
-						R.mk('span', {className: 'viewer-asset-id'}, `Asset #${ass.autoId}`),
-						R.mk('span', {className: 'viewer-position'}, `${mdl.curIdx + 1} of ${this.state.now.sim.assCur.length}`),
-						ass.simGIDs?.length
-							? R.mk('span', {className: 'viewer-groups'}, `Groups ${ass.simGIDs.join(', ')}`)
-							: null
-					)
-				)
-			}
 		}
 		else if (mdl.imgUrl) htms.push(R.mk('img', {src: mdl.imgUrl}))
 
 		return htms
+	},
+
+	buildAssetStatus(mdl){
+		if (!mdl.isMulti || !this.state.now?.sim?.assCur || mdl.curIdx >= this.state.now.sim.assCur.length) return []
+
+		const ass = this.state.now.sim.assCur[mdl.curIdx]
+		if (!ass) return []
+
+		return [
+			R.mk('span', {className: 'viewer-asset-id'}, `Asset #${ass.autoId}`),
+			R.mk('span', {className: 'viewer-position'}, `${mdl.curIdx + 1} of ${this.state.now.sim.assCur.length}`),
+			ass.simGIDs?.length
+				? R.mk('span', {className: 'viewer-groups'}, `Groups ${ass.simGIDs.join(', ')}`)
+				: null
+		]
 	},
 
 	getPrevButtonStyle(mdl){
@@ -132,7 +137,7 @@ const MdlImg = window.MdlImg = {
 	noUpdate(cnt){return Array(cnt).fill(dash_clientside.no_update)},
 
 	updMdl(){
-		if (!this.state.mdl || !this.state.mdl.open) return this.noUpdate(14)
+		if (!this.state.mdl || !this.state.mdl.open) return this.noUpdate(15)
 
 		const mdl = this.state.mdl
 		let asset = this.getCurrentAsset()
@@ -140,18 +145,19 @@ const MdlImg = window.MdlImg = {
 		return [
 			mdl.open,
 			this.buildImageContent(mdl),
+			this.buildAssetStatus(mdl),
 			this.getPrevButtonStyle(mdl),
 			this.getNextButtonStyle(mdl),
 			this.getSelectButtonStyle(mdl),
 			this.getSelectButtonText(mdl, asset),
 			this.getSelectButtonColor(mdl, asset),
 			this.getHelpClassName(mdl),
-			this.getHelpButtonText(mdl),
+			this.getHelpButtonContent(),
 			this.getInfoClassName(mdl),
-			this.getInfoButtonText(mdl),
+			this.getInfoButtonContent(),
 			this.getInfoContent(mdl),
 			this.getModeCss(mdl),
-			this.getModeTxt(mdl),
+			this.getModeContent(mdl),
 		]
 	},
 
@@ -295,13 +301,29 @@ const MdlImg = window.MdlImg = {
 		if (!mdl.isMulti) return 'hide'
 		return mdl.hideHelp ? 'help collapsed' : 'help'
 	},
-	getHelpButtonText(mdl){return mdl.hideHelp ? 'Shortcuts' : 'Hide shortcuts'},
+	getHelpButtonContent(){
+		return [
+			R.mk('i', {className: 'bi bi-keyboard'}),
+			R.mk('span', {className: 'visually-hidden'}, 'Shortcuts')
+		]
+	},
 	getInfoClassName(mdl){
 		if (!mdl.isMulti) return 'hide'
 		return mdl.hideInfo ? 'info collapsed' : 'info'
 	},
-	getInfoButtonText(mdl){return mdl.hideInfo ? 'Details' : 'Hide details'},
+	getInfoButtonContent(){
+		return [
+			R.mk('i', {className: 'bi bi-info-circle'}),
+			R.mk('span', {className: 'visually-hidden'}, 'Details')
+		]
+	},
 	getModeTxt(mdl){return mdl.modeH ? 'Actual size' : 'Fit screen'},
+	getModeContent(mdl){
+		return [
+			R.mk('i', {className: mdl.modeH ? 'bi bi-arrows-angle-expand' : 'bi bi-arrows-fullscreen'}),
+			R.mk('span', {className: 'img-viewer-mode-label'}, this.getModeTxt(mdl))
+		]
+	},
 	getModeCss(mdl){return mdl.modeH ?'img-pop auto' : 'img-pop'},
 
 	toggleHelp(){
@@ -313,7 +335,7 @@ const MdlImg = window.MdlImg = {
 		}
 
 		const helpCss = this.getHelpClassName(newMdl)
-		const helpTxt = this.getHelpButtonText(newMdl)
+		const helpTxt = this.getHelpButtonContent()
 
 		return [newMdl, helpCss, helpTxt]
 	},
@@ -327,7 +349,7 @@ const MdlImg = window.MdlImg = {
 		}
 
 		const infoCss = this.getInfoClassName(newMdl)
-		const infoTxt = this.getInfoButtonText(newMdl)
+		const infoTxt = this.getInfoButtonContent()
 
 		return [newMdl, infoCss, infoTxt]
 	},
@@ -341,7 +363,7 @@ const MdlImg = window.MdlImg = {
 		}
 
 		let newCss = this.getModeCss(newMdl)
-		let newTxt = this.getModeTxt(newMdl)
+		let newTxt = this.getModeContent(newMdl)
 
 		return [newMdl, newCss, newTxt]
 	}

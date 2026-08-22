@@ -52,17 +52,19 @@ function main() {
 	assert.equal(viewer.getSelectButtonStyle(mdl).display, 'inline-flex')
 
 	const content = viewer.buildImageContent(mdl)
-	const status = content.map(node => findByClass(node, 'viewer-asset-status')).find(Boolean)
-	assert.ok(status, 'multi-image content should expose a stable asset status bar')
-	assert.equal(status.children[0].children[0], 'Asset #11')
-	assert.equal(status.children[1].children[0], '1 of 2')
+	assert.equal(content.map(node => findByClass(node, 'viewer-asset-status')).find(Boolean), undefined)
+	const status = viewer.buildAssetStatus(mdl)
+	assert.equal(status[0].children[0], 'Asset #11')
+	assert.equal(status[1].children[0], '1 of 2')
+	assert.equal(viewer.getInfoButtonContent()[0].props.className, 'bi bi-info-circle')
+	assert.equal(viewer.getHelpButtonContent()[0].props.className, 'bi bi-keyboard')
 
 	const toggled = viewer.toggleMode()
 	assert.equal(toggled[0].modeH, false)
-	assert.equal(toggled[2], 'Fit screen')
+	assert.equal(toggled[2][1].children[0], 'Fit screen')
 
 	viewer.init({open: false}, now, ste)
-	assert.equal(viewer.updMdl().length, 14, 'a closed viewer must return one no-update value per callback output')
+	assert.equal(viewer.updMdl().length, 15, 'a closed viewer must return one no-update value per callback output')
 }
 
 
