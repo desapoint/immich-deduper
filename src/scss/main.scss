@@ -2333,12 +2333,75 @@ select.form-select {
 .similar-workspace {
 	margin-top: 1rem;
 
-	.nav-tabs { gap: 0.3rem; }
-	.nav-link { padding: 0.58rem 0.9rem; }
+	.nav-tabs {
+		display: inline-flex;
+		align-items: stretch;
+		gap: 0.25rem;
+		max-width: 100%;
+		margin-bottom: 0.55rem;
+		padding: 0.25rem;
+		border: 1px solid var(--ui-border) !important;
+		border-radius: var(--ui-radius);
+		background: var(--ui-surface);
+		box-shadow: var(--ui-shadow-sm);
+
+		> div,
+		> .nav-item {
+			margin: 0 !important;
+			border-radius: var(--ui-radius-sm);
+		}
+
+		.nav-link {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			min-width: 8.5rem;
+			margin: 0;
+			padding: 0.5rem 0.8rem;
+			border: 1px solid transparent !important;
+			border-radius: var(--ui-radius-sm) !important;
+			background: transparent !important;
+			box-shadow: none;
+			color: var(--ui-text-muted);
+			font-size: 0.78rem;
+			font-weight: 620;
+			line-height: 1.2;
+			text-transform: capitalize;
+			transition: border-color 0.14s ease, background-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
+
+			&:hover:not(.active):not(.disabled) {
+				border-color: var(--ui-border-strong) !important;
+				background: var(--ui-surface-hover) !important;
+				color: var(--ui-text-soft);
+			}
+
+			&:focus-visible {
+				outline: none;
+				box-shadow: var(--ui-focus);
+			}
+
+			&.active {
+				border-color: var(--ui-border-strong) !important;
+				background: var(--ui-surface-hover) !important;
+				box-shadow: inset 0 -2px 0 var(--ui-accent);
+				color: var(--ui-text);
+			}
+
+			&.disabled,
+			&:disabled {
+				border-color: transparent !important;
+				background: transparent !important;
+				color: var(--ui-text-muted) !important;
+				cursor: not-allowed !important;
+				opacity: 0.5;
+			}
+		}
+	}
 
 	.tab-content {
 		padding: 0.8rem;
 		border-color: var(--ui-border);
+		border-radius: var(--ui-radius);
 		background: rgba(8, 17, 31, 0.48);
 		box-shadow: var(--ui-shadow-sm);
 	}
@@ -2502,6 +2565,18 @@ select.form-select {
 	}
 
 	.similar-workspace {
+		.nav-tabs {
+			width: 100%;
+
+			> div,
+			> .nav-item { flex: 1 1 0; }
+
+			.nav-link {
+				width: 100%;
+				min-width: 0;
+			}
+		}
+
 		.tab-content { padding: 0.55rem; }
 		.sim-controls { align-items: flex-start; }
 	}

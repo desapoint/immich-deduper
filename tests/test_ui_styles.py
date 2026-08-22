@@ -94,6 +94,15 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn('background: var(--ui-surface-raised);', main)
 		self.assertIn('.sim-card-selection:has(.ausl-tip) {', comp)
 
+	def test_similar_review_tabs_match_shared_controls(self):
+		main = (ROOT / 'src/scss/main.scss').read_text()
+		self.assertIn('.similar-workspace {', main)
+		self.assertIn('box-shadow: inset 0 -2px 0 var(--ui-accent);', main)
+		self.assertIn('&:hover:not(.active):not(.disabled) {', main)
+		self.assertIn('&.disabled,', main)
+		self.assertIn('text-transform: capitalize;', main)
+		self.assertIn('> .nav-item { flex: 1 1 0; }', main)
+
 
 if __name__ == '__main__':
 	unittest.main()
