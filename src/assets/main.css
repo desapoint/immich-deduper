@@ -635,9 +635,7 @@ button { text-decoration: none; }
 
 .card.sim .viewer .view { height: 180px; width: 100%; }
 
-.card.sim .viewer img, .card.sim .viewer video { position: absolute; object-fit: contain; height: 180px; width: 100%; cursor: pointer !important; z-index: 1; }
-
-.card.sim .viewer img:hover, .card.sim .viewer video:hover { opacity: 1; transform: scale(1.02); transition: all 0.3s ease; cursor: pointer; box-shadow: 0 0 10px white; }
+.card.sim .viewer img, .card.sim .viewer video { position: absolute; object-fit: contain; height: 180px; width: 100%; cursor: zoom-in !important; z-index: 1; transition: filter 140ms ease; }
 
 .card.sim .viewer video { z-index: 2; }
 
@@ -1177,23 +1175,51 @@ select.form-select { appearance: none; padding-right: 2rem !important; backgroun
 
 .similar-workspace .card.sim.checked { border-color: var(--ui-accent) !important; box-shadow: inset 0 0 0 2px var(--ui-accent), 0 12px 28px rgba(14, 165, 233, 0.18); }
 
+.similar-workspace .card.sim:hover:not(.checked):not(.has-stack), .similar-workspace .card.sim:focus-within:not(.checked):not(.has-stack) { border-color: var(--ui-border-strong); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16); }
+
 .similar-workspace .card.sim .sim-card-header { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.45rem; min-height: 3rem; padding: 0.48rem !important; border-color: var(--ui-border); background: rgba(17, 29, 46, 0.9); }
 
-.similar-workspace .card.sim .sim-card-select { width: 100%; padding: 0.18rem 0.25rem; border-radius: 0.4rem; }
+.similar-workspace .card.sim .sim-card-select { width: 100%; padding: 0.18rem 0.25rem; border: 1px solid transparent; border-radius: 0.4rem; transition: border-color 120ms ease, background-color 120ms ease; }
 
-.similar-workspace .card.sim .sim-card-select:hover { background: rgba(56, 189, 248, 0.08); }
+.similar-workspace .card.sim .sim-card-select:hover { border-color: var(--ui-border); background: var(--ui-surface-hover); }
+
+.similar-workspace .card.sim .sim-card-select:focus-within { border-color: var(--ui-accent); box-shadow: var(--ui-focus); }
 
 .similar-workspace .card.sim .sim-source-label { display: inline-flex; padding: 0.18rem 0.4rem; border: 1px solid rgba(125, 211, 252, 0.3); border-radius: 999px; background: rgba(14, 165, 233, 0.12); color: #bae6fd; }
 
 .similar-workspace .card.sim .sim-stack-status { flex: 1 1 auto; margin-left: 0; }
 
-.similar-workspace .card.sim .sim-stack-status .badge { padding: 0.28rem 0.42rem; border: 1px solid rgba(255, 255, 255, 0.16); font-size: 0.62rem; font-weight: 650; }
+.similar-workspace .card.sim .sim-stack-status .badge { padding: 0.28rem 0.42rem; border: 1px solid rgba(255, 255, 255, 0.16); font-size: 0.62rem; font-weight: 650; transition: border-color 120ms ease, filter 120ms ease; }
+
+.similar-workspace .card.sim .sim-stack-status .badge:hover { border-color: rgba(255, 255, 255, 0.34); filter: brightness(1.08); }
 
 .similar-workspace .card.sim .sim-stack-cover-btn { flex: 0 0 auto; min-width: 4.5rem; border-radius: 999px; font-weight: 620; }
 
 .similar-workspace .card.sim .sim-stack-cover-btn.active { box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.18); }
 
-.similar-workspace .card.sim .viewer .view { height: 190px; background: #050b14; }
+.similar-workspace .card.sim .viewer .view { position: relative; height: 190px; overflow: hidden; background: #050b14; }
+
+.similar-workspace .card.sim .viewer .view::after { content: ""; position: absolute; z-index: 2; inset: 0; border: 1px solid transparent; background: rgba(3, 8, 18, 0); opacity: 0; transition: border-color 140ms ease, background-color 140ms ease, opacity 140ms ease; pointer-events: none; }
+
+.similar-workspace .card.sim .viewer .view:hover::after, .similar-workspace .card.sim .viewer .view:focus-within::after { border-color: rgba(125, 211, 252, 0.48); background: rgba(3, 8, 18, 0.12); opacity: 1; }
+
+.similar-workspace .card.sim .viewer .view:hover img, .similar-workspace .card.sim .viewer .view:hover video, .similar-workspace .card.sim .viewer .view:focus-within img, .similar-workspace .card.sim .viewer .view:focus-within video { filter: brightness(0.94) saturate(0.96); transform: none; box-shadow: none; }
+
+.similar-workspace .card.sim .viewer > .LT, .similar-workspace .card.sim .viewer > .RT, .similar-workspace .card.sim .viewer > .LB, .similar-workspace .card.sim .viewer > .RB { z-index: 3; }
+
+.similar-workspace .card.sim .viewer .tag { border-color: rgba(174, 185, 200, 0.34); background: rgba(8, 17, 31, 0.88); color: var(--ui-text); box-shadow: none; }
+
+.similar-workspace .card.sim span.tag:not(.no), .similar-workspace .card.sim .sim-source-label { transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease; }
+
+.similar-workspace .card.sim span.tag:not(.no) { cursor: copy; }
+
+.similar-workspace .card.sim span.tag:not(.no):hover, .similar-workspace .card.sim span.tag:not(.no):focus-visible { border-color: rgba(125, 211, 252, 0.58); background: var(--ui-surface-hover); color: var(--ui-text); opacity: 1; outline: none; }
+
+.similar-workspace .card.sim span.tag:not(.no)[data-tip-id] { cursor: help; }
+
+.similar-workspace .card.sim span.tag:not(.no)[data-tip-id]:focus-visible { box-shadow: var(--ui-focus); }
+
+.similar-workspace .card.sim .sim-source-label:hover { border-color: rgba(125, 211, 252, 0.52); background: rgba(14, 165, 233, 0.18); }
 
 .similar-workspace .card.sim .card-body { background: rgba(8, 17, 31, 0.24); }
 
@@ -1273,9 +1299,9 @@ select.form-select { appearance: none; padding-right: 2rem !important; backgroun
 
 .view-results-shell .gv { gap: 0.8rem !important; }
 
-.view-results-shell .card.sim.view { overflow: hidden; border: 1px solid var(--ui-border); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-shadow-sm); transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease; }
+.view-results-shell .card.sim.view { overflow: hidden; border: 1px solid var(--ui-border); border-radius: var(--ui-radius); background: var(--ui-surface); box-shadow: var(--ui-shadow-sm); transition: border-color 120ms ease, box-shadow 120ms ease; }
 
-.view-results-shell .card.sim.view:hover { border-color: rgba(94, 234, 212, 0.34); transform: translateY(-1px); box-shadow: 0 14px 32px rgba(0, 0, 0, 0.24); }
+.view-results-shell .card.sim.view:hover { border-color: rgba(94, 234, 212, 0.34); transform: none; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18); }
 
 .view-results-shell .card.sim.view.has-stack { border-color: var(--sim-stack-color); box-shadow: inset 4px 0 0 var(--sim-stack-color), var(--ui-shadow-sm); }
 

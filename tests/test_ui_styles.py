@@ -93,6 +93,7 @@ class TestGlobalUiFoundation(unittest.TestCase):
 	def test_similar_card_status_rows_and_back_to_top_are_stable(self):
 		main = (ROOT / 'src/scss/main.scss').read_text()
 		comp = (ROOT / 'src/scss/comp.scss').read_text()
+		appui = (ROOT / 'src/assets/appui.js').read_text()
 		self.assertIn('.sim-card-header-secondary {', main)
 		self.assertIn('.sim-card-score { justify-content: flex-end; }', main)
 		self.assertIn('.sim-card-selection {', main)
@@ -102,6 +103,12 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn('top: calc(100% + 0.5rem);', comp)
 		self.assertIn('&:focus-visible::after,', comp)
 		self.assertNotIn('.sim-card-selection:has(.ausl-tip) {', comp)
+		self.assertIn('cursor: zoom-in !important;', main)
+		self.assertIn('filter: brightness(0.94) saturate(0.96);', main)
+		self.assertIn('&:hover:not(.checked):not(.has-stack),', main)
+		self.assertIn('span.tag:not(.no) {', main)
+		self.assertIn("document.querySelectorAll('span[data-tip-id]')", appui)
+		self.assertNotIn("this.style.opacity = '0.6'", appui)
 
 	def test_similar_review_tabs_match_shared_controls(self):
 		main = (ROOT / 'src/scss/main.scss').read_text()

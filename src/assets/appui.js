@@ -254,37 +254,31 @@ document.addEventListener('DOMContentLoaded', () =>{
 	const root = document.body
 
 	function bindEvts(){
-		const sps = document.querySelectorAll('span[class*="tag"]:not(.no)')
+		const sps = document.querySelectorAll('span[data-tip-id]')
 		sps.forEach(span =>{
-			if (span._hoverEventsBound) return
+			if (span._poptipEventsBound) return
 
-			if (span.hasAttribute('data-tip-id')) {
-				span.addEventListener('mouseenter', function(){
-					const tipId = this.getAttribute('data-tip-id')
-					ui.poptip.cancelHide()
-					ui.poptip.show(tipId, this)
-					this.style.cursor = 'pointer'
-				})
-				span.addEventListener('mouseleave', function(){
-					const tipId = this.getAttribute('data-tip-id')
-					ui.poptip.delayHide(tipId)
-				})
-			}
-			else {
-				span.addEventListener('mouseenter', function(){
-					this.style.opacity = '0.6'
-					this.style.transition = 'opacity 0.3s ease'
-					this.style.cursor = 'pointer'
-				})
+			span.tabIndex = 0
+			span.setAttribute('role', 'button')
+			span.setAttribute('aria-haspopup', 'true')
+			span.addEventListener('mouseenter', function(){
+				const tipId = this.getAttribute('data-tip-id')
+				ui.poptip.cancelHide()
+				ui.poptip.show(tipId, this)
+			})
+			span.addEventListener('mouseleave', function(){
+				const tipId = this.getAttribute('data-tip-id')
+				ui.poptip.delayHide(tipId)
+			})
+			span.addEventListener('focus', function(){
+				ui.poptip.cancelHide()
+				ui.poptip.show(this.getAttribute('data-tip-id'), this)
+			})
+			span.addEventListener('blur', function(){
+				ui.poptip.delayHide(this.getAttribute('data-tip-id'))
+			})
 
-				span.addEventListener('mouseleave', function(){
-					this.style.opacity = '1'
-					this.style.transition = 'opacity 0.3s ease'
-					this.style.cursor = 'default'
-				})
-			}
-
-			span._hoverEventsBound = true
+			span._poptipEventsBound = true
 		})
 	}
 

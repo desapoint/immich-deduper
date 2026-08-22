@@ -9,6 +9,8 @@ class MockElement {
 		this.children = []
 		this.parentNode = null
 		this.style = {}
+		this.attributes = {}
+		this.listeners = {}
 		this.isConnected = true
 		this.classList = {add() {}, remove() {}}
 	}
@@ -32,7 +34,10 @@ class MockElement {
 		return child
 	}
 	querySelector() { return null }
-	addEventListener() {}
+	setAttribute(name, value) { this.attributes[name] = value }
+	getAttribute(name) { return this.attributes[name] ?? null }
+	hasAttribute(name) { return Object.hasOwn(this.attributes, name) }
+	addEventListener(name, callback) { this.listeners[name] = callback }
 	remove() {
 		if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(item => item !== this)
 		this.parentNode = null
@@ -45,8 +50,12 @@ const body = new MockElement('body')
 const home = new MockElement('home')
 const tip = new MockElement('tip-1')
 const sibling = new MockElement('sibling')
+const trigger = new MockElement('trigger')
+trigger.setAttribute('data-tip-id', 'tip-1')
 home.appendChild(tip)
 home.appendChild(sibling)
+
+let onReady = null
 
 const sandbox = {
 	console,
@@ -57,9 +66,9 @@ const sandbox = {
 		documentElement: {scrollLeft: 0, scrollTop: 0},
 		getElementById(id) { return id === 'tip-1' ? tip : null },
 		querySelector() { return null },
-		querySelectorAll() { return [] },
+		querySelectorAll(selector) { return selector === 'span[data-tip-id]' ? [trigger] : [] },
 		createElement() { return new MockElement() },
-		addEventListener() {},
+		addEventListener(name, callback) { if (name === 'DOMContentLoaded') onReady = callback },
 	},
 	Element: MockElement,
 	MutationObserver: class { observe() {} disconnect() {} },
@@ -75,6 +84,12 @@ vm.createContext(sandbox)
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../src/assets/appui.js'), 'utf8'), sandbox)
 
 async function run() {
+	onReady()
+	assert.equal(trigger.tabIndex, 0, 'metadata popup triggers should support keyboard focus')
+	assert.equal(trigger.getAttribute('role'), 'button')
+	assert.equal(trigger.getAttribute('aria-haspopup'), 'true')
+	assert.deepEqual(Object.keys(trigger.listeners).sort(), ['blur', 'focus', 'mouseenter', 'mouseleave'])
+
 	vm.runInContext('ui.poptip.show("tip-1", document.body)', sandbox)
 	assert.equal(tip.parentNode, body, 'an active popup must escape card paint containment')
 	assert.equal(tip.style.display, 'block')
