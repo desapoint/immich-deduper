@@ -85,6 +85,7 @@ const sandbox = {
 }
 sandbox.window.window = sandbox.window
 sandbox.window.innerWidth = 1200
+sandbox.window.innerHeight = 800
 sandbox.window.pageXOffset = 0
 sandbox.window.pageYOffset = 0
 vm.createContext(sandbox)
@@ -100,18 +101,10 @@ async function run() {
 	assert.equal(details.open, true, 'Show Grid Info should open the native card details')
 	vm.runInContext('window.dash_clientside.ui.toggleGridInfo(false)', sandbox)
 	assert.equal(details.open, false, 'hiding Grid Info should close the native card details')
-	let filenameClicks = 0
-	let prevented = false
-	const filename = new MockElement('filename')
-	filename.closest = selector => selector === 'span.sim-card-filename' ? filename : null
-	filename.click = () => { filenameClicks++ }
-	body.listeners.keydown({target: filename, key: 'Enter', preventDefault() { prevented = true }})
-	assert.equal(filenameClicks, 1, 'Enter should activate filename copying')
-	assert.equal(prevented, true)
-
 	vm.runInContext('ui.poptip.show("tip-1", document.body)', sandbox)
 	assert.equal(tip.parentNode, body, 'an active popup must escape card paint containment')
 	assert.equal(tip.style.display, 'block')
+	assert.equal(tip.style.position, 'fixed', 'metadata popups should be clamped to the viewport')
 
 	vm.runInContext('ui.poptip.hide(document.getElementById("tip-1"))', sandbox)
 	await new Promise(resolve => setTimeout(resolve, 330))

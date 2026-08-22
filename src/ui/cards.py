@@ -4,7 +4,7 @@ from typing import List
 
 from dash_bootstrap_components import ListGroup
 from dsh import htm, dbc, dcc
-from conf import ks, co
+from conf import ks, co, envs
 from util import log
 from mod import models
 import db
@@ -69,8 +69,8 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 				className="sim-card-media-badges",
 			) if isLive else None,
 			htm.Div([
-				htm.Span(f"{co.fmt.size(ass.jsonExif.fileSizeInByte)}", className="tag") if ass.jsonExif and ass.jsonExif.fileSizeInByte else None,
-				htm.Span(f"{imgW} × {imgH}", className="tag lg") if imgW and imgH else None,
+				htm.Span(f"{co.fmt.size(ass.jsonExif.fileSizeInByte)}", className="tag sim-card-media-fact") if ass.jsonExif and ass.jsonExif.fileSizeInByte else None,
+				htm.Span(f"{imgW} × {imgH}", className="tag sim-card-media-fact") if imgW and imgH else None,
 			], className="sim-card-media-facts"),
 		] if modSim else [
 			htm.Div([
@@ -97,6 +97,7 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 	captureLabel = str(captureDate).replace("T", " ")[:16] if captureDate else "Date unavailable"
 	fileName = ass.originalFileName or path.basename(ass.originalPath) or f"Asset #{ass.autoId}"
 	pathFileName = path.basename(ass.originalPath) if ass.originalPath else None
+	immichAssetUrl = f"{envs.immichUrl.rstrip('/')}/photos/{ass.id}" if envs.immichUrl and ass.id else None
 
 	metadataItems = []
 	if ass.isFavorite:
@@ -140,14 +141,18 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 
 	similarCardBody = dbc.CardBody([
 		htm.Div([
-			htm.Span(
-				fileName,
-				className="tag sim-card-filename",
-				title=f"{fileName} — select to copy",
-				tabIndex=0,
-				role="button",
-				**{"aria-label": f"Copy filename {fileName}"},
-			),
+			htm.A(
+				[
+					htm.Span(fileName),
+					htm.I(className="bi bi-box-arrow-up-right sim-card-filename-icon", **{"aria-hidden": "true"}),
+				],
+				href=immichAssetUrl,
+				target="_blank",
+				rel="noopener noreferrer",
+				className="sim-card-filename",
+				title=f"Open {fileName} in Immich",
+				**{"aria-label": f"Open {fileName} in Immich"},
+			) if immichAssetUrl else htm.Span(fileName, className="sim-card-filename", title=fileName),
 			htm.Div([
 				htm.Span([htm.I(className="bi bi-calendar3"), captureLabel], className="sim-card-identity-item", title=str(captureDate) if captureDate else None),
 				htm.Span([htm.I(className="bi bi-person-circle"), ownerName or "Unknown owner"], className="sim-card-identity-item", title=ass.ownerId or None),
@@ -185,45 +190,58 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 		# dynamic
 		#------------------------------------------------------------------------
 		htm.Div([
-			htm.Div([
-				htm.Div([
-					htm.Li(alb.albumName, className="tag album") for alb in (ex.albs if ex and ex.albs else [])
-				])
-			], className="poptip", id=f'albs-{ass.autoId}') if ex and ex.albs else None,
+			gvEx.mkCardTip(
+				f'albs-{ass.autoId}',
+				"Albums",
+				htm.Ul([
+					htm.Li(alb.albumName, className="sim-card-poptip-item") for alb in ex.albs
+				], className="sim-card-poptip-list"),
+			) if ex and ex.albs else None,
 
-			htm.Div([
-				htm.Div([
-					htm.Li(tag.value, className="tag") for tag in (ex.tags if ex and ex.tags else [])
-				])
-			], className="poptip", id=f'tags-{ass.autoId}') if ex and ex.tags else None,
-			htm.Div([
-				htm.Div([
-					htm.Li(fac.name, className="tag") for fac in (ex.facs if ex and ex.facs else [])
-				])
-			], className="poptip", id=f'facs-{ass.autoId}') if ex and ex.facs else None,
+			gvEx.mkCardTip(
+				f'tags-{ass.autoId}',
+				"Tags",
+				htm.Ul([
+					htm.Li(tag.value, className="sim-card-poptip-item") for tag in ex.tags
+				], className="sim-card-poptip-list"),
+			) if ex and ex.tags else None,
+			gvEx.mkCardTip(
+				f'facs-{ass.autoId}',
+				"People",
+				htm.Ul([
+					htm.Li(fac.name, className="sim-card-poptip-item") for fac in ex.facs
+				], className="sim-card-poptip-list"),
+			) if ex and ex.facs else None,
 
-			htm.Div([
-				htm.P(ex.description, className="desc-content")
-			], className="poptip", id=f'desc-{ass.autoId}') if ex and ex.description else None,
+			gvEx.mkCardTip(
+				f'desc-{ass.autoId}',
+				"Description",
+				htm.P(ex.description, className="sim-card-poptip-description"),
+			) if ex and ex.description else None,
 
-			htm.Div([
+			gvEx.mkCardTip(
+				f'loc-{ass.autoId}',
+				"Location",
 				htm.Div([
 					htm.Span(f"{ex.city}, ") if ex.city else None,
 					htm.Span(f"{ex.state}, ") if ex.state else None,
 					htm.Span(f"{ex.country}") if ex.country else None,
 					htm.Br(),
 					htm.Span(f"{ex.latitude:.6f}, {ex.longitude:.6f}"),
-				], className="loc-content")
-			], className="poptip", id=f'loc-{ass.autoId}') if ex and ex.latitude is not None and ex.longitude is not None else None,
+				], className="sim-card-poptip-location"),
+			) if ex and ex.latitude is not None and ex.longitude is not None else None,
 
-			htm.Div([
+			gvEx.mkCardTip(
+				f'stack-{ass.autoId}',
+				"Stack images",
 				htm.Div([
 					htm.Img(
 						src=f"/api/img/id/{mid}",
-						style={"width": "64px", "height": "64px", "objectFit": "cover", "borderRadius": "4px"}
+						className="sim-card-poptip-stack-image",
+						alt="",
 					) for mid in ex.stackAssets
-				], style={"display": "flex", "flexWrap": "wrap", "gap": "4px", "maxWidth": "280px"})
-			], className="poptip", id=f'stack-{ass.autoId}') if ex and ex.stackAssets else None,
+				], className="sim-card-poptip-stack"),
+			) if ex and ex.stackAssets else None,
 
 			tipExif,
 

@@ -199,46 +199,37 @@ const ui = window.ui = {
 
 			const triggerRect = triggerEl.getBoundingClientRect()
 			const tipRect = tipEl.getBoundingClientRect()
-			const scrollX = window.pageXOffset || document.documentElement.scrollLeft
-			const scrollY = window.pageYOffset || document.documentElement.scrollTop
 			const viewWidth = window.innerWidth
+			const viewHeight = window.innerHeight
+			const pad = 8
+			const gap = 12
+			const clamp = (value, min, max) => Math.min(Math.max(value, min), Math.max(min, max))
+			let direction = 'bottom'
+			let left
+			let top
 
-
-			let direction
-
-			if (triggerRect.right + tipRect.width + 25 <= viewWidth) {
+			if (triggerRect.right + tipRect.width + gap <= viewWidth - pad) {
 				direction = 'right'
-				tipEl.style.left = `${triggerRect.right + scrollX + 15}px`
-				tipEl.style.top = `${triggerRect.top + scrollY + triggerRect.height / 2}px`
-				tipEl.style.transform = 'translateY(-50%)'
+				left = triggerRect.right + gap
+				top = triggerRect.top + (triggerRect.height - tipRect.height) / 2
 			}
-			else if (triggerRect.top - tipRect.height - 25 >= 0) {
+			else if (triggerRect.top - tipRect.height - gap >= pad) {
 				direction = 'top'
-				tipEl.style.left = `${triggerRect.left + scrollX + triggerRect.width / 2}px`
-				tipEl.style.top = `${triggerRect.top + scrollY - 15}px`
-				tipEl.style.transform = 'translate(-50%, -100%)'
+				left = triggerRect.left + (triggerRect.width - tipRect.width) / 2
+				top = triggerRect.top - tipRect.height - gap
 			}
 			else {
-				direction = 'bottom'
-				tipEl.style.left = `${triggerRect.left + scrollX + triggerRect.width / 2}px`
-				tipEl.style.top = `${triggerRect.bottom + scrollY + 15}px`
-				tipEl.style.transform = 'translateX(-50%)'
+				left = triggerRect.left + (triggerRect.width - tipRect.width) / 2
+				top = triggerRect.bottom + gap
 			}
 
-			tipEl.style.position = 'absolute'
+			left = clamp(left, pad, viewWidth - tipRect.width - pad)
+			top = clamp(top, pad, viewHeight - tipRect.height - pad)
+			tipEl.style.position = 'fixed'
+			tipEl.style.left = `${left}px`
+			tipEl.style.top = `${top}px`
+			tipEl.style.transform = 'none'
 			tipEl.style.zIndex = this.baseZIndex++
-
-			// viewport boundary clamp
-			tipEl.offsetHeight
-			const finalRect = tipEl.getBoundingClientRect()
-			const pad = 8
-			if (finalRect.right > viewWidth - pad) {
-				const ov = finalRect.right - (viewWidth - pad)
-				tipEl.style.left = `${parseFloat(tipEl.style.left) - ov}px`
-			}
-			if (finalRect.left < pad) {
-				tipEl.style.left = `${parseFloat(tipEl.style.left) + (pad - finalRect.left)}px`
-			}
 
 			return {direction}
 		},
@@ -332,14 +323,6 @@ document.addEventListener('DOMContentLoaded', () =>{
 				document.body.removeChild(tempInput)
 			}
 		}
-	})
-
-	root.addEventListener('keydown', event =>{
-		if (event.key !== 'Enter' && event.key !== ' ') return
-		const copyTarget = event.target.closest('span.sim-card-filename')
-		if (!copyTarget) return
-		event.preventDefault()
-		copyTarget.click()
 	})
 })
 

@@ -122,12 +122,24 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		main = (ROOT / 'src/scss/main.scss').read_text()
 		appui = (ROOT / 'src/assets/appui.js').read_text()
 		for selector in (
-			'.sim-card-content {', '.sim-card-identity {', '.sim-card-filename.tag {',
+			'.sim-card-content {', '.sim-card-identity {', '.sim-card-filename {',
 			'.sim-card-metadata {', '.sim-card-details {', '.sim-card-details-summary {',
 			'.sim-card-detail-grid {', '.sim-card-detail-row {',
 		):
 			self.assertIn(selector, main)
 		self.assertIn("document.querySelectorAll('.sim-card-details')", appui)
+
+	def test_similar_card_popovers_and_media_facts_share_restrained_styles(self):
+		main = (ROOT / 'src/scss/main.scss').read_text()
+		for selector in (
+			'.sim-card-poptip {', '.sim-card-poptip-surface {',
+			'.sim-card-poptip-title {', '.sim-card-poptip-content {',
+			'.sim-card-poptip-table {', '.sim-card-poptip-stack {',
+			'.sim-card-media-fact.tag {',
+		):
+			self.assertIn(selector, main)
+		self.assertIn('i { color: #7dd3fc; }', main)
+		self.assertNotIn('box-shadow: 0 0 5px #fff;', main)
 
 	def test_similar_cards_have_restrained_states_and_phone_layout(self):
 		main = (ROOT / 'src/scss/main.scss').read_text()
@@ -159,8 +171,11 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		main = (ROOT / 'src/scss/main.scss').read_text()
 		self.assertIn('body:has(#img-modal.show) .modal-backdrop.show {', main)
 		self.assertIn('#img-modal.img-pop {', main)
-		self.assertIn('width: calc(100vw - 3rem);', main)
-		self.assertIn('grid-template-rows: minmax(0, 1fr) auto auto;', main)
+		self.assertIn('width: calc(100vw - 2rem);', main)
+		self.assertIn('grid-template-rows: auto minmax(0, 1fr) auto;', main)
+		self.assertIn('.img-viewer-header {', main)
+		self.assertIn('.img-viewer-main {', main)
+		self.assertIn('.img-viewer-footer {', main)
 		self.assertIn('.img-viewer-media {', main)
 		self.assertIn('.img-viewer-primary-actions {', main)
 		self.assertIn('.viewer-asset-status {', main)
@@ -169,6 +184,8 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn('.img-viewer-nav {', main)
 		self.assertIn('.img-viewer-mode,', main)
 		self.assertIn('.img-viewer-header-icon {', main)
+		self.assertIn('.img-viewer-header-action {', main)
+		self.assertIn('top: calc(100% + 0.45rem);', main)
 		self.assertIn('position: absolute;', main)
 		self.assertIn('display: none;', main)
 

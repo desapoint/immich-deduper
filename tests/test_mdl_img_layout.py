@@ -43,6 +43,11 @@ class TestImageViewerLayout(unittest.TestCase):
 		self.assertIn('img-viewer-nav', props(byId[mdlImg.k.btnNext]).get('className'))
 		self.assertNotIn('position-fixed', props(byId[mdlImg.k.btnPrev]).get('className'))
 		self.assertTrue(any(props(node).get('className') == 'img-viewer-header-actions' for node in nodes))
+		self.assertTrue(any(props(node).get('className') == 'img-viewer-header' for node in nodes))
+		self.assertTrue(any(props(node).get('className') == 'img-viewer-main' for node in nodes))
+		self.assertTrue(any(props(node).get('className') == 'img-viewer-footer' for node in nodes))
+		self.assertTrue(any(props(node).get('className') == 'img-viewer-header-action img-viewer-info-action' for node in nodes))
+		self.assertTrue(any(props(node).get('className') == 'img-viewer-header-action img-viewer-help-action' for node in nodes))
 		self.assertTrue(any(props(node).get('className') == 'img-viewer-media' for node in nodes))
 		self.assertFalse(props(byId[mdlImg.k.modal]).get('fullscreen', False))
 

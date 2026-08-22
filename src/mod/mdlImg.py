@@ -81,26 +81,32 @@ def render():
 						className="img-viewer-mode",
 						title="Toggle between fit-to-screen and actual-size viewing",
 					),
-					dbc.Button(
-						[htm.I(className="bi bi-info-circle"), htm.Span("Details", className="visually-hidden")],
-						id=k.btnInfo,
-						color="secondary",
-						outline=False,
-						size="sm",
-						className="img-viewer-header-icon",
-						title="Show or hide image details",
-					),
-					dbc.Button(
-						[htm.I(className="bi bi-keyboard"), htm.Span("Shortcuts", className="visually-hidden")],
-						id=k.btnHelp,
-						color="secondary",
-						outline=False,
-						size="sm",
-						className="img-viewer-header-icon",
-						title="Show or hide keyboard shortcuts",
-					),
+					htm.Div([
+						dbc.Button(
+							[htm.I(className="bi bi-info-circle"), htm.Span("Details", className="visually-hidden")],
+							id=k.btnInfo,
+							color="secondary",
+							outline=False,
+							size="sm",
+							className="img-viewer-header-icon",
+							title="Show or hide image details",
+						),
+						layoutInfo,
+					], className="img-viewer-header-action img-viewer-info-action"),
+					htm.Div([
+						dbc.Button(
+							[htm.I(className="bi bi-keyboard"), htm.Span("Shortcuts", className="visually-hidden")],
+							id=k.btnHelp,
+							color="secondary",
+							outline=False,
+							size="sm",
+							className="img-viewer-header-icon",
+							title="Show or hide keyboard shortcuts",
+						),
+						layoutHelp,
+					], className="img-viewer-header-action img-viewer-help-action"),
 				], className="img-viewer-header-actions"),
-			], close_button=True),
+			], close_button=True, className="img-viewer-header"),
 			dbc.ModalBody([
 				htm.Div([
 					htm.Div(id=k.content, className="img img-viewer-stage"),
@@ -121,6 +127,8 @@ def render():
 						**{"aria-label": "Next image"},
 					),
 				], className="img-viewer-media"),
+			], className="img-viewer-main"),
+			dbc.ModalFooter([
 				htm.Div(id=k.status, className="viewer-asset-status"),
 				htm.Div([
 					dbc.Button(
@@ -131,13 +139,11 @@ def render():
 						style={"display": "none"}
 					),
 				], className="img-viewer-primary-actions"),
-				layoutInfo,
-				layoutHelp,
-			]),
+			], className="img-viewer-footer"),
 		],
 			id=k.modal,
 			size="xl",
-			centered=True,
+			centered=False,
 			className="img-pop",
 		),
 
