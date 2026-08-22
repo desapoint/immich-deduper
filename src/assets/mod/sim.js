@@ -77,6 +77,18 @@ function _extractMetric(ass){
 	}
 }
 
+function _pathRules(value){
+	return String(value || '')
+		.split(/\r?\n|\r/)
+		.map(rule => rule.trim())
+		.filter((rule, index, rules) => rule && rules.indexOf(rule) === index)
+}
+
+function _matchesPathRule(path, value){
+	const rules = _pathRules(value)
+	return rules.length > 0 && rules.some(rule => String(path || '').includes(rule))
+}
+
 function _selectBestAsset(grpAssets, ausl){
 	if (!grpAssets?.length) return null
 
@@ -192,7 +204,7 @@ function _selectBestAsset(grpAssets, ausl){
 			scr += pts
 			reasons.push(`Owner+${pts}`)
 		}
-		if (ausl.pth?.v > 0 && ausl.pth?.k && m.path.includes(ausl.pth.k)) {
+		if (ausl.pth?.v > 0 && _matchesPathRule(m.path, ausl.pth?.k)) {
 			const pts = ausl.pth.v * 10
 			scr += pts
 			reasons.push(`Path+${pts}`)

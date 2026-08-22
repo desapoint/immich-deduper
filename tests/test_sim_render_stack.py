@@ -215,11 +215,16 @@ class TestSimilarPartialRendering(unittest.TestCase):
 		self.assertTrue(any('auto-select-options' == value for value in classes))
 		self.assertTrue(any('auto-select-criteria-grid' == value for value in classes))
 		self.assertEqual(sum(value.startswith('icriteria') for value in classes), 11)
+		self.assertEqual(sum(value == 'auto-select-field' for value in classes), 22)
+		self.assertEqual(sum('auto-select-field-wide' in value for value in classes), 1)
 
 		pathInput = next(
 			node for node in nodes
 			if isinstance(props(node).get('id'), dict) and props(node)['id'].get('field') == 'pthVal'
 		)
+		self.assertEqual(type(pathInput).__name__, 'Textarea')
+		self.assertEqual(props(pathInput).get('rows'), 3)
+		self.assertIn('auto-select-path-input', props(pathInput).get('className', ''))
 		self.assertNotIn('maxWidth', props(pathInput).get('style', {}))
 
 

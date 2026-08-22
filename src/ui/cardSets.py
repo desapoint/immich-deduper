@@ -185,6 +185,20 @@ def renderAutoSelect():
 	hasDev=db.psql.getSchema().hasAssetDeviceId
 	disDev=dis or not hasDev
 	devTip="Immich 3.0+ removed device tracking; this criterion is unavailable" if not hasDev else None
+
+	def field(label, control, wide=False):
+		cls="auto-select-field"
+		if wide: cls += " auto-select-field-wide"
+		return htm.Div([htm.Label(label), control], className=cls)
+
+	def criterion(title, fields, className=""):
+		cls="icriteria"
+		if className: cls += f" {className}"
+		return htm.Div([
+			htm.Span(htm.Span(title, className="tag txt-smx"), className="auto-select-criterion-title"),
+			*fields,
+		], className=cls)
+
 	return dbc.Card([
 		dbc.CardHeader([htm.Span("Auto Selection"), htm.Small("Select preferred images automatically")]),
 		dbc.CardBody([
@@ -206,95 +220,55 @@ def renderAutoSelect():
 				htm.Hr(),
 
 				htm.Div([
-				htm.Div([
-					htm.Span(htm.Span("DateTime",className="tag txt-smx me-1")),
-					htm.Label("Earlier",className="me-2"),
-					dbc.Select(id=k.ausl("earlier"),options=toOpts(optWeights),value=a.earlier,disabled=dis,size="sm",className="me-1"),
-					htm.Label("Later",className="me-2"),
-					dbc.Select(id=k.ausl("later"),options=toOpts(optWeights),value=a.later,disabled=dis,size="sm"),
-				],className="icriteria"),
-
-				htm.Div([
-					htm.Span(htm.Span("ModifiedAt",className="tag txt-smx me-1")),
-					htm.Label("Earlier",className="me-2"),
-					dbc.Select(id=k.ausl("mdEarly"),options=toOpts(optWeights),value=a.mdEarly,disabled=dis,size="sm",className="me-1"),
-					htm.Label("Later",className="me-2"),
-					dbc.Select(id=k.ausl("mdLate"),options=toOpts(optWeights),value=a.mdLate,disabled=dis,size="sm"),
-				],className="icriteria"),
-
-				htm.Div([
-					htm.Span(htm.Span("Exif",className="tag txt-smx me-1")),
-					htm.Label("Richer", className="me-2"),
-					dbc.Select(id=k.ausl("exRich"), options=toOpts(optWeights), value=a.exRich, disabled=dis, size="sm", className="me-1"),
-					htm.Label("Poorer", className="me-2"),
-					dbc.Select(id=k.ausl("exPoor"), options=toOpts(optWeights), value=a.exPoor, disabled=dis, size="sm"),
-				], className="icriteria"),
-
-				htm.Div([
-					htm.Span(htm.Span("Name Length", className="tag txt-smx me-1")),
-					htm.Label("Longer", className="me-2"),
-					dbc.Select(id=k.ausl("namLon"), options=toOpts(optWeights), value=a.namLon, disabled=dis, size="sm", className="me-1"),
-					htm.Label("Shorter", className="me-2"),
-					dbc.Select(id=k.ausl("namSht"), options=toOpts(optWeights), value=a.namSht, disabled=dis, size="sm"),
-				], className="icriteria"),
-
-				htm.Div([
-					htm.Span(htm.Span("FileSize", className="tag txt-smx me-1")),
-					htm.Label("Bigger", className="me-2"),
-					dbc.Select(id=k.ausl("ofsBig"), options=toOpts(optWeights), value=a.ofsBig, disabled=dis, size="sm", className="me-1"),
-					htm.Label("Smaller", className="me-2"),
-					dbc.Select(id=k.ausl("ofsSml"), options=toOpts(optWeights), value=a.ofsSml, disabled=dis, size="sm"),
-				], className="icriteria"),
-
-				htm.Div([
-					htm.Span(htm.Span("Dimensions", className="tag txt-smx me-1")),
-					htm.Label("Bigger", className="me-2"),
-					dbc.Select(id=k.ausl("dimBig"), options=toOpts(optWeights), value=a.dimBig, disabled=dis, size="sm", className="me-1"),
-					htm.Label("Smaller", className="me-2"),
-					dbc.Select(id=k.ausl("dimSml"), options=toOpts(optWeights), value=a.dimSml, disabled=dis, size="sm"),
-				], className="icriteria"),
-
-				htm.Div([
-					htm.Span(htm.Span("File Type", className="tag txt-smx me-1")),
-					htm.Label("Jpg", className="me-2"),
-					dbc.Select(id=k.ausl("typJpg"), options=toOpts(optWeights), value=a.typJpg, disabled=dis, size="sm", className="me-1"),
-					htm.Label("Png", className="me-2"),
-					dbc.Select(id=k.ausl("typPng"), options=toOpts(optWeights), value=a.typPng, disabled=dis, size="sm", className="me-1"),
-					htm.Label("Heic", className="me-2"),
-					dbc.Select(id=k.ausl("typHeic"), options=toOpts(optWeights), value=a.typHeic, disabled=dis, size="sm"),
-				], className="icriteria wrap"),
-
-				htm.Div([
-					htm.Span(htm.Span("Immich", className="tag txt-smx me-1")),
-					htm.Label("Favorited", className="me-2"),
-					dbc.Select(id=k.ausl("fav"), options=toOpts(optWeights), value=a.fav, disabled=dis, size="sm", className="me-1"),
-					htm.Label("In Album", className="me-2"),
-					dbc.Select(id=k.ausl("inAlb"), options=toOpts(optWeights), value=a.inAlb, disabled=dis, size="sm"),
-				], className="icriteria"),
-
-				htm.Div([
-					htm.Span(htm.Span("User", className="tag txt-smx me-1")),
-					htm.Label("name", className="me-2"),
-					dbc.Select(id=k.ausl("usrPri"), options=toOpts(_getUsrOpts()), value=a.usr.k, disabled=dis, size="sm", className="me-1"),
-					htm.Label("Weight", className="me-2"),
-					dbc.Select(id=k.ausl("usrWgt"), options=toOpts(optWeights), value=a.usr.v, disabled=dis, size="sm"),
-				], className="icriteria"),
-
-				htm.Div([
-					htm.Span(htm.Span("Path", className="tag txt-smx me-1")),
-					htm.Label("Contains", className="me-2"),
-					dbc.Input(id=k.ausl("pthVal"), value=a.pth.k, disabled=dis, className="me-1 txt-smx", placeholder="e.g. /library/clean", debounce=1000),
-					htm.Label("Weight", className="me-2"),
-					dbc.Select(id=k.ausl("pthWgt"), options=toOpts(optWeights), value=a.pth.v, disabled=dis, size="sm"),
-				], className="icriteria"),
-
-				htm.Div([
-					htm.Span(htm.Span("Device",className="tag txt-smx me-1")),
-					htm.Label("Source",className="me-2"),
-					dbc.Select(id=k.ausl("devPri"),options=toOpts(getDevOpts()),value=a.dev.k,disabled=disDev,size="sm",className="me-1"),
-					htm.Label("Weight",className="me-2"),
-					dbc.Select(id=k.ausl("devWgt"),options=toOpts(optWeights),value=a.dev.v,disabled=disDev,size="sm"),
-				],className="icriteria",title=devTip),
+				criterion("DateTime", [
+					field("Earlier", dbc.Select(id=k.ausl("earlier"), options=toOpts(optWeights), value=a.earlier, disabled=dis, size="sm")),
+					field("Later", dbc.Select(id=k.ausl("later"), options=toOpts(optWeights), value=a.later, disabled=dis, size="sm")),
+				]),
+				criterion("ModifiedAt", [
+					field("Earlier", dbc.Select(id=k.ausl("mdEarly"), options=toOpts(optWeights), value=a.mdEarly, disabled=dis, size="sm")),
+					field("Later", dbc.Select(id=k.ausl("mdLate"), options=toOpts(optWeights), value=a.mdLate, disabled=dis, size="sm")),
+				]),
+				criterion("Exif", [
+					field("Richer", dbc.Select(id=k.ausl("exRich"), options=toOpts(optWeights), value=a.exRich, disabled=dis, size="sm")),
+					field("Poorer", dbc.Select(id=k.ausl("exPoor"), options=toOpts(optWeights), value=a.exPoor, disabled=dis, size="sm")),
+				]),
+				criterion("Name Length", [
+					field("Longer", dbc.Select(id=k.ausl("namLon"), options=toOpts(optWeights), value=a.namLon, disabled=dis, size="sm")),
+					field("Shorter", dbc.Select(id=k.ausl("namSht"), options=toOpts(optWeights), value=a.namSht, disabled=dis, size="sm")),
+				]),
+				criterion("FileSize", [
+					field("Bigger", dbc.Select(id=k.ausl("ofsBig"), options=toOpts(optWeights), value=a.ofsBig, disabled=dis, size="sm")),
+					field("Smaller", dbc.Select(id=k.ausl("ofsSml"), options=toOpts(optWeights), value=a.ofsSml, disabled=dis, size="sm")),
+				]),
+				criterion("Dimensions", [
+					field("Bigger", dbc.Select(id=k.ausl("dimBig"), options=toOpts(optWeights), value=a.dimBig, disabled=dis, size="sm")),
+					field("Smaller", dbc.Select(id=k.ausl("dimSml"), options=toOpts(optWeights), value=a.dimSml, disabled=dis, size="sm")),
+				]),
+				criterion("File Type", [
+					field("Jpg", dbc.Select(id=k.ausl("typJpg"), options=toOpts(optWeights), value=a.typJpg, disabled=dis, size="sm")),
+					field("Png", dbc.Select(id=k.ausl("typPng"), options=toOpts(optWeights), value=a.typPng, disabled=dis, size="sm")),
+					field("Heic", dbc.Select(id=k.ausl("typHeic"), options=toOpts(optWeights), value=a.typHeic, disabled=dis, size="sm")),
+				]),
+				criterion("Immich", [
+					field("Favorited", dbc.Select(id=k.ausl("fav"), options=toOpts(optWeights), value=a.fav, disabled=dis, size="sm")),
+					field("In Album", dbc.Select(id=k.ausl("inAlb"), options=toOpts(optWeights), value=a.inAlb, disabled=dis, size="sm")),
+				]),
+				criterion("User", [
+					field("Name", dbc.Select(id=k.ausl("usrPri"), options=toOpts(_getUsrOpts()), value=a.usr.k, disabled=dis, size="sm")),
+					field("Weight", dbc.Select(id=k.ausl("usrWgt"), options=toOpts(optWeights), value=a.usr.v, disabled=dis, size="sm")),
+				]),
+				criterion("Path", [
+					field("Contains", dbc.Textarea(
+						id=k.ausl("pthVal"), value=a.pth.k, disabled=dis,
+						className="txt-smx auto-select-path-input",
+						placeholder="One path rule per line", rows=3, debounce=750,
+					), wide=True),
+					field("Weight", dbc.Select(id=k.ausl("pthWgt"), options=toOpts(optWeights), value=a.pth.v, disabled=dis, size="sm")),
+				], className="auto-select-path-criterion"),
+				criterion("Device", [
+					field("Source", dbc.Select(id=k.ausl("devPri"), options=toOpts(getDevOpts()), value=a.dev.k, disabled=disDev, size="sm")),
+					field("Weight", dbc.Select(id=k.ausl("devWgt"), options=toOpts(optWeights), value=a.dev.v, disabled=disDev, size="sm")),
+				], className="auto-select-device-criterion"),
 				], className="auto-select-criteria-grid"),
 				htm.Div(devTip,className="auto-select-device-note txt-smx text-muted") if devTip else None,
 

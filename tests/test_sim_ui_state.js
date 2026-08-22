@@ -127,6 +127,16 @@ async function main() {
 	assert.equal(fullCssUpdates, 0, 'an existing-result patch must preserve card state without repainting the whole grid')
 	assert.equal(buttonUpdates, 1, 'an existing-result patch should update controls once')
 	assert.equal(coverUpdates, coversBeforePatch + 1, 'an existing-result patch should refresh cover controls once')
+
+	const pathRules = vm.runInContext('_pathRules(" /library/clean\\r\\n\\n/screenshots \\n/library/clean")', context)
+	assert.deepEqual(Array.from(pathRules), ['/library/clean', '/screenshots'], 'path rules should trim, ignore blanks, and deduplicate')
+
+	const pathSelection = vm.runInContext(`_selectBestAsset([
+		{autoId: 1, originalPath: '/library/clean/screenshots/one.jpg', originalFileName: 'one.jpg'},
+		{autoId: 2, originalPath: '/library/import/other/two.jpg', originalFileName: 'two.jpg'}
+	], {pth: {k: '/library/clean\\n/screenshots', v: 2}})`, context)
+	assert.equal(pathSelection.aids[0], 1, 'any matching path rule should select the matching asset')
+	assert.equal(pathSelection.allScores[1].score, 20, 'multiple matching path rules should apply the configured weight only once')
 }
 
 

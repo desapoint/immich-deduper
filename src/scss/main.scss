@@ -2998,7 +2998,8 @@ body {
 	.icbxs select,
 	.icbxs input:not([type="checkbox"]):not([type="radio"]),
 	.icriteria select,
-	.icriteria input {
+	.icriteria input,
+	.icriteria textarea {
 		width: 100%;
 		max-width: none !important;
 		min-width: 0;
@@ -3032,13 +3033,16 @@ body {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 0.6rem 0.8rem;
+	align-items: stretch;
+	justify-items: stretch;
 }
 
 .auto-select-card .icriteria {
 	display: grid;
-	grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr);
-	align-items: center;
-	gap: 0.4rem 0.55rem;
+	grid-template-columns: minmax(0, 1fr);
+	align-content: start;
+	gap: 0.45rem;
+	width: 100%;
 	min-width: 0;
 	margin: 0 !important;
 	padding: 0.55rem;
@@ -3046,15 +3050,46 @@ body {
 	border-radius: var(--ui-radius-sm);
 	background: var(--ui-bg-soft);
 
-	> span:first-child {
-		grid-column: 1 / -1;
-		margin: 0 0 0.1rem;
+	> .auto-select-criterion-title {
+		margin: 0 0 0.15rem;
 		overflow: visible;
 	}
 
-	&.wrap > *:nth-child(6) {
-		grid-column: auto;
+	.auto-select-field {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) clamp(7rem, 36%, 9rem);
+		align-items: center;
+		gap: 0.65rem;
+		width: 100%;
+		min-width: 0;
+
+		> label {
+			min-width: 0;
+			text-align: left;
+		}
+
+		> :last-child {
+			justify-self: end;
+			width: 100%;
+			min-width: 0;
+			margin: 0 !important;
+		}
 	}
+
+	.auto-select-field-wide {
+		grid-template-columns: max-content minmax(0, 1fr);
+		align-items: start;
+	}
+}
+
+.auto-select-path-criterion {
+	grid-column: 1 / -1;
+}
+
+.auto-select-path-input {
+	min-height: 4.7rem;
+	line-height: 1.35;
+	resize: vertical;
 }
 
 .auto-select-device-note {
@@ -3075,10 +3110,12 @@ body {
 }
 
 @media (max-width: 480px) {
-	.auto-select-card .icriteria {
-		grid-template-columns: max-content minmax(0, 1fr);
+	.auto-select-card .icriteria .auto-select-field {
+		grid-template-columns: minmax(0, 1fr) minmax(6.5rem, 42%);
+	}
 
-		> span:first-child { grid-column: 1 / -1; }
+	.auto-select-card .icriteria .auto-select-field-wide {
+		grid-template-columns: max-content minmax(0, 1fr);
 	}
 }
 
