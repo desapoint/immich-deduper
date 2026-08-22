@@ -99,7 +99,7 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn('.sim-card-selection {', main)
 		self.assertIn('justify-self: start;', main)
 		self.assertIn('.form-check-input[type="checkbox"] {', main)
-		self.assertIn('background: var(--ui-surface-raised);', main)
+		self.assertIn('background: var(--ui-surface) !important;', main)
 		self.assertIn('top: calc(100% + 0.5rem);', comp)
 		self.assertIn('&:focus-visible::after,', comp)
 		self.assertNotIn('.sim-card-selection:has(.ausl-tip) {', comp)
@@ -134,10 +134,15 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		for selector in (
 			'.sim-card-poptip {', '.sim-card-poptip-surface {',
 			'.sim-card-poptip-title {', '.sim-card-poptip-content {',
-			'.sim-card-poptip-table {', '.sim-card-poptip-stack {',
+			'.sim-card-poptip-content-tags {', '.sim-card-poptip-tag-list {',
+			'.sim-card-poptip-tag {', '.sim-card-poptip-table {', '.sim-card-poptip-stack {',
 			'.sim-card-media-fact.tag {',
 		):
 			self.assertIn(selector, main)
+		self.assertIn('width: 28rem;', main)
+		self.assertIn('max-width: calc(100vw - 3rem);', main)
+		self.assertIn('flex-wrap: wrap;', main)
+		self.assertIn('width: fit-content;', main)
 		self.assertIn('i { color: #7dd3fc; }', main)
 		self.assertNotIn('box-shadow: 0 0 5px #fff;', main)
 
@@ -169,25 +174,37 @@ class TestGlobalUiFoundation(unittest.TestCase):
 
 	def test_image_preview_uses_distinct_readable_control_surfaces(self):
 		main = (ROOT / 'src/scss/main.scss').read_text()
-		self.assertIn('body:has(#img-modal.show) .modal-backdrop.show {', main)
-		self.assertIn('#img-modal.img-pop {', main)
-		self.assertIn('width: calc(100vw - 2rem);', main)
-		self.assertIn('grid-template-rows: auto minmax(0, 1fr) auto;', main)
+		self.assertIn('body:has(.modal.img-pop.show) .modal-backdrop.show {', main)
+		self.assertIn('backdrop-filter: blur(7px);', main)
+		self.assertIn('.modal.img-pop {', main)
+		self.assertIn('&.show {', main)
+		self.assertIn('display: flex !important;', main)
+		self.assertIn('height: calc(100dvh - 2rem);', main)
+		self.assertIn('flex-direction: column;', main)
+		self.assertIn('max-height: 100%;', main)
+		self.assertIn('background: var(--ui-surface-raised);', main)
 		self.assertIn('.img-viewer-header {', main)
 		self.assertIn('.img-viewer-main {', main)
 		self.assertIn('.img-viewer-footer {', main)
+		self.assertIn('.img-viewer-content {', main)
+		self.assertIn('.img-viewer-nav-zone {', main)
 		self.assertIn('.img-viewer-media {', main)
+		self.assertIn('overscroll-behavior: contain;', main)
 		self.assertIn('.img-viewer-primary-actions {', main)
+		self.assertIn('.img-viewer-select-slot {', main)
 		self.assertIn('.viewer-asset-status {', main)
 		self.assertIn('&:empty { display: none; }', main)
 		self.assertIn('background: #0b1524;', main)
 		self.assertIn('.img-viewer-nav {', main)
+		self.assertIn('border-radius: 50%;', main)
+		self.assertIn('transform: translate(-50%, -50%);', main)
+		self.assertIn('&:active:not(:disabled) {', main)
 		self.assertIn('.img-viewer-mode,', main)
 		self.assertIn('.img-viewer-header-icon {', main)
 		self.assertIn('.img-viewer-header-action {', main)
 		self.assertIn('top: calc(100% + 0.45rem);', main)
 		self.assertIn('position: absolute;', main)
-		self.assertIn('display: none;', main)
+		self.assertIn('.help.hide,', main)
 
 
 if __name__ == '__main__':

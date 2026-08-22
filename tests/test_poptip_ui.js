@@ -13,6 +13,7 @@ class MockElement {
 		this.listeners = {}
 		this.isConnected = true
 		this.classList = {add() {}, remove() {}, toggle() {}}
+		this.rect = {left: 10, right: 60, top: 50, bottom: 70, width: 50, height: 20}
 	}
 	get nextSibling() {
 		if (!this.parentNode) return null
@@ -44,7 +45,7 @@ class MockElement {
 		if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(item => item !== this)
 		this.parentNode = null
 	}
-	getBoundingClientRect() { return {left: 10, right: 60, top: 50, bottom: 70, width: 50, height: 20} }
+	getBoundingClientRect() { return this.rect }
 	get offsetHeight() { return 20 }
 }
 
@@ -88,6 +89,7 @@ sandbox.window.innerWidth = 1200
 sandbox.window.innerHeight = 800
 sandbox.window.pageXOffset = 0
 sandbox.window.pageYOffset = 0
+sandbox.window.testTrigger = trigger
 vm.createContext(sandbox)
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../src/assets/appui.js'), 'utf8'), sandbox)
 
@@ -101,14 +103,29 @@ async function run() {
 	assert.equal(details.open, true, 'Show Grid Info should open the native card details')
 	vm.runInContext('window.dash_clientside.ui.toggleGridInfo(false)', sandbox)
 	assert.equal(details.open, false, 'hiding Grid Info should close the native card details')
-	vm.runInContext('ui.poptip.show("tip-1", document.body)', sandbox)
+	tip.rect = {left: 0, right: 280, top: 0, bottom: 120, width: 280, height: 120}
+	vm.runInContext('ui.poptip.show("tip-1", window.testTrigger)', sandbox)
 	assert.equal(tip.parentNode, body, 'an active popup must escape card paint containment')
 	assert.equal(tip.style.display, 'block')
 	assert.equal(tip.style.position, 'fixed', 'metadata popups should be clamped to the viewport')
+	assert.equal(tip.style.left, '72px', 'metadata popups should prefer the trigger right side')
+	assert.ok(Number(tip.style.zIndex) >= 1200, 'metadata popups should render above sticky headers and batch controls')
 
-	vm.runInContext('ui.poptip.hide(document.getElementById("tip-1"))', sandbox)
-	await new Promise(resolve => setTimeout(resolve, 330))
-	assert.equal(tip.parentNode, home, 'a hidden popup must return to its rendered card')
+	trigger.rect = {left: 1140, right: 1190, top: 300, bottom: 320, width: 50, height: 20}
+	const leftDirection = vm.runInContext('ui.poptip.position(document.getElementById("tip-1"), window.testTrigger).direction', sandbox)
+	assert.equal(leftDirection, 'left', 'metadata popups should flip left near the viewport right edge')
+	assert.equal(tip.style.left, '848px')
+
+	trigger.listeners.mouseleave.call(trigger)
+	await new Promise(resolve => setTimeout(resolve, 250))
+	assert.equal(tip.style.display, 'block', 'the trigger should provide a 500 ms grace period')
+	tip.listeners.mouseenter()
+	await new Promise(resolve => setTimeout(resolve, 350))
+	assert.equal(tip.style.display, 'block', 'entering the popup should cancel pending dismissal')
+	tip.listeners.mouseleave()
+	await new Promise(resolve => setTimeout(resolve, 650))
+	assert.equal(tip.parentNode, home, 'leaving both trigger and popup should dismiss and restore it')
+
 	assert.deepEqual(home.children, [tip, sibling])
 	console.log('poptip UI tests passed')
 }

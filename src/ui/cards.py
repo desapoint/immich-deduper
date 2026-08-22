@@ -202,8 +202,9 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 				f'tags-{ass.autoId}',
 				"Tags",
 				htm.Ul([
-					htm.Li(tag.value, className="sim-card-poptip-item") for tag in ex.tags
-				], className="sim-card-poptip-list"),
+					htm.Li(tag.value, className="sim-card-poptip-item sim-card-poptip-tag") for tag in ex.tags
+				], className="sim-card-poptip-list sim-card-poptip-tag-list"),
+				"sim-card-poptip-content-tags",
 			) if ex and ex.tags else None,
 			gvEx.mkCardTip(
 				f'facs-{ass.autoId}',

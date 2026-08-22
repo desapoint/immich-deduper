@@ -38,6 +38,14 @@ function coverButton(autoId, groupId, ownerId) {
 }
 
 
+function actionButton(type, groupId, action = null) {
+	return {
+		id: JSON.stringify({type, ...(action ? {action} : {}), id: groupId}),
+		disabled: true,
+	}
+}
+
+
 async function main() {
 	const cards = [card(1, 1, true), card(2, 1, false), card(3, 2, false)]
 	const coverButtons = [coverButton(1, 1, 'owner-a'), coverButton(2, 1, 'owner-a')]
@@ -45,6 +53,9 @@ async function main() {
 	const sourceClasses = new Set()
 	let selectorScans = 0
 	let currentTask = null
+	const setPropsCalls = []
+	const groupStackButton = actionButton('sim-stack-group', 1)
+	const groupKeepButton = actionButton('sim-group-action', 1, 'keep-selected')
 	const sourceButton = {
 		attributes: {},
 		disabled: false,
@@ -53,7 +64,7 @@ async function main() {
 	}
 	const removeButton = {disabled: false, textContent: '', title: ''}
 	const keepButton = {disabled: false, textContent: '', title: ''}
-	const stackButton = {disabled: false}
+	const stackButton = {id: 'sim-btn-Stack', disabled: true}
 	const buttons = {
 		'sim-btn-SelectMns': sourceButton,
 		'sim-btn-RmSel': removeButton,
@@ -64,6 +75,9 @@ async function main() {
 		console,
 		setTimeout,
 		clearTimeout,
+		dash_clientside: {
+			set_props(id, props) { setPropsCalls.push({id, props}) },
+		},
 		dsh: {
 			getStore(id) { return id === 'store-tsk' ? currentTask : null },
 			syncSte(cnt, ids) { syncs.push([cnt, Array.from(ids)]) },
@@ -76,6 +90,8 @@ async function main() {
 				selectorScans++
 				if (selector === '.sim.main [id*="card-select"]') return [cards[0], cards[2]]
 				if (selector.includes('"type":"sim-stack-cover"')) return coverButtons
+				if (selector.includes('"type":"sim-stack-group"')) return [groupStackButton]
+				if (selector.includes('"type":"sim-group-action"')) return [groupKeepButton]
 				if (selector.startsWith('[id*="card-select"]')) return cards
 				return []
 			},
@@ -97,6 +113,18 @@ async function main() {
 
 	await ste.selectStackStatus(true, 1)
 	assert.deepEqual(Array.from(ste.selectedIds), [3, 1], 'group selection must preserve other groups')
+	assert.ok(
+		setPropsCalls.some(call => call.id === 'sim-btn-Stack' && call.props.disabled === false),
+		'enabling the global stack action must update its Dash component prop',
+	)
+	assert.ok(
+		setPropsCalls.some(call => call.id?.type === 'sim-stack-group' && call.id.id === 1 && call.props.disabled === false),
+		'enabling a group stack action must update its pattern-matching Dash component prop',
+	)
+	assert.ok(
+		setPropsCalls.some(call => call.id?.type === 'sim-group-action' && call.id.id === 1 && call.props.disabled === false),
+		'enabling another selection-dependent group action must update its Dash component prop',
+	)
 
 	await ste.selectStackStatus(false)
 	assert.deepEqual(Array.from(ste.selectedIds), [2, 3], 'global selection must replace the full selection')
