@@ -53,6 +53,15 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn('.sim-empty-state {', main)
 		self.assertIn('border: 1px dashed var(--ui-border-strong);', main)
 
+	def test_task_progress_and_toasts_stay_in_the_global_header_layer(self):
+		main = (ROOT / 'src/scss/main.scss').read_text()
+		base = (ROOT / 'src/scss/main.base.scss').read_text()
+		self.assertIn('.global-task-status {', main)
+		self.assertIn('&.running {', main)
+		self.assertIn('&.idle {', main)
+		self.assertIn('z-index: 1090;', main)
+		self.assertIn('@include bgNfy("success");', base)
+
 
 if __name__ == '__main__':
 	unittest.main()

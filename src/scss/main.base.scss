@@ -632,7 +632,7 @@ $notify-colors: (
 			@include bgNfy("warn");
 		}
 		&.success {
-			@include bgNfy("info");
+			@include bgNfy("success");
 		}
 
 		&.fade-out {

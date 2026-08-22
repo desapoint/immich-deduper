@@ -35,6 +35,8 @@ def renderHeader():
 				href="/", style={"textDecoration": "none"},
 			),
 
+			htm.Div(tsk.render(), className="global-task-status"),
+
 			dbc.NavbarToggler(id="navbar-toggler", n_clicks=0),
 
 			dbc.Collapse(
@@ -74,7 +76,6 @@ def renderBody(top, bottom, pageClass=None):
 	return htm.Div([
 
 		htm.Div([*top,], className=mainClass),
-		tsk.render(),
 		*bottom
 
 	], className="body")

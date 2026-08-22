@@ -1222,26 +1222,88 @@ textarea {
 
 .notify {
 	top: 4.6rem;
-	left: 1rem;
+	right: 1rem;
+	left: auto;
+	max-width: 32rem;
+	z-index: 1090;
+	align-items: flex-end;
 	gap: 0.55rem;
 
 	.box {
 		border-radius: var(--ui-radius);
 		box-shadow: var(--ui-shadow);
 		backdrop-filter: blur(12px);
+		padding: 0.7rem 0.85rem;
+		font-size: 0.86rem;
 	}
+}
+
+.global-task-status {
+	flex: 0 1 15rem;
+	min-width: 9rem;
+	margin-left: auto;
+	margin-right: 0.75rem;
 }
 
 .tskPanel {
 	border: 1px solid var(--ui-border-strong);
-	border-radius: var(--ui-radius-lg);
-	background: rgba(17, 29, 46, 0.96);
-	box-shadow: var(--ui-shadow);
+	border-radius: var(--ui-radius-sm);
+	background: var(--ui-surface);
+	box-shadow: none;
+	color: var(--ui-text-soft);
+	font-size: 0.75rem;
+	line-height: 1.1;
+	transition: border-color 0.18s ease, background-color 0.18s ease;
+
+	.task-status-dot {
+		flex: 0 0 auto;
+		width: 0.45rem;
+		height: 0.45rem;
+		border-radius: 50%;
+		background: var(--ui-text-muted);
+	}
+
+	.task-status-cancel {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.65rem;
+		height: 1.65rem;
+		padding: 0;
+		border-radius: var(--ui-radius-sm);
+		font-size: 0.8rem;
+	}
 
 	.progress {
+		height: 0.45rem;
 		border: 1px solid var(--ui-border);
 		background: var(--ui-bg);
+
+		.progress-bar {
+			font-size: 0;
+			transition: width 0.2s ease;
+		}
 	}
+
+	&.idle {
+		.task-status-cancel { visibility: hidden; }
+		.progress-bar { width: 0 !important; }
+	}
+
+	&.running {
+		border-color: color-mix(in srgb, var(--ui-accent) 55%, var(--ui-border));
+		background: var(--ui-surface-raised);
+
+		.task-status-dot {
+			background: var(--ui-accent);
+			animation: taskStatusPulse 1.4s ease-in-out infinite;
+		}
+	}
+}
+
+@keyframes taskStatusPulse {
+	0%, 100% { opacity: 0.45; }
+	50% { opacity: 1; }
 }
 
 .footer {
@@ -1289,9 +1351,20 @@ textarea {
 	}
 
 	.card .card-body { padding: 0.8rem; }
-	.notify { right: 0.7rem; left: 0.7rem; max-width: none; }
+	.notify { right: 0.7rem; left: 0.7rem; max-width: none; align-items: stretch; }
 	.notify .box { width: 100%; max-width: none; }
-	.tskPanel { width: calc(100vw - 1.4rem); padding: 0.85rem; }
+	.global-task-status {
+		flex-basis: 11rem;
+		min-width: 8rem;
+		margin-right: 0.45rem;
+	}
+
+	.tskPanel { padding: 0.3rem 0.4rem; }
+}
+
+@media (max-width: 480px) {
+	.navbar-brand { display: none; }
+	.global-task-status { flex-basis: 9.5rem; }
 }
 
 .txt {

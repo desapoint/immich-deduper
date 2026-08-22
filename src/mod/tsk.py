@@ -5,7 +5,6 @@ from util import log
 
 from . import models
 from .models import ITaskStore, IFnCall
-import db
 # type define
 
 
@@ -16,41 +15,81 @@ DEBUG = False
 
 lg = log.get(__name__)
 
+
+def _statusValue(status):
+    return status.value if hasattr(status, "value") else status
+
+
+def _messageText(message):
+    if message is None: return ""
+    if isinstance(message, str): return message.strip()
+    if isinstance(message, list):
+        return "\n".join(filter(None, (_messageText(item) for item in message))).strip()
+
+    if hasattr(message, "to_plotly_json"):
+        component = message.to_plotly_json()
+        if component.get("type") == "Br": return ""
+        return _messageText(component.get("props", {}).get("children"))
+
+    return str(message).strip()
+
+
+def _addCompletionNotification(sto, gws):
+    status = _statusValue(gws.ste)
+    taskMessages = sto.nfy.msgs[getattr(sto, "_nfyStart", len(sto.nfy.msgs)):]
+    message = gws.msg
+    taskName = sto.tsk.name or "Task"
+
+    if not message:
+        if status == models.TskStatus.FAILED.value: message = f"{taskName} failed"
+        elif status == models.TskStatus.CANCELLED.value: message = f"{taskName} cancelled"
+        else: message = f"{taskName} completed"
+
+    target = _messageText(message)
+    matchingMessage = any(_messageText(item.get("message")) == target for item in taskMessages)
+    hasTaskError = any(item.get("type") == "danger" for item in taskMessages)
+
+    if matchingMessage or (status == models.TskStatus.FAILED.value and hasTaskError): return
+
+    if status == models.TskStatus.FAILED.value: sto.nfy.error(message)
+    elif status == models.TskStatus.CANCELLED.value: sto.nfy.info(message)
+    else: sto.nfy.success(message)
+
 class k:
     div = 'task-ws-div'
     prg = 'task-ws-progress'
     txt = 'task-ws-txt'
     rst = 'task-ws-result'
-    btnClose = 'task-ws-btn-close'
-    btnFloat = 'task-float-btn'
     btnCancel = 'task-ws-btn-cancel'
 
 def render():
     return htm.Div([
-        dbc.Row([
-            dbc.Col(htm.P("", id=k.txt), width=6),
-            dbc.Col([
-                dbc.Button("Float", id=k.btnFloat, className="btn-primary btn-sm txt-sm", size="sm"),
-                dbc.Button("❎", id=k.btnClose, className="btn-outline-secondary btn-sm ms-2", size="sm", disabled=True),
-            ], className="text-end"),
-        ]),
-        dbc.Row([
-            dbc.Col([
-                dbc.Progress(id=k.prg, value=0, animated=True, striped=True, style={"height": "30px"}, label="0%")
-            ], width=12, className="mb-2"),
-        ]),
-
-        dbc.Row([
-            htm.Div(id=k.rst),
-            htm.Div([
-                dbc.Button("Test Ws", id="task-test-ws-btn", className="btn-success", size="sm", style={} if DEBUG else { "display":"none" }),
-                dbc.Button("Cancel", id=k.btnCancel, className="btn-warning", size="sm", disabled=True),
-            ], className="text-end"),
-        ], className="msgs"),
-
+        htm.Div([
+            htm.Span(className="task-status-dot", **{"aria-hidden": "true"}),
+            htm.Span("Idle", id=k.txt, className="task-status-text"),
+        ], className="task-status-summary"),
+        dbc.Button(
+            htm.I(className="bi bi-stop-circle"),
+            id=k.btnCancel,
+            className="task-status-cancel",
+            size="sm",
+            color="warning",
+            disabled=True,
+            title="Cancel running task",
+        ),
+        dbc.Progress(
+            id=k.prg,
+            value=0,
+            animated=True,
+            striped=True,
+            label="0%",
+            className="task-status-progress",
+        ),
+        htm.Div(id=k.rst, className="visually-hidden", **{"aria-live": "polite"}),
     ],
         id=k.div,
-        className=f"tskPanel hide {'fly' if db.dto.tskFloat else ''}"
+        className="tskPanel task-status idle",
+        **{"aria-live": "polite", "aria-label": "Task status"},
     )
 
 
@@ -58,68 +97,20 @@ def render():
 # callbacks
 #========================================================================
 @cbk(
-    out(k.div, "className", allow_duplicate=True),
-    inp(k.btnFloat, "n_clicks"),
-    ste(k.div, "className"),
-    prevent_initial_call=True
-)
-def tsk_onBtnFloat(_nclk, curCls): #type:ignore
-    db.dto.tskFloat = not db.dto.tskFloat
-    return "tskPanel fly" if db.dto.tskFloat else "tskPanel"
-
-
-#------------------------------------------------------------------------
-# tsk
-#------------------------------------------------------------------------
-@cbk(
     [
         out(k.div, "className", allow_duplicate=True),
         out(k.txt, "children"),
         out(k.btnCancel, "disabled", allow_duplicate=True),
-        out(k.btnClose, "disabled", allow_duplicate=True),
     ],
     inp(ks.sto.tsk, "data"),
-    ste(k.div, "className"),
     prevent_initial_call=True
 )
-def tsk_PanelStatus(dta_tsk, css):
+def tsk_PanelStatus(dta_tsk):
 
     tsk = models.Tsk.fromDic(dta_tsk)
-
-    hasTsk = tsk.name is not None
-
-
-    if hasTsk:
-        css = css.replace(" hide", "").strip()
-    else:
-        if "hide" not in css: css += " hide"
-
-    #lg.info( f'[tsk] hasTsk[{hasTsk}] name[{tsk.name}] css[{css}]' )
-
-    #style = style_show if tsk.name else style_none
-
-    # Enable cancel button if task is running, close button only when task completed
-    cancelDisabled = not (tsk.id and tsk.name)
-    closeDisabled = (tsk.id and tsk.name)  # Disable close when task is running
-
-    # lg.info(f"[tsk:panel] id[{tsk.id}] name[{tsk.name}] style[{style}] cancel_disabled[{cancelDisabled}] close_disabled[{closeDisabled}]")
-
-    return css, f"⌖ {tsk.name} ⌖", cancelDisabled, closeDisabled
-
-
-#------------------------------------------------------------------------
-@cbk(
-    out(ks.sto.tsk, "data", allow_duplicate=True),
-    inp(k.btnClose, "n_clicks"),
-    ste(ks.sto.tsk, "data"),
-    prevent_initial_call=True
-)
-def tsk_onBtnClose(_nclk, dta_tsk):
-    tsk = models.Tsk.fromDic(dta_tsk)
-    if tsk.id or tsk.name:
-        tsk.reset()
-        lg.info("[tsk] close and reset..")
-    return tsk.toDict()
+    isRunning = bool(tsk.id and tsk.name)
+    css = "tskPanel task-status running" if isRunning else "tskPanel task-status idle"
+    return css, tsk.name if isRunning else "Idle", not isRunning
 
 
 #------------------------------------------------------------------------
@@ -277,7 +268,7 @@ def tsk_UpdUI(gwsmsg, dta_tsk, rstChs):
                 return prog, f"{prog}%", msgs
 
         elif typ == 'complete':
-            ste = gws.ste
+            ste = _statusValue(gws.ste)
             msg = gws.msg
 
             if isinstance(msg, list):
@@ -362,6 +353,8 @@ def tsk_OnData(wmsg, dta_tsk):
             from .mgr import tskSvc
             sto = tskSvc.getResultBy(gws.tsn)
 
+            _addCompletionNotification(sto, gws)
+
             dicCnt, dicNfy, dicNow, dicTsk, dicSte = noUpd.by(5)
 
             # every task refresh cnt
@@ -379,10 +372,9 @@ def tsk_OnData(wmsg, dta_tsk):
 
                 dicTsk = ntsk.toDict()
             else:
-                # clear id & cmd but keep name
-                # name only display, but id & cmd will trigger new task
-                tsk.id = None
-                tsk.cmd = None
+                # Completion is reported through notifications; return the
+                # persistent header status to its compact idle state.
+                tsk.reset()
                 dicTsk = tsk.toDict()
 
             return dicCnt, dicNfy, dicNow, dicTsk, dicSte
@@ -395,32 +387,28 @@ def tsk_OnData(wmsg, dta_tsk):
 
 #------------------------------------------------------------------------
 @cbk(
-    [
-        out(k.btnClose, "disabled"),
-        out(k.btnCancel, "disabled"),
-    ],
+    out(k.btnCancel, "disabled"),
     inp(ks.glo.gws, "data"),
     ste(ks.sto.tsk, "data"),
     prevent_initial_call=True
 )
 def tsk_OnStatus(wmsg, dta_tsk):
-    if not wmsg: return noUpd.by(2)
+    if not wmsg: return noUpd
 
     try:
         # Direct message string from custom WebSocket
         data = json.loads(wmsg) if isinstance(wmsg, str) else wmsg
         if not data: raise RuntimeError( "[tsk] no data" )
-        msgType = data.get('type')
-        tsk = models.Tsk.fromDic(dta_tsk)
+        msgType = data.get('typ') or data.get('type')
 
         if msgType == 'start':
-            return True, False  # Disable close, enable cancel
+            return False
         elif msgType == 'complete':
-            return False, True  # Enable close, disable cancel
+            return True
     except Exception as e:
-        lg.error(f"[tws:status] Error in OnStatusEnableBtnClose: {e}")
+        lg.error(f"[tws:status] Error updating task status: {e}")
 
-    return noUpd.by(2)
+    return noUpd
 
 
 #------------------------------------------------------------------------

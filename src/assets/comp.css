@@ -429,19 +429,13 @@ button { text-decoration: none; }
 @media (max-width: 900px) { .gv .sim-group-header { grid-template-columns: 1fr; } .gv .sim-group-title { grid-row: auto; } .gv .sim-group-title, .gv .sim-controls { width: 100%; } .gv .sim-group-actions { justify-self: stretch; } }
 
 /*======================== task ========================*/
-.tskPanel { flex: inherit !important; width: 80vw; margin: 15px auto 15px auto; padding: 10px 30px 10px 30px; border-radius: 16px; border: 2px solid #4acdff99; box-shadow: 0 0 6px rgba(255, 255, 255, 0.5); background: #2d4a69; background: #264a69; }
+.tskPanel { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.3rem 0.45rem; width: 100%; min-width: 0; margin: 0; padding: 0.35rem 0.45rem; }
 
-.tskPanel .progress { border: #999999 1px solid; }
+.tskPanel .task-status-summary { display: flex; align-items: center; gap: 0.4rem; min-width: 0; }
 
-.tskPanel.fly { position: fixed; top: 33vw; left: 10px; margin: 0; width: 48vw; z-index: 1050; box-shadow: 0 0 10px 3px #ffffff55; animation: slideIn 0.3s ease-out; }
+.tskPanel .task-status-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.tskPanel button:not(:last-child) { margin-right: auto; }
-
-.tskPanel > .msgs { font-size: 15px; display: flex; justify-content: space-between; }
-
-.tskPanel > .msgs > * { width: inherit; }
-
-.tskPanel > .msgs div:last-child { margin-left: auto; }
+.tskPanel .task-status-progress { grid-column: 1 / -1; margin: 0; }
 
 @keyframes slideIn { from { transform: translateX(100%);
     opacity: 0; }
