@@ -124,7 +124,7 @@ const Ste = window.Ste = {
 		return dsh.syncSte( this.cntTotal, this.selectedIds, this.stackCoverIds )
 	},
 
-	dispatchAction( button )
+	dispatchAction( button, storeId = 'sim-action-trigger' )
 	{
 		if ( !button?.id || button.disabled ) return false
 		let actionId = button.id
@@ -136,7 +136,7 @@ const Ste = window.Ste = {
 			}
 		}
 		this._actionNonce++
-		return dsh.syncStore( 'sim-action-trigger', {id: actionId, nonce: this._actionNonce} )
+		return dsh.syncStore( storeId, {id: actionId, nonce: this._actionNonce} )
 	},
 
 	init( cnt )
@@ -534,6 +534,8 @@ document.addEventListener( 'DOMContentLoaded', function(){
 			+ '[id*=\'"type":"sim-stack-group"\'], [id*=\'"type":"sim-group-action"\']'
 		)
 		if ( actionButton && ste ) ste.dispatchAction( actionButton )
+		const viewDeleteButton = event.target.closest?.( '[id*=\'"type":"asset-del"\']' )
+		if ( viewDeleteButton && ste ) ste.dispatchAction( viewDeleteButton, 'view-action-trigger' )
 		const coverButton = event.target.closest?.( '[id*=\'"type":"sim-stack-cover"\']' )
 		if ( coverButton )
 		{

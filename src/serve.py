@@ -262,6 +262,16 @@ def regBy(app):
 			lg.error(f"[api] saveImagePreviewSettings Failed: {str(e)}")
 			return jsonify({'error': str(e)}), 500
 
+	@app.server.route('/api/settings/grid-info', methods=['POST'])
+	def saveGridInfoSetting():
+		try:
+			data = request.get_json(silent=True) or {}
+			db.dto.showGridInfo = bool(data.get('show', False))
+			return jsonify({'ok': True})
+		except Exception as e:
+			lg.error(f"[api] saveGridInfoSetting Failed: {str(e)}")
+			return jsonify({'error': str(e)}), 500
+
 	#----------------------------------------------------------------
 	# System Check endpoint
 	#----------------------------------------------------------------

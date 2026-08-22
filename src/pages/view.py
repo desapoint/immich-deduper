@@ -2,7 +2,7 @@ import db
 from db import psql
 import json
 from conf import ks
-from dsh import dash, htm, dcc, cbk, ccbk, cbkFn, dbc, inp, out, ste, getTrgId, noUpd, ALL
+from dsh import dash, htm, dcc, cbk, dbc, inp, out, ste, getTrgId, TrgId, noUpd
 from mod import models
 from mod.models import Pager
 from ui import pager, gv
@@ -32,6 +32,7 @@ class k:
 	pagerMain = "vg-pager-main"
 
 	initView = "view-init"
+	actionTrigger = "view-action-trigger"
 
 
 optFileters = [
@@ -158,6 +159,7 @@ def layout():
 
 		# Init store
 		dcc.Store(id=k.initView),
+		dcc.Store(id=k.actionTrigger, storage_type="memory"),
 
 		#====== bottom end ======================================================
 	], pageClass="page-view")
@@ -198,11 +200,12 @@ def vw_Init(dta_init):
 		inp(k.schPath, "value"),
 		inp(k.cbxArc, "value"),
 		inp(k.cbxLive, "value"),
+		inp(ks.sto.cnt, "data"),
 	],
 	ste(pager.id.store(k.pagerMain), "data"),
 	prevent_initial_call=True
 )
-def vw_OnOptChg(usrId, opts, cbxFav, schKey, schPath, cbxArc, cbxLive, dta_pgr):
+def vw_OnOptChg(usrId, opts, cbxFav, schKey, schPath, cbxArc, cbxLive, dta_cnt, dta_pgr):
 	pgr = Pager.fromDic(dta_pgr)
 
 	# Update total count based on filters
@@ -216,8 +219,13 @@ def vw_OnOptChg(usrId, opts, cbxFav, schKey, schPath, cbxArc, cbxLive, dta_pgr):
 		liveOnly=cbxLive
 	)
 
-	# Reset to page 1 when filter changes
-	pgr.idx = 1
+	# Preserve the current page when the indexed library changes; explicit
+	# filter changes start from the first page.
+	if getTrgId() == ks.sto.cnt:
+		totalPages = max(1, (total + pgr.size - 1) // pgr.size)
+		pgr.idx = min(max(1, pgr.idx), totalPages)
+	else:
+		pgr.idx = 1
 	pgr.cnt = total
 
 	lg.info(f"[vw] Filter changed, total: {total}")
@@ -230,22 +238,20 @@ def vw_OnOptChg(usrId, opts, cbxFav, schKey, schPath, cbxArc, cbxLive, dta_pgr):
 #========================================================================
 @cbk(
 	out(k.grid, "children"),
+	inp(pager.id.store(k.pagerMain), "data"),
 	[
-		inp(pager.id.store(k.pagerMain), "data"),
-		inp(k.selUsrId, "value"),
-		inp(k.selFilter, "value"),
-		inp(k.schKeyword, "value"),
-		inp(k.schPath, "value"),
-		inp(k.cbxFav, "value"),
-		inp(k.cbxArc, "value"),
-		inp(k.cbxLive, "value"),
-		inp(k.cbxGridInfo, "value"),
-		inp(ks.sto.cnt, "data"),
+		ste(k.selUsrId, "value"),
+		ste(k.selFilter, "value"),
+		ste(k.schKeyword, "value"),
+		ste(k.schPath, "value"),
+		ste(k.cbxFav, "value"),
+		ste(k.cbxArc, "value"),
+		ste(k.cbxLive, "value"),
+		ste(ks.sto.cnt, "data"),
 	],
 	prevent_initial_call="initial_duplicate"
 )
-def vw_Load(dta_pgr, usrId, filOpt, shKey, shPath, onlyFav, onlyArc, onlyLive, showGridInfo, dta_cnt):
-	db.dto.showGridInfo = showGridInfo
+def vw_Load(dta_pgr, usrId, filOpt, shKey, shPath, onlyFav, onlyArc, onlyLive, dta_cnt):
 	if not dta_pgr: return noUpd
 
 	cnt = models.Cnt.fromDic(dta_cnt)
@@ -269,17 +275,17 @@ def vw_Load(dta_pgr, usrId, filOpt, shKey, shPath, onlyFav, onlyArc, onlyLive, s
 #========================================================================
 @cbk(
 	out(ks.sto.mdl, 'data', allow_duplicate=True),
-	inp({"type": "asset-del", "aid": ALL}, "n_clicks"),
+	inp(k.actionTrigger, "data"),
 	ste(ks.sto.tsk, 'data'),
 	prevent_initial_call=True
 )
-def vw_OnDel(clks, dta_tsk):
-	if not clks or not any(clks): return noUpd
+def vw_OnDel(actionTrigger, dta_tsk):
+	if not actionTrigger or not actionTrigger.get('id'): return noUpd
 
 	tsk = models.Tsk.fromDic(dta_tsk)
 
 	if tsk.id: return noUpd
-	src = getTrgId()
+	src = TrgId(actionTrigger['id'])
 	aid = src.get('aid')
 
 	lg.info(f'aid: {aid}')
@@ -337,11 +343,3 @@ def onAssetDel(doReport: IFnProg, sto: models.ITaskStore):
 # Set up global functions
 #========================================================================
 mapFns[ks.cmd.view.assDel] = onAssetDel
-
-
-ccbk(
-	cbkFn("ui", "toggleGridInfo"),
-	out({"type": "dummy", "id": "grid-info-view"}, "children"),
-	inp(k.cbxGridInfo, "value"),
-	prevent_initial_call=False
-)

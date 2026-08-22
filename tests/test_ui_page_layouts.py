@@ -12,6 +12,7 @@ import dash
 dash.Dash(__name__, use_pages=True, pages_folder='')
 
 from pages import fetch, not_found_404, settings, vector, view
+from mod import models
 from ui import cardSets, pager
 
 
@@ -125,6 +126,32 @@ class TestPageLayouts(unittest.TestCase):
 		path = next(node for node in nodes if props(node).get('id') == view.k.schPath)
 		self.assertTrue(props(filename).get('debounce'))
 		self.assertTrue(props(path).get('debounce'))
+
+	def test_view_filter_transition_updates_pager_before_loading_grid(self):
+		pagerData = models.Pager(idx=3, size=25, cnt=100).toDict()
+		with (
+			patch.object(view.db.pics, 'countFiltered', return_value=12),
+			patch.object(view, 'getTrgId', return_value=view.k.schKeyword),
+		):
+			filtered = models.Pager.fromDic(view.vw_OnOptChg('', 'all', False, 'cat', '', False, False, {}, pagerData))
+		self.assertEqual(filtered.idx, 1)
+		self.assertEqual(filtered.cnt, 12)
+
+		with (
+			patch.object(view.db.pics, 'countFiltered', return_value=60),
+			patch.object(view, 'getTrgId', return_value=view.ks.sto.cnt),
+		):
+			refreshed = models.Pager.fromDic(view.vw_OnOptChg('', 'all', False, '', '', False, False, {}, pagerData))
+		self.assertEqual(refreshed.idx, 3)
+		self.assertEqual(refreshed.cnt, 60)
+
+	def test_view_delete_uses_compact_action_descriptor(self):
+		result = view.vw_OnDel(
+			{'id': {'type': 'asset-del', 'aid': 42}, 'nonce': 1},
+			models.Tsk().toDict(),
+		)
+		modal = models.Mdl.fromDic(result)
+		self.assertEqual(modal.args['aid'], 42)
 
 	def test_not_found_page_reassures_and_offers_recovery_paths(self):
 		nodes = list(walk(not_found_404.layout()))

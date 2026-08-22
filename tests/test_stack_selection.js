@@ -198,6 +198,9 @@ async function main() {
 	assert.equal(actionSyncs.at(-1).data.id.type, 'sim-stack-group')
 	assert.equal(actionSyncs.at(-1).data.id.id, 1)
 	assert.ok(actionSyncs.at(-1).data.nonce > actionSyncs.at(-2).data.nonce)
+	assert.equal(ste.dispatchAction({id: JSON.stringify({type: 'asset-del', aid: 2})}, 'view-action-trigger'), true)
+	assert.equal(actionSyncs.at(-1).id, 'view-action-trigger')
+	assert.equal(actionSyncs.at(-1).data.id.aid, 2)
 }
 
 

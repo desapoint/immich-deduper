@@ -338,6 +338,23 @@ window.dash_clientside.ui = {
 	}
 }
 
+document.addEventListener('change', event => {
+	const control = event.target.closest?.('#inp-grid-info')
+	if (!control) return
+	const input = event.target.matches?.('input[type="checkbox"]')
+		? event.target
+		: control.querySelector('input[type="checkbox"]')
+	if (!input) return
+
+	window.dash_clientside.ui.toggleGridInfo(!!input.checked)
+	fetch('/api/settings/grid-info', {
+		method: 'POST',
+		headers: {'Content-Type': 'application/json'},
+		body: JSON.stringify({show: !!input.checked}),
+		keepalive: true,
+	}).catch(error => console.error('[view] Failed to save grid detail preference:', error))
+})
+
 //========================================================================
 // showGridInfo toggle
 //========================================================================
