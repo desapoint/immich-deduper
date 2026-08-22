@@ -29,6 +29,7 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 	stackColor = f"hsl({stackHue}, 70%, 45%)" if stackId else None
 	stackLabel = f"Stack {stackId[:8]}" if stackId else None
 	stackCardStyle = {"--sim-stack-color": stackColor} if stackColor else None
+	ownerName = db.psql.getUsrName(ass.ownerId)
 
 	imgW = exi.exifImageWidth
 	imgH = exi.exifImageHeight
@@ -39,7 +40,7 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 	canFnd = ass.simOk == 0
 	hasVec = ass.isVectored == 1
 
-	css = f"h-100 sim {cssIds} {'' if modSim else 'view'}"
+	css = f"h-100 sim {cssIds} {'sim-card-five-zone' if modSim else 'view'}"
 	if isMain: css += " main"
 	if isRels: css += " rels"
 	if stackId: css += " has-stack"
@@ -47,6 +48,50 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 	tipExif = gvEx.mkTipExif(ass.autoId, ass.jsonExif)
 
 	imgPopId = {"type": "img-pop-multi", "aid": ass.autoId} if modSim else {"type": "img-pop", "aid": ass.autoId}
+
+	mediaStage = htm.Div([
+		htm.Div([
+			htm.Video(
+				src=f"/api/livephoto/{ass.autoId}", loop=True, muted=True, preload="metadata",
+				id=imgPopId,
+				className="livephoto",
+			) if isLive else None,
+			htm.Img(
+				src=imgSrc,
+				id=imgPopId,
+				className="card-img"
+			),
+		], className='view sim-card-media-frame' if modSim else 'view'),
+
+		*([
+			htm.Div(
+				htm.Span([htm.I(className='bi bi-camera-video-fill'), "Live Photo"], className="tag blue livePhoto"),
+				className="sim-card-media-badges",
+			) if isLive else None,
+			htm.Div([
+				htm.Span(f"{co.fmt.size(ass.jsonExif.fileSizeInByte)}", className="tag") if ass.jsonExif and ass.jsonExif.fileSizeInByte else None,
+				htm.Span(f"{imgW} × {imgH}", className="tag lg") if imgW and imgH else None,
+			], className="sim-card-media-facts"),
+		] if modSim else [
+			htm.Div([
+				htm.Span(f"#{ass.autoId}", className="tag"),
+				htm.Span(f"SimOK!", className="tag info") if ass.simOk else None,
+			], className="LT"),
+			htm.Div([
+				htm.Span(f"LivePhoto", className="tag blue livePhoto") if isLive else None,
+				htm.Span([htm.I(className='bi bi-images'), f'{len(ex.albs)}'], className='tag', **{'data-tip-id': f'albs-{ass.autoId}'}) if ex else None, #type: ignore
+				htm.Span([htm.I(className='bi bi-bookmark-check-fill'), f'{len(ex.tags)}'], className='tag', **{'data-tip-id': f'tags-{ass.autoId}'}) if ex else None, #type: ignore
+				htm.Span([htm.I(className='bi bi-person-bounding-box'), f'{len(ex.facs)}'], className='tag', **{'data-tip-id': f'facs-{ass.autoId}'}) if ex else None, #type: ignore
+			], className="RT"),
+			htm.Div([
+				htm.Span([htm.I(className='bi bi-person-circle'), ownerName], className='tag'),
+			], className="LB"),
+			htm.Div([
+				htm.Span(f"{co.fmt.size(ass.jsonExif.fileSizeInByte)}", className="tag") if ass.jsonExif else None,
+				htm.Span(f"{imgW} x {imgH}", className="tag lg"),
+			], className="RB"),
+		]),
+	], className="viewer sim-card-media" if modSim else "viewer")
 
 	return htm.Div([
 		#------------------------------------------------------------------------
@@ -146,58 +191,11 @@ def mk(ass: models.Asset, modSim=True, stackGroupId=None):
 					),
 				], className="sim-card-header-secondary"),
 			],
-				className="p-2 sim-card-header"
+				className="p-2 sim-card-header sim-card-decision"
 			) if modSim else None,
 
 			#------------------------------------------------------------------------
-			htm.Div([
-				htm.Div([
-					htm.Video(
-						src=f"/api/livephoto/{ass.autoId}", loop=True, muted=True, preload="metadata",
-						id=imgPopId,
-						className="livephoto",
-					) if isLive else None,
-					htm.Img(
-						src=imgSrc,
-						id=imgPopId,
-						className=f"card-img"
-					),
-				], className='view'),
-
-				htm.Div([
-					htm.Span(f"#{ass.autoId}", className="tag"),
-					htm.Span(f"SimOK!", className="tag info") if ass.simOk else None,
-				], className="LT"),
-				htm.Div([
-					htm.Span(f"LivePhoto", className="tag blue livePhoto") if isLive else None,
-					htm.Span([
-						htm.I(className='bi bi-images'),
-						f'{len(ex.albs)}',
-					], className='tag', **{'data-tip-id': f'albs-{ass.autoId}'}) if ex else None, #type: ignore
-
-					htm.Span([
-						htm.I(className='bi bi-bookmark-check-fill'),
-						f'{len(ex.tags)}'
-					], className='tag', **{'data-tip-id': f'tags-{ass.autoId}'}) if ex else None, #type: ignore
-
-					htm.Span([
-						htm.I(className='bi bi-person-bounding-box'),
-						f'{len(ex.facs)}'
-					], className='tag', **{'data-tip-id': f'facs-{ass.autoId}'}) if ex else None, #type: ignore
-				], className="RT"),
-				htm.Div([
-					htm.Span([
-						htm.I(className='bi bi-person-circle'),
-						f'{db.psql.getUsrName(ass.ownerId)}'
-					], className='tag'),
-					# htm.Span(f" {}", className="tag"),
-				], className="LB"),
-				htm.Div([
-
-					htm.Span(f"{co.fmt.size(ass.jsonExif.fileSizeInByte)}", className="tag") if ass.jsonExif else None,
-					htm.Span(f"{imgW} x {imgH}", className="tag lg"),
-				], className="RB")
-			], className="viewer"),
+			mediaStage,
 			dbc.CardBody([
 				dbc.Row([
 					htm.Span("immich id"),htm.Span(f"{ass.id}",className="tag"),

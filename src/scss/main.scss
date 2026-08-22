@@ -2735,6 +2735,39 @@ select.form-select {
 				color: var(--ui-text);
 				box-shadow: none;
 			}
+
+			&.sim-card-media {
+				position: relative;
+				border-bottom: 1px solid var(--ui-border);
+				background: #050b14;
+
+				.sim-card-media-frame {
+					position: relative;
+					width: 100%;
+					height: auto;
+					aspect-ratio: 4 / 3;
+
+					img,
+					video {
+						inset: 0;
+						height: 100%;
+					}
+				}
+
+				.sim-card-media-badges,
+				.sim-card-media-facts {
+					position: absolute;
+					z-index: 3;
+					bottom: 0.5rem;
+					display: flex;
+					align-items: center;
+					gap: 0.25rem;
+					pointer-events: none;
+				}
+
+				.sim-card-media-badges { left: 0.5rem; }
+				.sim-card-media-facts { right: 0.5rem; justify-content: flex-end; }
+			}
 		}
 
 		span.tag:not(.no),

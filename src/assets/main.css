@@ -1211,6 +1211,18 @@ select.form-select { appearance: none; padding-right: 2rem !important; backgroun
 
 .similar-workspace .card.sim .viewer .tag { border-color: rgba(174, 185, 200, 0.34); background: rgba(8, 17, 31, 0.88); color: var(--ui-text); box-shadow: none; }
 
+.similar-workspace .card.sim .viewer.sim-card-media { position: relative; border-bottom: 1px solid var(--ui-border); background: #050b14; }
+
+.similar-workspace .card.sim .viewer.sim-card-media .sim-card-media-frame { position: relative; width: 100%; height: auto; aspect-ratio: 4/3; }
+
+.similar-workspace .card.sim .viewer.sim-card-media .sim-card-media-frame img, .similar-workspace .card.sim .viewer.sim-card-media .sim-card-media-frame video { inset: 0; height: 100%; }
+
+.similar-workspace .card.sim .viewer.sim-card-media .sim-card-media-badges, .similar-workspace .card.sim .viewer.sim-card-media .sim-card-media-facts { position: absolute; z-index: 3; bottom: 0.5rem; display: flex; align-items: center; gap: 0.25rem; pointer-events: none; }
+
+.similar-workspace .card.sim .viewer.sim-card-media .sim-card-media-badges { left: 0.5rem; }
+
+.similar-workspace .card.sim .viewer.sim-card-media .sim-card-media-facts { right: 0.5rem; justify-content: flex-end; }
+
 .similar-workspace .card.sim span.tag:not(.no), .similar-workspace .card.sim .sim-source-label { transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease; }
 
 .similar-workspace .card.sim span.tag:not(.no) { cursor: copy; }

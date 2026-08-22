@@ -110,6 +110,14 @@ class TestGlobalUiFoundation(unittest.TestCase):
 		self.assertIn("document.querySelectorAll('span[data-tip-id]')", appui)
 		self.assertNotIn("this.style.opacity = '0.6'", appui)
 
+	def test_similar_card_media_uses_a_consistent_comparison_stage(self):
+		main = (ROOT / 'src/scss/main.scss').read_text()
+		self.assertIn('&.sim-card-media {', main)
+		self.assertIn('.sim-card-media-frame {', main)
+		self.assertIn('aspect-ratio: 4 / 3;', main)
+		self.assertIn('.sim-card-media-badges,', main)
+		self.assertIn('.sim-card-media-facts {', main)
+
 	def test_similar_review_tabs_match_shared_controls(self):
 		main = (ROOT / 'src/scss/main.scss').read_text()
 		self.assertIn('.similar-workspace {', main)

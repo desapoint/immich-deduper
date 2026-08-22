@@ -123,6 +123,35 @@ class TestSimilarUiLayout(unittest.TestCase):
 		self.assertEqual(props(videos[0]).get('preload'), 'metadata')
 		self.assertFalse(props(videos[0]).get('autoPlay', False))
 
+	def test_similar_card_has_stable_decision_and_media_zones(self):
+		item = asset(1, 7, source=True, stackId='stack-a', primary=True, live=True)
+		item.jsonExif.fileSizeInByte = 4096
+		item.ex.albs = [models.Album(albumName='Review')]
+		item.ex.tags = [models.Tags(value='duplicate')]
+		item.ex.facs = [models.AssetFace(name='Person')]
+
+		with patch('ui.cards.db.psql.getUsrName', return_value='Owner'):
+			card = gv.cards.mk(item, stackGroupId=7)
+
+		nodes = list(walk(card))
+		rootCard = next(node for node in nodes if 'sim-card-five-zone' in str(props(node).get('className', '')))
+		decision = next(node for node in nodes if 'sim-card-decision' in str(props(node).get('className', '')))
+		selection = next(node for node in nodes if props(node).get('id') == {'type': 'card-select', 'id': 1})
+		cover = next(node for node in nodes if props(node).get('id') == {'type': gv.STACK_COVER_BUTTON, 'id': 1, 'group': 7, 'owner': 'owner-a'})
+		media = next(node for node in nodes if props(node).get('className') == 'viewer sim-card-media')
+		mediaNodes = list(walk(media))
+
+		self.assertIn('has-stack', props(rootCard).get('className', ''))
+		self.assertIn('sim-card-header', props(decision).get('className', ''))
+		self.assertEqual(props(selection).get('data-group-id'), '7')
+		self.assertEqual(props(selection).get('data-stack-id'), 'stack-a')
+		self.assertEqual(props(cover).get('children'), 'Set cover')
+		self.assertTrue(any(props(node).get('className') == 'view sim-card-media-frame' for node in mediaNodes))
+		self.assertTrue(any(props(node).get('className') == 'sim-card-media-badges' for node in mediaNodes))
+		self.assertTrue(any(props(node).get('className') == 'sim-card-media-facts' for node in mediaNodes))
+		self.assertFalse(any(props(node).get('className') in {'LT', 'RT', 'LB', 'RB'} for node in mediaNodes))
+		self.assertFalse(any(props(node).get('data-tip-id') for node in mediaNodes))
+
 
 if __name__ == '__main__':
 	unittest.main()
