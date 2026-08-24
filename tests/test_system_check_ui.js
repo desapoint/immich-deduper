@@ -44,9 +44,14 @@ const statusCard = {
 
 let currentCard = null
 let observerCallback = null
+let observerDisconnects = 0
 const sandbox = {
 	console,
-	window: {dash_clientside: {}},
+	window: {
+		dash_clientside: {},
+		location: {pathname: '/', href: 'http://localhost/', origin: 'http://localhost'},
+		addEventListener() {},
+	},
 	document: {
 		body: {},
 		addEventListener() {},
@@ -57,6 +62,7 @@ const sandbox = {
 	MutationObserver: class {
 		constructor(callback) { observerCallback = callback }
 		observe() {}
+		disconnect() { observerDisconnects++ }
 	},
 	React: {createElement() {}},
 	setTimeout,
@@ -85,5 +91,11 @@ assert.equal(pathItem.attributes['data-check-status'], 'invalid')
 assert.equal(pathItem.attributes['data-tooltip'], 'not mounted')
 assert.equal(pathItem.classList.contains('is-invalid'), true)
 assert.equal(pathItem.icon.className, 'bi bi-folder2-open', 'an invalid check must retain its service icon')
+assert.equal(observerDisconnects, 1, 'the temporary observer must stop after Settings is reconciled')
+
+currentCard = null
+sandbox.window.location.pathname = '/similar'
+vm.runInContext(`syncSystemCheckResults([{key: 'data', ok: true, msg: ['accessible']}])`, sandbox)
+assert.equal(observerDisconnects, 1, 'system checks must not leave an observer active outside Settings')
 
 console.log('system check UI tests passed')

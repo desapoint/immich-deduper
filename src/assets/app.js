@@ -112,6 +112,7 @@ const dsh = {
 
 let latestSystemChecks = null
 let systemCheckObserver = null
+let systemCheckObserverTimeout = null
 
 function applySystemCheckResults(sc, data){
 	if (!sc || !Array.isArray(data)) return
@@ -158,14 +159,35 @@ function applySystemCheckResults(sc, data){
 
 function syncSystemCheckResults(data){
 	latestSystemChecks = data
+	watchSystemCheckResults()
+}
+
+function stopSystemCheckObserver(){
+	if (systemCheckObserver) systemCheckObserver.disconnect()
+	systemCheckObserver = null
+	if (systemCheckObserverTimeout) clearTimeout(systemCheckObserverTimeout)
+	systemCheckObserverTimeout = null
+}
+
+function watchSystemCheckResults(){
+	if (!Array.isArray(latestSystemChecks)) return
+	if (window.location?.pathname !== '/') {
+		stopSystemCheckObserver()
+		return
+	}
+
 	const applyCurrent = () =>{
 		const sc = document.querySelector('.card-system-cfgs')
 		if (sc && sc._systemChecks !== latestSystemChecks) applySystemCheckResults(sc, latestSystemChecks)
+		if (sc?._systemChecks === latestSystemChecks) {
+			stopSystemCheckObserver()
+			return true
+		}
+		return false
 	}
 	const applyAdded = mutations =>{
 		if (!mutations) {
-			applyCurrent()
-			return
+			return applyCurrent()
 		}
 
 		const cards = new Set()
@@ -179,12 +201,14 @@ function syncSystemCheckResults(data){
 		cards.forEach(card => {
 			if (card._systemChecks !== latestSystemChecks) applySystemCheckResults(card, latestSystemChecks)
 		})
+		if (Array.from(cards).some(card => card._systemChecks === latestSystemChecks)) stopSystemCheckObserver()
 	}
 
-	applyCurrent()
+	if (applyCurrent()) return
 	if (!systemCheckObserver) {
 		systemCheckObserver = new MutationObserver(applyAdded)
 		systemCheckObserver.observe(document.body, {childList: true, subtree: true})
+		systemCheckObserverTimeout = setTimeout(stopSystemCheckObserver, 5000)
 	}
 }
 
@@ -255,6 +279,18 @@ function onFetchedChk(loading, data){
 }
 
 document.addEventListener('DOMContentLoaded', function(){
+	document.addEventListener('click', event =>{
+		const link = event.target.closest?.('a[href]')
+		if (!link) return
+		try {
+			const target = new URL(link.href, window.location.href)
+			if (target.origin === window.location.origin && target.pathname === '/') {
+				setTimeout(watchSystemCheckResults, 0)
+			}
+		}
+		catch (error) {}
+	})
+	window.addEventListener('popstate', () => setTimeout(watchSystemCheckResults, 0))
 
 	ui.mob.waitFor('#div-notify', cbx =>{
 
