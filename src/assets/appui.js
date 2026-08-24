@@ -361,18 +361,3 @@ document.addEventListener('change', event => {
 		keepalive: true,
 	}).catch(error => console.error('[view] Failed to save grid detail preference:', error))
 })
-
-//========================================================================
-// showGridInfo toggle
-//========================================================================
-ui.mob.waitFor('#sets-showGridInfo', cbx =>{
-	const inp = cbx.querySelector('input[type="checkbox"]')
-	if (!inp) return
-
-	if (inp.checked) document.body.classList.add('show-grid-info')
-
-	inp.addEventListener('change', () =>{
-		document.body.classList.toggle('show-grid-info', inp.checked)
-		document.querySelectorAll('.sim-card-details').forEach(details => { details.open = inp.checked })
-	})
-})

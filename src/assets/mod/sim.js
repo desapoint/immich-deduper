@@ -857,50 +857,50 @@ window.exportIdsToCSV = function exportIdsToCSV(){
 //------------------------------------------------------------------------
 // Goto Top Button
 //------------------------------------------------------------------------
-function initBtnTop(btn){
+const SimGotoTop = window.SimGotoTop = {
+	_frame: null,
 
-	function toggleGotoTopBtn(){
+	update(){
+		const btn = document.getElementById('sim-goto-top-btn')
+		if (!btn) return
 		const currentTab = document.querySelector('.nav-tabs .nav-link.active')
 		const isCurrentTab = currentTab && currentTab.textContent.trim().toLowerCase().startsWith('current')
-		const scrollY = window.scrollY
+		btn.classList.toggle('show', !!isCurrentTab && window.scrollY > 200)
+	},
 
-		// console.log('[GotoTop] Toggle check - isCurrentTab:', isCurrentTab, 'scrollY:', scrollY)
-
-		if (isCurrentTab && scrollY > 200) {
-			btn.classList.add('show')
+	schedule(){
+		if (this._frame != null) return
+		const update = () =>{
+			this._frame = null
+			this.update()
 		}
-		else {
-			btn.classList.remove('show')
-		}
-	}
+		this._frame = typeof requestAnimationFrame === 'function'
+			? requestAnimationFrame(update)
+			: setTimeout(update, 0)
+	},
 
-	function scrollToTop(){
+	scrollToTop(){
 		const dst = document.querySelector('#sim-btn-fnd')
 
-		if (dst) {
-			dst.scrollIntoView({behavior: 'smooth', block: 'start'})
-		}
-		else {
-			// console.warn('[GotoTop] Tab acts element not found, scrolling to top')
-			window.scrollTo({top: 0, behavior: 'smooth'})
-		}
-	}
+		if (dst) dst.scrollIntoView({behavior: 'smooth', block: 'start'})
+		else window.scrollTo({top: 0, behavior: 'smooth'})
+	},
 
-	window.addEventListener('scroll', toggleGotoTopBtn)
-	btn.addEventListener('click', scrollToTop)
-
-	document.addEventListener('click', function(e){if (e.target && e.target.matches('.nav-link')) setTimeout(toggleGotoTopBtn, 100)})
-
-	toggleGotoTopBtn()
+	init(){
+		window.addEventListener('scroll', () => this.schedule(), {passive: true})
+		document.addEventListener('click', event =>{
+			if (event.target.closest?.('#sim-goto-top-btn')) {
+				this.scrollToTop()
+				return
+			}
+			if (event.target.closest?.('.nav-tabs .nav-link')) setTimeout(() => this.update(), 0)
+		})
+		this.update()
+	},
 }
 
 
 
 document.addEventListener('DOMContentLoaded', function(){
-
-	//------------------------------------------------------------------------
-	// for pages
-	//------------------------------------------------------------------------
-	ui.mob.waitFor('#sim-goto-top-btn', initBtnTop)
-
+	SimGotoTop.init()
 })

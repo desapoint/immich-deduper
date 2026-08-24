@@ -24,6 +24,11 @@ async function main() {
 	let mutationCallback = null
 	let animationFrame = null
 	let logReplacements = 0
+	let topButton = null
+	let topDestination = null
+	let readyHandler = null
+	let documentClickHandler = null
+	let scrollHandler = null
 	const grid = {}
 	const header = {appendChild(child) { headerChildren.push(child) }}
 	const title = {
@@ -78,11 +83,19 @@ async function main() {
 		},
 		dash_clientside: {callback_context: {triggered: []}, no_update: {}},
 		ui: {mob: {waitAll() {}, waitFor() {}}},
+		scrollY: 0,
+		scrollTo() {},
 		document: {
 			body: {},
-			addEventListener() {},
+			addEventListener(name, callback) {
+				if (name === 'DOMContentLoaded') readyHandler = callback
+				if (name === 'click') documentClickHandler = callback
+			},
+			getElementById(id) { return id === 'sim-goto-top-btn' ? topButton : null },
 			querySelector(selector) {
 				if (selector === '.gv.fsp') return exportGrid
+				if (selector === '.nav-tabs .nav-link.active') return {textContent: 'Current review'}
+				if (selector === '#sim-btn-fnd') return topDestination
 				return selector === '#sim-gvSim' && (gridPresent || renderedCards.length) ? grid : null
 			},
 			querySelectorAll(selector) {
@@ -114,13 +127,31 @@ async function main() {
 		},
 	}
 	context.window = context
-	context.window.addEventListener = () => {}
+	context.window.addEventListener = (name, callback) => {
+		if (name === 'scroll') scrollHandler = callback
+	}
 
 	vm.createContext(context)
 	vm.runInContext(
 		fs.readFileSync(path.join(__dirname, '../src/assets/mod/sim.js'), 'utf8'),
 		context,
 	)
+
+	const topClasses = new Set()
+	topButton = {classList: {toggle(name, enabled) { enabled ? topClasses.add(name) : topClasses.delete(name) }}}
+	let scrolledToDestination = 0
+	topDestination = {scrollIntoView() { scrolledToDestination++ }}
+	readyHandler()
+	context.window.scrollY = 300
+	scrollHandler()
+	animationFrame()
+	assert.equal(topClasses.has('show'), true, 'the current-tab top control should update on a throttled scroll frame')
+	const replacementClasses = new Set()
+	topButton = {classList: {toggle(name, enabled) { enabled ? replacementClasses.add(name) : replacementClasses.delete(name) }}}
+	context.window.SimGotoTop.update()
+	assert.equal(replacementClasses.has('show'), true, 'the controller must target a remounted button instead of retaining a stale node')
+	documentClickHandler({target: {closest(selector) { return selector === '#sim-goto-top-btn' ? topButton : null }}})
+	assert.equal(scrolledToDestination, 1, 'the delegated top action must remain active after the button remounts')
 
 	context.window.auslLogs = {
 		7: {reason: 'Selected #1', selectedAids: [1], details: []},

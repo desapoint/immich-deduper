@@ -11,7 +11,7 @@ function initTaskPanelAutoHide()
 		pal.classList.remove( 'fly' )
 	}
 
-	window.addEventListener( 'scroll', onScroll )
+	window.addEventListener( 'scroll', onScroll, {passive: true} )
 }
 
 document.addEventListener( 'DOMContentLoaded', function(){
