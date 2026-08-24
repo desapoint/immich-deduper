@@ -49,6 +49,14 @@ def props(node):
 	return node.to_plotly_json().get('props', {})
 
 
+def patchValues(value):
+	return {
+		tuple(operation['location']): operation['params']['value']
+		for operation in value.to_plotly_json()['operations']
+		if operation['operation'] == 'Assign'
+	}
+
+
 class TestSimilarPartialRendering(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls):
@@ -177,13 +185,18 @@ class TestSimilarPartialRendering(unittest.TestCase):
 
 		getById.assert_called_once_with(selected.id)
 		getSimAssets.assert_called_once_with(selected.autoId, similar.db.dto.rtree)
-		self.assertEqual(result['sim']['assAid'], selected.autoId)
-		self.assertEqual([item['autoId'] for item in result['sim']['assCur']], [2, 3])
+		values = patchValues(result)
+		self.assertEqual(values[('sim', 'assAid')], selected.autoId)
+		self.assertEqual([item['autoId'] for item in values[('sim', 'assCur')]], [2, 3])
+		self.assertNotIn(('sim', 'assPend'), values)
 		self.assertEqual(activeTab, similar.k.tabCur)
 
 	def test_unchanged_store_update_does_not_replace_grid(self):
 		assets = [asset(1, 1), asset(2, 1), asset(3, 2), asset(4, 2)]
-		now = models.Now(sim=models.PgSim(assCur=assets))
+		now = models.Now(sim=models.PgSim(
+			assCur=assets,
+			pagerPnd=models.Pager(idx=1, size=20, cnt=0),
+		))
 		renderState = similar._similarRenderState(assets, True)
 		dto = SimpleNamespace(muod=SimpleNamespace(on=True))
 
@@ -196,7 +209,27 @@ class TestSimilarPartialRendering(unittest.TestCase):
 
 		self.assertEqual(len(result), 8)
 		self.assertIs(result[0], similar.noUpd)
+		self.assertIs(result[2], similar.noUpd)
 		self.assertIs(result[7], similar.noUpd)
+
+	def test_empty_pending_page_does_not_feed_back_an_identical_store_update(self):
+		now = models.Now(sim=models.PgSim(
+			pagerPnd=models.Pager(idx=1, size=20, cnt=0),
+			assPend=[],
+		))
+		renderState = similar._similarRenderState([], True)
+		dto = SimpleNamespace(muod=SimpleNamespace(on=True))
+
+		with (
+			patch.object(similar, 'getTrgId', return_value='store-now'),
+			patch.object(similar.db, 'dto', dto),
+			patch.object(similar.db.pics, 'getPagedPending') as getPending,
+		):
+			result = similar.sim_Load(now.toDict(), models.Cnt().toDict(), renderState)
+
+		getPending.assert_not_called()
+		self.assertIs(result[1], similar.noUpd)
+		self.assertIs(result[2], similar.noUpd)
 
 	def test_pending_tab_renders_cached_assets_immediately(self):
 		pending = [asset(7, 1)]
@@ -210,7 +243,10 @@ class TestSimilarPartialRendering(unittest.TestCase):
 			nowData, grid = similar.sim_OnTabChange(similar.k.tabPnd, now.toDict())
 
 		getPending.assert_not_called()
-		self.assertEqual(models.Now.fromDic(nowData).sim.activeTab, similar.k.tabPnd)
+		values = patchValues(nowData)
+		self.assertEqual(values[('sim', 'activeTab')], similar.k.tabPnd)
+		self.assertNotIn(('sim', 'assPend'), values)
+		self.assertNotIn(('sim', 'assCur'), values)
 		self.assertTrue(any(
 			props(node).get('id') == {'type': 'img-pop', 'aid': 7}
 			for node in walk(grid)
@@ -227,11 +263,67 @@ class TestSimilarPartialRendering(unittest.TestCase):
 			nowData, grid = similar.sim_OnTabChange(similar.k.tabPnd, now.toDict())
 
 		getPending.assert_called_once_with(page=2, size=15)
-		updated = models.Now.fromDic(nowData)
-		self.assertEqual(updated.sim.activeTab, similar.k.tabPnd)
-		self.assertEqual([item.autoId for item in updated.sim.assPend], [8])
+		values = patchValues(nowData)
+		self.assertEqual(values[('sim', 'activeTab')], similar.k.tabPnd)
+		self.assertEqual([item['autoId'] for item in values[('sim', 'assPend')]], [8])
+		self.assertNotIn(('sim', 'assCur'), values)
 		self.assertTrue(any(
 			props(node).get('id') == {'type': 'img-pop', 'aid': 8}
+			for node in walk(grid)
+		))
+
+	def test_pending_tab_patch_serializes_through_dash(self):
+		pending = [asset(8, 1)]
+		now = models.Now(sim=models.PgSim(
+			pagerPnd=models.Pager(idx=2, size=15, cnt=20),
+			activeTab=similar.k.tabCur,
+		)).toDict()
+		key, callback = next(
+			(key, callback)
+			for key, callback in testApp.callback_map.items()
+			if callback['inputs'] == [{'id': similar.k.tabs, 'property': 'active_tab'}]
+		)
+		payload = {
+			'output': key,
+			'outputs': [output.to_dict() for output in callback['output']],
+			'changedPropIds': [f'{similar.k.tabs}.active_tab'],
+			'inputs': [{'id': similar.k.tabs, 'property': 'active_tab', 'value': similar.k.tabPnd}],
+			'state': [{'id': similar.ks.sto.now, 'property': 'data', 'value': now}],
+		}
+
+		with (
+			patch.object(similar.db.pics, 'getPagedPending', return_value=pending),
+			patch('ui.cards.db.psql.getUsrName', return_value='Owner'),
+		):
+			response = self.client.post('/_dash-update-component', json=payload)
+
+		self.assertEqual(response.status_code, 200, response.get_data(as_text=True))
+		storeUpdate = response.get_json()['response'][similar.ks.sto.now]['data']
+		self.assertEqual(storeUpdate['__dash_patch_update'], '__dash_patch_update')
+		locations = [tuple(operation['location']) for operation in storeUpdate['operations']]
+		self.assertIn(('sim', 'activeTab'), locations)
+		self.assertIn(('sim', 'assPend'), locations)
+		self.assertNotIn(('sim', 'assCur'), locations)
+
+	def test_pending_pager_patches_only_pending_state(self):
+		pending = [asset(9, 1)]
+		now = models.Now(sim=models.PgSim(
+			assCur=[asset(1, 1), asset(2, 1)],
+			pagerPnd=models.Pager(idx=1, size=15, cnt=30),
+			activeTab=similar.k.tabPnd,
+		))
+		pagerData = models.Pager(idx=2, size=15, cnt=30).toDict()
+
+		with patch.object(similar.db.pics, 'getPagedPending', return_value=pending) as getPending:
+			grid, nowData = similar.sim_onPagerChanged(pagerData, now.toDict())
+
+		getPending.assert_called_once_with(page=2, size=15)
+		values = patchValues(nowData)
+		self.assertEqual(values[('sim', 'pagerPnd')]['idx'], 2)
+		self.assertEqual([item['autoId'] for item in values[('sim', 'assPend')]], [9])
+		self.assertNotIn(('sim', 'assCur'), values)
+		self.assertTrue(any(
+			props(node).get('id') == {'type': 'img-pop', 'aid': 9}
 			for node in walk(grid)
 		))
 
@@ -247,6 +339,10 @@ class TestSimilarPartialRendering(unittest.TestCase):
 			result = similar.sim_Load(now.toDict(), models.Cnt().toDict(), None)
 
 		nodes = list(walk(result[0]))
+		values = patchValues(result[2])
+		self.assertIn(('sim', 'pagerPnd'), values)
+		self.assertNotIn(('sim', 'assCur'), values)
+		self.assertNotIn(('sim', 'assPend'), values)
 		emptyState = next(node for node in nodes if props(node).get('className') == 'sim-empty-state')
 		self.assertEqual(props(emptyState).get('role'), 'status')
 		self.assertTrue(any(getattr(node, 'children', None) == 'No grouped results found' for node in nodes))

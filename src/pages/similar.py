@@ -54,6 +54,17 @@ def _mkMrgMsg(keepAssets):
 DEBUG = False
 
 
+def _simStatePatch(**changes):
+	patch = dash.Patch()
+	for key, value in changes.items():
+		if isinstance(value, list):
+			value = [item.toDict() if hasattr(item, 'toDict') else item for item in value]
+		elif hasattr(value, 'toDict'):
+			value = value.toDict()
+		patch['sim'][key] = value
+	return patch
+
+
 def _assetRenderSignature(asset: models.Asset) -> str:
 	payload = json.dumps(asset.toDict(), sort_keys=True, separators=(',', ':'), default=str)
 	return hashlib.sha1(payload.encode('utf-8')).hexdigest()
@@ -409,11 +420,15 @@ def sim_OnTabChange(active_tab, dta_now):
 
 	if active_tab == k.tabPnd:
 		pgr = now.sim.pagerPnd or Pager()
+		changes = {'activeTab': active_tab}
 		if not now.sim.assPend:
 			now.sim.assPend = db.pics.getPagedPending(page=pgr.idx, size=pgr.size)
+			changes['assPend'] = now.sim.assPend
+		if not now.sim.pagerPnd:
+			changes['pagerPnd'] = pgr
 		now.sim.pagerPnd = pgr
 		now.sim.activeTab = active_tab
-		return now.toDict(), gv.mkPndGrd(now.sim.assPend, onEmpty=[
+		return _simStatePatch(**changes), gv.mkPndGrd(now.sim.assPend, onEmpty=[
 			dbc.Alert("No pending items on this page", color="secondary", className="text-center"),
 		])
 
@@ -458,7 +473,7 @@ def sim_onPagerChanged(dta_pgr, dta_now):
 		dbc.Alert("No pending items on this page", color="secondary", className="text-center"),
 	])
 
-	return gvPnd, now.toDict()
+	return gvPnd, _simStatePatch(pagerPnd=pgr, assPend=paged)
 
 
 
@@ -579,6 +594,7 @@ def sim_Load(dta_now, dta_cnt, oldRenderState):
 		])
 
 	# Initialize or get pager
+	pagerWasMissing = not now.sim.pagerPnd
 	pgr = now.sim.pagerPnd
 	if not pgr:
 		pgr = Pager(idx=1, size=20)
@@ -599,20 +615,21 @@ def sim_Load(dta_now, dta_cnt, oldRenderState):
 	lg.info(f"--------------------------------------------------------------------------------")
 	lg.info(f"[sim:load] trig[{trgId}] muod[{db.dto.muod}] cntNo[{cntNo}] cntOk[{cntOk}] cntPn[{cntPn}]({oldPn}) assCur[{len(now.sim.assCur)}] assAid[{now.sim.assAid}]")
 
-	# Load pending data - reload if count changed or no data
-	isInitial = not trgId
-	needReload = isInitial
-	if cntPn > 0:
-		if not now.sim.assPend or len(now.sim.assPend) == 0: needReload = True
-		elif oldPn != cntPn:
-			needReload = True
-			lg.info(f"[sim:load] Pending count changed from {oldPn} to {cntPn}, reloading data")
-	else: needReload = True
+	# Load pending data once per page mount, pager initialization, or count change.
+	# An empty page is a valid result and must not cause store-now to feed this
+	# callback back into another identical database query.
+	needReload = oldRenderState is None or pagerWasMissing or oldPn != cntPn
+	if oldPn != cntPn:
+		lg.info(f"[sim:load] Pending count changed from {oldPn} to {cntPn}, reloading data")
+	if cntPn == 0 and now.sim.assPend: needReload = True
 
+	pendingChanged = False
 	if needReload:
+		oldPending = [asset.toDict() for asset in now.sim.assPend]
 		paged = db.pics.getPagedPending(page=pgr.idx, size=pgr.size)
 		lg.info(f"[sim:load] pend reload, idx[{pgr.idx}] size[{pgr.size}] got[{len(paged)}]")
 		now.sim.assPend = paged
+		pendingChanged = oldPending != [asset.toDict() for asset in paged]
 
 	# Only rebuild gvPnd if pending data changed
 	if needReload:
@@ -625,15 +642,18 @@ def sim_Load(dta_now, dta_cnt, oldRenderState):
 	tabDisabled = cntPn < 1
 	tabLabel = f"pending ({cntPn})" if cntPn >= 1 else "pending"
 
-	# Only update now if there were actual changes
-	nowChanged = needReload or (pagerData is not None)
-	nowDict = now.toDict() if nowChanged else noUpd
+	# Patch only changed state branches; the pending grid already carries its own
+	# rendered result, so a repeated empty response does not need a store write.
+	nowChanges = {}
+	if pagerWasMissing or pagerData is not None: nowChanges['pagerPnd'] = pgr
+	if pendingChanged: nowChanges['assPend'] = now.sim.assPend
+	nowData = _simStatePatch(**nowChanges) if nowChanges else noUpd
 
 	activeTab = now.sim.activeTab if now.sim.activeTab else k.tabCur
 
 	return [
 		gview, gvPnd,
-		nowDict,
+		nowData,
 		pagerData.toDict() if pagerData else noUpd,
 		tabDisabled, tabLabel, activeTab,
 		renderState if renderStateChanged else noUpd,
@@ -785,12 +805,11 @@ def sim_OnSwitchViewGroup(actionTrigger, dta_now):
 	asset = db.pics.getById(assId)
 	if not asset: return noUpd.by(2)
 
-	now.sim.assAid = asset.autoId
-	now.sim.assCur = db.pics.getSimAssets(asset.autoId, db.dto.rtree)
+	assets = db.pics.getSimAssets(asset.autoId, db.dto.rtree)
 
-	if DEBUG: lg.info(f"[sim:vgrp] Loaded {len(now.sim.assCur)} assets for group")
+	if DEBUG: lg.info(f"[sim:vgrp] Loaded {len(assets)} assets for group")
 
-	return now.toDict(), k.tabCur  # Switch to current tab
+	return _simStatePatch(assAid=asset.autoId, assCur=assets), k.tabCur  # Switch to current tab
 
 
 #========================================================================
