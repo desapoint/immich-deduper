@@ -154,10 +154,28 @@ function syncSystemCheckResults(data){
 		const sc = document.querySelector('.card-system-cfgs')
 		if (sc && sc._systemChecks !== latestSystemChecks) applySystemCheckResults(sc, latestSystemChecks)
 	}
+	const applyAdded = mutations =>{
+		if (!mutations) {
+			applyCurrent()
+			return
+		}
+
+		const cards = new Set()
+		mutations.forEach(mutation => mutation.addedNodes?.forEach(node => {
+			if (node.nodeType !== 1) return
+			const card = node.matches?.('.card-system-cfgs')
+				? node
+				: node.closest?.('.card-system-cfgs') || node.querySelector?.('.card-system-cfgs')
+			if (card) cards.add(card)
+		}))
+		cards.forEach(card => {
+			if (card._systemChecks !== latestSystemChecks) applySystemCheckResults(card, latestSystemChecks)
+		})
+	}
 
 	applyCurrent()
 	if (!systemCheckObserver) {
-		systemCheckObserver = new MutationObserver(applyCurrent)
+		systemCheckObserver = new MutationObserver(applyAdded)
 		systemCheckObserver.observe(document.body, {childList: true, subtree: true})
 	}
 }

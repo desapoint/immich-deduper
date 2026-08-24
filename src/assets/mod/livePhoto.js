@@ -70,18 +70,25 @@ const LivePhoto = window.LivePhoto = {
 				video.style.display = 'none'
 				img.style.display = 'block'
 			}, { once: true })
+
+			const updateProgress = () => this.updateModalProgress(video)
+			video.addEventListener('loadedmetadata', updateProgress)
+			video.addEventListener('durationchange', updateProgress)
+			video.addEventListener('timeupdate', updateProgress)
+			video.addEventListener('seeked', updateProgress)
 		}
 
-		document.querySelectorAll(keyc).forEach(handleVdoList)
+		document.querySelectorAll(`video${keyc}`).forEach(handleVdoList)
 		document.querySelectorAll('#img-modal .livephoto video').forEach(handleModalVideo)
 
 		const observer = new MutationObserver((mus) => {
 			mus.forEach(mu => {
 				mu.addedNodes.forEach(node => {
 					if (node.nodeType == 1) {
-						if (node.classList?.contains(key)) handleVdoList(node)
+						if (node.matches?.(`video${keyc}`)) handleVdoList(node)
+						if (node.matches?.('#img-modal .livephoto video')) handleModalVideo(node)
 						if (node.querySelectorAll) {
-							node.querySelectorAll(keyc).forEach(handleVdoList)
+							node.querySelectorAll(`video${keyc}`).forEach(handleVdoList)
 							node.querySelectorAll('#img-modal .livephoto video').forEach(handleModalVideo)
 						}
 					}
@@ -125,12 +132,11 @@ const LivePhoto = window.LivePhoto = {
 			}
 		} )
 
-		setInterval( () => { this.updateModalProgress() }, 100 )
 	},
 
 	toggleModalPlayback()
 	{
-		const video = document.querySelector( '.livephoto video' )
+		const video = document.querySelector( '#img-modal .livephoto video' )
 		const button = document.getElementById( 'livephoto-play-pause' )
 
 		if ( !video || !button ) return
@@ -149,7 +155,7 @@ const LivePhoto = window.LivePhoto = {
 
 	seekModalVideo( e )
 	{
-		const video = document.querySelector( '.livephoto video' )
+		const video = document.querySelector( '#img-modal .livephoto video' )
 		const progressBar = document.getElementById( 'livephoto-progress-bar' )
 
 		if ( !video || !progressBar ) return
@@ -162,11 +168,11 @@ const LivePhoto = window.LivePhoto = {
 		video.currentTime = seekTime
 	},
 
-	updateModalProgress()
+	updateModalProgress(video = document.querySelector('#img-modal .livephoto video'))
 	{
-		const video = document.querySelector( '.livephoto video' )
-		const progressFill = document.getElementById( 'livephoto-progress-fill' )
-		const timeDisplay = document.getElementById( 'livephoto-time-display' )
+		const modal = video?.closest?.('#img-modal')
+		const progressFill = modal?.querySelector( '#livephoto-progress-fill' )
+		const timeDisplay = modal?.querySelector( '#livephoto-time-display' )
 
 		if ( !video || !progressFill || !timeDisplay ) return
 

@@ -6,7 +6,9 @@ const vm = require('node:vm')
 class MockElement {
 	constructor(id = '') {
 		this.id = id
+		this.nodeType = 1
 		this.children = []
+		this.tipTriggers = []
 		this.parentNode = null
 		this.style = {}
 		this.attributes = {}
@@ -35,6 +37,8 @@ class MockElement {
 		return child
 	}
 	querySelector() { return null }
+	querySelectorAll(selector) { return selector === 'span[data-tip-id]' ? this.tipTriggers : [] }
+	matches() { return false }
 	setAttribute(name, value) { this.attributes[name] = value }
 	getAttribute(name) { return this.attributes[name] ?? null }
 	hasAttribute(name) { return Object.hasOwn(this.attributes, name) }
@@ -60,6 +64,8 @@ home.appendChild(tip)
 home.appendChild(sibling)
 
 let onReady = null
+const observerCallbacks = []
+let documentTipScans = 0
 
 const sandbox = {
 	console,
@@ -71,7 +77,10 @@ const sandbox = {
 		getElementById(id) { return id === 'tip-1' ? tip : null },
 		querySelector() { return null },
 		querySelectorAll(selector) {
-			if (selector === 'span[data-tip-id]') return [trigger]
+			if (selector === 'span[data-tip-id]') {
+				documentTipScans++
+				return [trigger]
+			}
 			if (selector === '.sim-card-details') return [details]
 			return []
 		},
@@ -79,7 +88,11 @@ const sandbox = {
 		addEventListener(name, callback) { if (name === 'DOMContentLoaded') onReady = callback },
 	},
 	Element: MockElement,
-	MutationObserver: class { observe() {} disconnect() {} },
+	MutationObserver: class {
+		constructor(callback) { observerCallbacks.push(callback) }
+		observe() {}
+		disconnect() {}
+	},
 	requestAnimationFrame(callback) { callback() },
 	setTimeout,
 	clearTimeout,
@@ -99,6 +112,14 @@ async function run() {
 	assert.equal(trigger.getAttribute('role'), 'button')
 	assert.equal(trigger.getAttribute('aria-haspopup'), 'true')
 	assert.deepEqual(Object.keys(trigger.listeners).sort(), ['blur', 'focus', 'mouseenter', 'mouseleave'])
+	assert.equal(documentTipScans, 1, 'initial binding should scan existing triggers once')
+	const added = new MockElement('added-card')
+	const addedTrigger = new MockElement('added-trigger')
+	addedTrigger.setAttribute('data-tip-id', 'tip-1')
+	added.tipTriggers = [addedTrigger]
+	observerCallbacks.at(-1)([{addedNodes: [added]}])
+	assert.equal(addedTrigger.tabIndex, 0, 'new card triggers should be bound from their added subtree')
+	assert.equal(documentTipScans, 1, 'adding a card must not rescan every trigger in the document')
 	vm.runInContext('window.dash_clientside.ui.toggleGridInfo(true)', sandbox)
 	assert.equal(details.open, true, 'Show Grid Info should open the native card details')
 	vm.runInContext('window.dash_clientside.ui.toggleGridInfo(false)', sandbox)

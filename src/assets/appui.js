@@ -246,8 +246,13 @@ const ui = window.ui = {
 document.addEventListener('DOMContentLoaded', () =>{
 	const root = document.body
 
-	function bindEvts(){
-		const sps = document.querySelectorAll('span[data-tip-id]')
+	function bindEvts(scope = root){
+		const sps = []
+		if (scope !== root && scope.matches?.('span[data-tip-id]')) sps.push(scope)
+		const nested = scope === root
+			? document.querySelectorAll('span[data-tip-id]')
+			: scope.querySelectorAll?.('span[data-tip-id]') || []
+		sps.push(...nested)
 		sps.forEach(span =>{
 			if (span._poptipEventsBound) return
 
@@ -278,7 +283,9 @@ document.addEventListener('DOMContentLoaded', () =>{
 	bindEvts()
 
 	const obs = new MutationObserver(muts =>{
-		muts.forEach(mutation =>{if (mutation.type == 'childList') bindEvts()})
+		muts.forEach(mutation => mutation.addedNodes?.forEach(node => {
+			if (node.nodeType === 1) bindEvts(node)
+		}))
 	})
 
 	obs.observe(root, {childList: true, subtree: true})
