@@ -1,6 +1,7 @@
 const Nfy = {
 	storeKey: 'store-nfy',
 	_pendingMsgs: [],
+	_flushTimer: null,
 
 	_getTimeId() {
 		return Date.now().toString(36) + Math.random().toString(36).substr(2, 5)
@@ -17,7 +18,8 @@ const Nfy = {
 
 		this._pendingMsgs.push(msgData)
 
-		setTimeout(() => {
+		if (this._flushTimer == null) this._flushTimer = setTimeout(() => {
+			this._flushTimer = null
 			if (this._pendingMsgs.length > 0) {
 				const msgsToAdd = [...this._pendingMsgs]
 				this._pendingMsgs = []
@@ -81,16 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	const dones = new Set()
 
-	const setAuRm = () => {
-		const container = document.getElementById('div-notify')
-		if (!container) {
-			console.log('[aurm] no container found')
-			return
-		}
-
-		const boxes = container.querySelectorAll('.box')
-		// console.log(`[aurm] found ${boxes.length} boxes`)
-
+	const setAuRm = boxes => {
 		boxes.forEach(box => {
 			const timeout = parseInt(box.dataset.msgTimeout)
 			const msgId = box.dataset.msgId
@@ -111,12 +104,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	ui.mob.waitFor('#div-notify', (container) => {
 
-		setAuRm()
+		setAuRm(container.querySelectorAll('.box'))
 
-		const observer = new MutationObserver(() => {
-			setAuRm()
+		const observer = new MutationObserver(mutations => {
+			const addedBoxes = []
+			mutations.forEach(mutation => mutation.addedNodes?.forEach(node => {
+				if (node.nodeType !== 1) return
+				if (node.matches?.('.box')) addedBoxes.push(node)
+				addedBoxes.push(...(node.querySelectorAll?.('.box') || []))
+			}))
+			setAuRm(addedBoxes)
 		})
 
-		observer.observe(container, { childList: true })
+		observer.observe(container, { childList: true, subtree: true })
 	}, '[nfy]')
 })
