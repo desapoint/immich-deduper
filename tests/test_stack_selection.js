@@ -25,10 +25,11 @@ function card(autoId, groupId, stacked) {
 }
 
 
-function coverButton(autoId, groupId, ownerId) {
+function coverButton(autoId, groupId, ownerId, onIdRead = null) {
 	const classes = new Set(['btn-outline-info'])
+	const patternId = JSON.stringify({type: 'sim-stack-cover', id: autoId, group: groupId, owner: ownerId})
 	return {
-		id: JSON.stringify({type: 'sim-stack-cover', id: autoId, group: groupId, owner: ownerId}),
+		get id() { if (onIdRead) onIdRead(); return patternId },
 		textContent: 'Set cover',
 		attributes: {},
 		classes,
@@ -52,7 +53,12 @@ function actionButton(type, groupId, action = null) {
 
 async function main() {
 	const cards = [card(1, 1, true), card(2, 1, false), card(3, 2, false)]
-	const coverButtons = [coverButton(1, 1, 'owner-a'), coverButton(2, 1, 'owner-a')]
+	let offGroupCoverReads = 0
+	const coverButtons = [
+		coverButton(1, 1, 'owner-a'),
+		coverButton(2, 1, 'owner-a'),
+		coverButton(3, 2, 'owner-b', () => { offGroupCoverReads++ }),
+	]
 	const syncs = []
 	const actionSyncs = []
 	const sourceClasses = new Set()
@@ -116,9 +122,16 @@ async function main() {
 	const ste = context.window.Ste
 	ste.cntTotal = cards.length
 	ste.selectedIds = new Set([3])
+	const cssUpdates = []
+	const originalUpdCss = ste.updCss.bind(ste)
+	ste.updCss = async (aid, selectedCard) => {
+		cssUpdates.push(aid)
+		return originalUpdCss(aid, selectedCard)
+	}
 
 	await ste.selectStackStatus(true, 1)
 	assert.deepEqual(Array.from(ste.selectedIds), [3, 1], 'group selection must preserve other groups')
+	assert.deepEqual(cssUpdates.sort((a, b) => a - b), [1, 2], 'group selection must repaint only that group')
 	assert.ok(
 		setPropsCalls.some(call => call.id === 'sim-btn-Stack' && call.props.disabled === false),
 		'enabling the global stack action must update its Dash component prop',
@@ -132,8 +145,10 @@ async function main() {
 		'enabling another selection-dependent group action must update its Dash component prop',
 	)
 
+	cssUpdates.length = 0
 	await ste.selectStackStatus(false)
 	assert.deepEqual(Array.from(ste.selectedIds), [2, 3], 'global selection must replace the full selection')
+	assert.deepEqual(cssUpdates.sort((a, b) => a - b), [1, 2, 3], 'global selection should repaint all cards')
 	assert.equal(syncs.length, 2)
 
 	ste.selectedIds = new Set([1, 3])
@@ -162,7 +177,9 @@ async function main() {
 	ste.toggle(2, cards[1])
 	assert.equal(selectorScans, scansAfterCache, 'a card toggle must reuse the DOM cache instead of rescanning the grid')
 
+	offGroupCoverReads = 0
 	ste.setStackCover(1, 1, 'owner-a')
+	assert.equal(offGroupCoverReads, 0, 'a cover change must not parse buttons from another group')
 	assert.deepEqual(Array.from(ste.stackCoverIds), [1])
 	assert.equal(ste.selectedIds.has(1), true, 'choosing a cover must select its asset')
 	assert.equal(coverButtons[0].textContent, 'Cover choice')

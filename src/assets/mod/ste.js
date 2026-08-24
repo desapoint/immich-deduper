@@ -37,8 +37,25 @@ const Ste = window.Ste = {
 			.map( card => this.extractAssetIdBy( card ) )
 			.filter( aid => aid )
 		const coverButtons = Array.from( document.querySelectorAll( '[id*=\'"type":"sim-stack-cover"\']' ) )
+		const coverButtonMeta = new Map()
+		const coverButtonsByGroup = new Map()
+		const coverButtonsByScope = new Map()
 		const groupStackButtons = new Map()
 		const groupActionButtons = new Map()
+
+		coverButtons.forEach( button => {
+			try {
+				const patternId = JSON.parse( button.id )
+				const groupId = String( patternId.group )
+				const scopeId = `${ groupId }\u0000${ patternId.owner || '' }`
+				coverButtonMeta.set( button, patternId )
+				if ( !coverButtonsByGroup.has( groupId ) ) coverButtonsByGroup.set( groupId, [] )
+				if ( !coverButtonsByScope.has( scopeId ) ) coverButtonsByScope.set( scopeId, [] )
+				coverButtonsByGroup.get( groupId ).push( button )
+				coverButtonsByScope.get( scopeId ).push( button )
+			}
+			catch ( e ) { console.error( '[Ste] Invalid stack cover button id:', e ) }
+		} )
 
 		document.querySelectorAll( '[id*=\'"type":"sim-stack-group"\']' ).forEach( button => {
 			try { groupStackButtons.set( String( JSON.parse( button.id ).id ), button ) }
@@ -56,6 +73,7 @@ const Ste = window.Ste = {
 
 		this._domCache = {
 			cards, byAid, groups, mainIds, coverButtons,
+			coverButtonMeta, coverButtonsByGroup, coverButtonsByScope,
 			stackedGroups, unstackedGroups, groupStackButtons, groupActionButtons,
 		}
 		return this._domCache
@@ -69,6 +87,15 @@ const Ste = window.Ste = {
 	getCard( aid )
 	{
 		return this.getDomCache().byAid.get( Number( aid ) )?.card || null
+	},
+
+	getCoverButtons( groupId = null, ownerId = null )
+	{
+		const cache = this.getDomCache()
+		if ( groupId == null ) return cache.coverButtons
+		const groupKey = String( groupId )
+		if ( ownerId == null ) return cache.coverButtonsByGroup.get( groupKey ) || []
+		return cache.coverButtonsByScope.get( `${ groupKey }\u0000${ ownerId }` ) || []
 	},
 
 	isTaskRunning()
@@ -248,11 +275,17 @@ const Ste = window.Ste = {
 		const btnSelUnstacked = document.getElementById( 'sim-btn-SelectUnstacked' )
 		const btnStack = document.getElementById( 'sim-btn-Stack' )
 		const txtCntSel = document.getElementById( 'sim-txt-cnt-sel' )
+		const groupIds = groupId == null ? Array.from( cache.groups.keys() ) : [String( groupId )]
 		const selectedGroups = new Set()
-		this.selectedIds.forEach( aid => {
-			const selectedGroupId = cache.byAid.get( Number( aid ) )?.groupId
-			if ( selectedGroupId ) selectedGroups.add( selectedGroupId )
-		} )
+		if ( groupId == null ) {
+			this.selectedIds.forEach( aid => {
+				const selectedGroupId = cache.byAid.get( Number( aid ) )?.groupId
+				if ( selectedGroupId ) selectedGroups.add( selectedGroupId )
+			} )
+		}
+		else if ( ( cache.groups.get( String( groupId ) ) || [] ).some( card =>
+			this.selectedIds.has( this.extractAssetIdBy( card ) )
+		) ) selectedGroups.add( String( groupId ) )
 
 		if ( btnRm ) {
 			btnRm.textContent = 'Delete selected'
@@ -272,7 +305,6 @@ const Ste = window.Ste = {
 		this.setDisabled( btnSelStacked, isTaskRunning || cache.stackedGroups.size === 0 )
 		this.setDisabled( btnSelUnstacked, isTaskRunning || cache.unstackedGroups.size === 0 )
 
-		const groupIds = groupId == null ? Array.from( cache.groups.keys() ) : [String( groupId )]
 		groupIds.forEach( currentGroupId => {
 			const stackSelect = document.getElementById( `sel-grp-stacked-${ currentGroupId }` )
 			const unstackSelect = document.getElementById( `sel-grp-unstacked-${ currentGroupId }` )
@@ -324,7 +356,7 @@ const Ste = window.Ste = {
 		const allSel = this.isAllMainsSel()
 		ids.forEach( aid => { allSel ? this.selectedIds.delete( aid ) : this.selectedIds.add( aid ) } )
 		this.updBtns()
-		await this.updAllCss()
+		await this.updCardsCss( ids.map( aid => this.getCard( aid ) ).filter( card => card ) )
 		console.log( `[Ste] ${ allSel ? 'Deselected' : 'Selected' } ${ ids.length } main assets` )
 		this.sync()
 	},
@@ -351,7 +383,11 @@ const Ste = window.Ste = {
 
 	async updAllCss()
 	{
-		const cards = this.getDomCache().cards
+		return this.updCardsCss( this.getDomCache().cards )
+	},
+
+	async updCardsCss( cards )
+	{
 		// console.log( `[Ste] updAllCss cards[ ${ cards.length } ]` )
 		const proms = []
 		cards.forEach( card => {
@@ -412,7 +448,7 @@ const Ste = window.Ste = {
 			if ( assetId ) this.selectedIds.add( assetId )
 		} )
 
-		await this.updAllCss()
+		await this.updCardsCss( scopeCards )
 		this.updStackCoverButtons( groupId )
 		this.updBtns( groupId )
 		console.log( `[Ste] Selected ${ matchingCards.length } ${ isStacked ? 'stacked' : 'non-stacked' } items${ groupId == null ? '' : ` in group ${ groupId }` }` )
@@ -421,13 +457,12 @@ const Ste = window.Ste = {
 
 	updStackCoverButtons( groupId = null, ownerId = null )
 	{
-		const buttons = this.getDomCache().coverButtons
+		const cache = this.getDomCache()
+		const buttons = this.getCoverButtons( groupId, ownerId )
 		buttons.forEach( button => {
 			try
 			{
-				const patternId = JSON.parse( button.id )
-				if ( groupId != null && String( patternId.group ) !== String( groupId ) ) return
-				if ( ownerId != null && patternId.owner !== ownerId ) return
+				const patternId = cache.coverButtonMeta.get( button ) || JSON.parse( button.id )
 
 				const chosen = this.stackCoverIds.has( patternId.id )
 				const label = chosen ? 'Cover choice' : 'Set cover'
@@ -447,13 +482,13 @@ const Ste = window.Ste = {
 	setStackCover( aid, groupId, ownerId, card = null )
 	{
 		const wasChosen = this.stackCoverIds.has( aid )
-		const buttons = this.getDomCache().coverButtons
+		const cache = this.getDomCache()
+		const buttons = this.getCoverButtons( groupId, ownerId )
 		buttons.forEach( button => {
 			try
 			{
-				const patternId = JSON.parse( button.id )
-				if ( String( patternId.group ) === String( groupId ) && patternId.owner === ownerId )
-					this.stackCoverIds.delete( patternId.id )
+				const patternId = cache.coverButtonMeta.get( button ) || JSON.parse( button.id )
+				this.stackCoverIds.delete( patternId.id )
 			}
 			catch ( e ) { console.error( '[Ste] Invalid stack cover button id:', e ) }
 		} )

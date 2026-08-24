@@ -43,6 +43,11 @@ const unchanged = vm.runInContext('dsh.syncSte(3, [2, 1], [2])', sandbox)
 assert.equal(unchanged, false, 'the same selection must not write the store again')
 assert.equal(writes.length, 0)
 
+vm.runInContext('Array.prototype.sort = function(){ throw new Error("selection comparison must stay linear") }', sandbox)
+const deduped = vm.runInContext('dsh.syncSte(3, [1, 1, 2], [2, 2])', sandbox)
+assert.equal(deduped, false, 'selection IDs should be compared as sets without sorting or serialization')
+assert.equal(writes.length, 0)
+
 const changed = vm.runInContext('dsh.syncSte(3, [1, 3], [3])', sandbox)
 assert.equal(changed, true)
 assert.equal(writes.length, 1)

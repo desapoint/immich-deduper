@@ -84,16 +84,24 @@ const dsh = {
 	},
 
 	syncSte(cnt, selectedIds, stackCoverIds){
-		if (!Array.isArray(selectedIds)) selectedIds = Array.from(selectedIds)
+		const toIdSet = ids => new Set(Array.from(ids || []).map(Number))
+		const selectedSet = toIdSet(selectedIds)
 		if (stackCoverIds === undefined) stackCoverIds = window.Ste?.stackCoverIds || []
-		if (!Array.isArray(stackCoverIds)) stackCoverIds = Array.from(stackCoverIds)
-		const data = {cntTotal: cnt, selectedIds: selectedIds, stackCoverIds: stackCoverIds}
+		const coverSet = toIdSet(stackCoverIds)
+		const data = {
+			cntTotal: cnt,
+			selectedIds: Array.from(selectedSet),
+			stackCoverIds: Array.from(coverSet),
+		}
 		const current = this.getStore('store-state')
-		const normalizeIds = ids => Array.from(ids || []).map(Number).sort((a, b) => a - b)
+		const sameIds = (ids, expected) => {
+			if (!Array.isArray(ids) || ids.length !== expected.size) return false
+			return ids.every(id => expected.has(Number(id)))
+		}
 		if (current
 			&& Number(current.cntTotal || 0) === Number(data.cntTotal || 0)
-			&& JSON.stringify(normalizeIds(current.selectedIds)) === JSON.stringify(normalizeIds(data.selectedIds))
-			&& JSON.stringify(normalizeIds(current.stackCoverIds)) === JSON.stringify(normalizeIds(data.stackCoverIds))) {
+			&& sameIds(current.selectedIds, selectedSet)
+			&& sameIds(current.stackCoverIds, coverSet)) {
 			return false
 		}
 		return this.syncStore('store-state', data)
