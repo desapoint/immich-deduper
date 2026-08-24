@@ -74,6 +74,11 @@ for i in [2, 5, 10, 20, 25, 50, 100]: optMaxGroups.append({"label": f"{i}", "val
 optWeights = []
 for i in range(5): optWeights.append({"label": f"{i}", "value": i})
 
+def _setIfChanged(owner, field, value):
+	if getattr(owner, field) == value: return False
+	setattr(owner, field, value)
+	return True
+
 def _getUsrOpts():
 	opts = [{"label": "--", "value": ""}]
 	try:
@@ -354,7 +359,7 @@ def renderCard():
 				htm.Label("Path Filter", className="txt-sm"),
 				htm.Div([
 					htm.Label("Contains: "),
-					dbc.Input(id=k.id(k.pathFilter), maxlength=200, placeholder='e.g. /store/user/folder', value=db.dto.pathFilter, className="txt-sm", style={"maxWidth": "300px"})
+					dbc.Input(id=k.id(k.pathFilter), maxlength=200, placeholder='e.g. /store/user/folder', value=db.dto.pathFilter, className="txt-sm", style={"maxWidth": "300px"}, debounce=750)
 				], className="icbxs"),
 				htm.Ul([
 					htm.Li("Only show groups with at least one asset matching this path pattern"),
@@ -397,7 +402,7 @@ def renderCard():
 
 					htm.Div([
 						htm.Label("NameFilter", className="txt-sm"),
-						dbc.Input(id=k.excl("filNam"), maxlength=70, placeholder='separate by ","', value=db.dto.excl.filNam, disabled=not db.dto.excl.on, className="txt-sm", style={"maxWidth": "80px"})
+						dbc.Input(id=k.excl("filNam"), maxlength=70, placeholder='separate by ","', value=db.dto.excl.filNam, disabled=not db.dto.excl.on, className="txt-sm", style={"maxWidth": "80px"}, debounce=750)
 					]),
 
 				], className="icbxs"),
@@ -454,43 +459,50 @@ def settings_OnUpd(th, auNxt, shGdInfo, rtree,  maxItems, pathFilter, muodOn, mu
 	lg.info(f'trig: [{trigId}] tree[{rtree}] muod[{muodOn}]')
 
 	now = models.Now.fromDic(dta_now)
+	th = co.vad.float(th, 0.93, 0.50, 0.999)
+	auNxt = bool(auNxt)
+	shGdInfo = bool(shGdInfo)
+	rtree = bool(rtree)
+	maxItems = int(maxItems or 200)
+	pathFilter = pathFilter or ''
+	muodOn = bool(muodOn)
+	muodMxGs = int(muodMxGs or 10)
+	gDt, gW, gH, gFsz = bool(gDt), bool(gW), bool(gH), bool(gFsz)
+	disMuodMx = muodOnOut = rtreeOut = noUpd
 
-	db.dto.thMin = co.vad.float(th, 0.93, 0.50, 0.999)
+	_setIfChanged(db.dto, 'thMin', th)
+	_setIfChanged(db.dto, 'autoNext', auNxt)
+	_setIfChanged(db.dto, 'rtreeMax', maxItems)
+	_setIfChanged(db.dto, 'pathFilter', pathFilter)
 
-	db.dto.autoNext = auNxt
-	db.dto.rtreeMax = maxItems
-	db.dto.pathFilter = pathFilter or ''
 
+	if trigId == k.simRtree and rtree:
+		muodOn = False
+		muodOnOut = False
 
-	if trigId == k.simRtree and rtree: muodOn = False
+	if trigId == k.muodOn and muodOn:
+		rtree = False
+		rtreeOut = False
 
-	if trigId == k.muodOn and muodOn: rtree = False
+	_setIfChanged(db.dto.muod, 'on', muodOn)
+	_setIfChanged(db.dto.muod, 'sz', muodMxGs)
 
-	if db.dto.muod.on != muodOn: db.dto.muod.on = muodOn
+	_setIfChanged(db.dto.gpsk, 'eqDt', gDt)
+	_setIfChanged(db.dto.gpsk, 'eqFsz', gFsz)
+	_setIfChanged(db.dto.gpsk, 'eqW', gW)
+	_setIfChanged(db.dto.gpsk, 'eqH', gH)
 
-	db.dto.muod.sz = muodMxGs or 10
+	if trigId in (k.simRtree, k.muodOn): disMuodMx = not muodOn
+	_setIfChanged(db.dto, 'showGridInfo', shGdInfo)
 
-	db.dto.gpsk.eqDt = gDt
-	db.dto.gpsk.eqFsz = gFsz
-	db.dto.gpsk.eqW = gW
-	db.dto.gpsk.eqH = gH
-
-	# db.dto.muod = Muod(muodOn or True, muodMxGs or 10)
-	# db.dto.gpsk = Gpsk(gDt,gW,gH,gFsz)
-
-	disMuodMx = not muodOn
-
-	if db.dto.showGridInfo != shGdInfo: db.dto.showGridInfo = shGdInfo
-
-	if db.dto.rtree != rtree:
-		db.dto.rtree = rtree
+	if _setIfChanged(db.dto, 'rtree', rtree):
 
 		if retNow == noUpd and now.sim.assAid > 0:
 			lg.info(f"[sets:OnUpd] reload, now.assAid[{now.sim.assAid}] rtree[{db.dto.rtree}] muodMode[{db.dto.muod.on}]")
 			now.sim.assCur = db.pics.getSimAssets(now.sim.assAid, db.dto.rtree if not db.dto.muod.on else False)
 			retNow = now
 
-	return [retNow, disMuodMx, muodOn, rtree]
+	return [retNow, disMuodMx, muodOnOut, rtreeOut]
 
 
 @cbk(
@@ -522,11 +534,11 @@ def ausl_OnUpd(values):
 		elif fld == 'pthWgt': pthWgt = val
 		elif fld == 'devPri': devPri = val
 		elif fld == 'devWgt': devWgt = val
-		else: setattr(a, fld, val)
+		else: _setIfChanged(a, fld, val)
 
-	a.usr = PairKv(k=usrPri or '', v=usrWgt or 0)
-	a.pth = PairKv(k=pthVal or '', v=pthWgt or 0)
-	a.dev = PairKv(k=devPri or '', v=devWgt or 0)
+	_setIfChanged(a, 'usr', PairKv(k=usrPri or '', v=usrWgt or 0))
+	_setIfChanged(a, 'pth', PairKv(k=pthVal or '', v=pthWgt or 0))
+	_setIfChanged(a, 'dev', PairKv(k=devPri or '', v=devWgt or 0))
 
 	lg.info(f"[ausl:OnUpd] {a}")
 
@@ -556,7 +568,7 @@ def excl_OnUpd(values):
 		fld = item['id']['field']
 		val = item['value']
 		fields.append(fld)
-		setattr(e, fld, val)
+		_setIfChanged(e, fld, val)
 
 	lg.info(f"[excl:OnUpd] {e}")
 	return [False if f == 'on' else not e.on for f in fields]
@@ -640,8 +652,8 @@ def renderCpuSettings():
 	prevent_initial_call=True
 )
 def gpuSettings_OnUpd(autoMode, batchSize):
-	db.dto.gpuAutoMode = autoMode
-	db.dto.gpuBatchSize = batchSize
+	_setIfChanged(db.dto, 'gpuAutoMode', bool(autoMode))
+	_setIfChanged(db.dto, 'gpuBatchSize', int(batchSize))
 
 	lg.info(f"[gpuSets:OnUpd] AutoMode[{autoMode}] BatchSize[{batchSize}]")
 
@@ -658,8 +670,8 @@ def gpuSettings_OnUpd(autoMode, batchSize):
 	prevent_initial_call=True
 )
 def cpuSettings_OnUpd(autoMode, workers):
-	db.dto.cpuAutoMode = autoMode
-	db.dto.cpuWorkers = workers
+	_setIfChanged(db.dto, 'cpuAutoMode', bool(autoMode))
+	_setIfChanged(db.dto, 'cpuWorkers', int(workers))
 
 	lg.info(f"[cpuSets:OnUpd] AutoMode[{autoMode}] Workers[{workers}]")
 
@@ -680,7 +692,7 @@ def mrg_OnUpd(values):
 		fld = item['id']['field']
 		val = item['value']
 		fields.append(fld)
-		setattr(m, fld, val)
+		_setIfChanged(m, fld, val)
 
 	lg.info(f"[mrg:OnUpd] {m}")
 	return [False if f == 'on' else not m.on for f in fields]

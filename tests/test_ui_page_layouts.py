@@ -3,6 +3,7 @@
 import os
 import sys
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
@@ -12,6 +13,8 @@ import dash
 dash.Dash(__name__, use_pages=True, pages_folder='')
 
 from pages import fetch, not_found_404, settings, vector, view
+import db.sets as dbsets
+from dto import DtoSets
 from mod import models
 from ui import cardSets, pager
 
@@ -59,6 +62,120 @@ class TestPageLayouts(unittest.TestCase):
 		self.assertEqual(props(threshold).get('included'), False)
 		self.assertEqual(props(worker).get('included'), False)
 		self.assertEqual(props(threshold).get('tooltip'), props(worker).get('tooltip'))
+
+	def test_text_settings_debounce_persistence_until_typing_pauses(self):
+		nodes = list(walk(cardSets.renderCard()))
+		pathFilter = next(node for node in nodes if props(node).get('id') == cardSets.k.id(cardSets.k.pathFilter))
+		excludeName = next(node for node in nodes if props(node).get('id') == cardSets.k.excl('filNam'))
+
+		self.assertEqual(props(pathFilter).get('debounce'), 750)
+		self.assertEqual(props(excludeName).get('debounce'), 750)
+
+	def test_search_settings_skip_unchanged_persistence_and_outputs(self):
+		class Tracked(SimpleNamespace):
+			def __init__(self, **values):
+				object.__setattr__(self, 'writes', [])
+				for name, value in values.items(): object.__setattr__(self, name, value)
+
+			def __setattr__(self, name, value):
+				if name != 'writes': self.writes.append(name)
+				object.__setattr__(self, name, value)
+
+		muod = Tracked(on=False, sz=10)
+		gpsk = Tracked(eqDt=False, eqW=False, eqH=False, eqFsz=False)
+		dto = Tracked(
+			thMin=0.93, autoNext=True, showGridInfo=True, rtree=False,
+			rtreeMax=200, pathFilter='', muod=muod, gpsk=gpsk,
+		)
+		with (
+			patch.object(cardSets.db, 'dto', dto),
+			patch.object(cardSets, 'getTrgId', return_value=cardSets.k.threshold),
+		):
+			result = cardSets.settings_OnUpd(
+				0.93, True, True, False, 200, '', False, 10,
+				False, False, False, False, {},
+			)
+
+		self.assertEqual(dto.writes, [])
+		self.assertEqual(muod.writes, [])
+		self.assertEqual(gpsk.writes, [])
+		self.assertTrue(all(value is cardSets.noUpd for value in result))
+
+	def test_search_settings_keep_mutually_exclusive_controls_in_sync(self):
+		class Tracked(SimpleNamespace):
+			def __init__(self, **values):
+				object.__setattr__(self, 'writes', [])
+				for name, value in values.items(): object.__setattr__(self, name, value)
+
+			def __setattr__(self, name, value):
+				if name != 'writes': self.writes.append((name, value))
+				object.__setattr__(self, name, value)
+
+		muod = Tracked(on=True, sz=10)
+		gpsk = Tracked(eqDt=False, eqW=False, eqH=False, eqFsz=False)
+		dto = Tracked(
+			thMin=0.93, autoNext=True, showGridInfo=True, rtree=False,
+			rtreeMax=200, pathFilter='', muod=muod, gpsk=gpsk,
+		)
+		with (
+			patch.object(cardSets.db, 'dto', dto),
+			patch.object(cardSets, 'getTrgId', return_value=cardSets.k.simRtree),
+		):
+			result = cardSets.settings_OnUpd(
+				0.93, True, True, True, 200, '', True, 10,
+				False, False, False, False, {},
+			)
+
+		self.assertFalse(muod.on)
+		self.assertTrue(dto.rtree)
+		self.assertIs(result[0], cardSets.noUpd)
+		self.assertTrue(result[1])
+		self.assertFalse(result[2])
+		self.assertIs(result[3], cardSets.noUpd)
+
+	def test_wildcard_settings_persist_only_the_changed_field(self):
+		dto = DtoSets()
+		saved = []
+
+		def useDefaults(_key, defaultValue=None): return defaultValue
+		def trackSave(key, value):
+			saved.append((key, value))
+			return True
+
+		with (
+			patch.object(dbsets, 'get', side_effect=useDefaults),
+			patch.object(dbsets, 'save', side_effect=trackSave),
+			patch.object(cardSets.db, 'dto', dto),
+			patch.object(cardSets.db.psql, 'getSchema', return_value=SimpleNamespace(hasAssetDeviceId=True)),
+		):
+			with patch.object(cardSets, 'ctx', SimpleNamespace(inputs_list=[[
+				{'id': {'type': 'ausl', 'field': 'on'}, 'value': True},
+				{'id': {'type': 'ausl', 'field': 'earlier'}, 'value': 3},
+				{'id': {'type': 'ausl', 'field': 'usrPri'}, 'value': ''},
+				{'id': {'type': 'ausl', 'field': 'usrWgt'}, 'value': 0},
+				{'id': {'type': 'ausl', 'field': 'pthVal'}, 'value': ''},
+				{'id': {'type': 'ausl', 'field': 'pthWgt'}, 'value': 0},
+				{'id': {'type': 'ausl', 'field': 'devPri'}, 'value': ''},
+				{'id': {'type': 'ausl', 'field': 'devWgt'}, 'value': 0},
+			]])):
+				cardSets.ausl_OnUpd([True, 3, '', 0, '', 0, '', 0])
+			self.assertEqual([key for key, _ in saved], ['ausl'])
+
+			saved.clear()
+			with patch.object(cardSets, 'ctx', SimpleNamespace(inputs_list=[[
+				{'id': {'type': 'excl', 'field': 'on'}, 'value': True},
+				{'id': {'type': 'excl', 'field': 'fndLes'}, 'value': 2},
+			]])):
+				cardSets.excl_OnUpd([True, 2])
+			self.assertEqual([key for key, _ in saved], ['excl'])
+
+			saved.clear()
+			with patch.object(cardSets, 'ctx', SimpleNamespace(inputs_list=[[
+				{'id': {'type': 'mrg', 'field': 'on'}, 'value': False},
+				{'id': {'type': 'mrg', 'field': 'albums'}, 'value': True},
+			]])):
+				cardSets.mrg_OnUpd([False, True])
+			self.assertEqual([key for key, _ in saved], ['mrg'])
 
 	def test_maintenance_actions_use_solid_button_styles(self):
 		with (
