@@ -116,6 +116,16 @@ class TestSimilarPartialRendering(unittest.TestCase):
 			actionCallbacks[0]['inputs'],
 			[{'id': similar.k.actionTrigger, 'property': 'data'}],
 		)
+		viewGroupCallbacks = [
+			callback for callback in testApp.callback_map.values()
+			if any(item['id'] == similar.k.viewGroupTrigger for item in callback['inputs'])
+		]
+		self.assertEqual(len(viewGroupCallbacks), 1)
+		self.assertEqual(
+			viewGroupCallbacks[0]['inputs'],
+			[{'id': similar.k.viewGroupTrigger, 'property': 'data'}],
+		)
+		self.assertFalse(any('btn-view-group' in str(item['id']) for item in inputs))
 
 		initKey = next(key for key in testApp.callback_map if 'init-selection' in key)
 		initInputs = [item['id'] for item in testApp.callback_map[initKey]['inputs']]
@@ -150,6 +160,26 @@ class TestSimilarPartialRendering(unittest.TestCase):
 			response = self.client.post('/_dash-update-component', json=payload)
 
 		self.assertEqual(response.status_code, 200, response.get_data(as_text=True))
+
+	def test_pending_group_navigation_uses_compact_action_descriptor(self):
+		selected = asset(2, 1)
+		groupAssets = [selected, asset(3, 1)]
+		now = models.Now(sim=models.PgSim()).toDict()
+
+		with (
+			patch.object(similar.db.pics, 'getById', return_value=selected) as getById,
+			patch.object(similar.db.pics, 'getSimAssets', return_value=groupAssets) as getSimAssets,
+		):
+			result, activeTab = similar.sim_OnSwitchViewGroup(
+				{'id': {'type': 'btn-view-group', 'id': selected.id}, 'nonce': 1},
+				now,
+			)
+
+		getById.assert_called_once_with(selected.id)
+		getSimAssets.assert_called_once_with(selected.autoId, similar.db.dto.rtree)
+		self.assertEqual(result['sim']['assAid'], selected.autoId)
+		self.assertEqual([item['autoId'] for item in result['sim']['assCur']], [2, 3])
+		self.assertEqual(activeTab, similar.k.tabCur)
 
 	def test_unchanged_store_update_does_not_replace_grid(self):
 		assets = [asset(1, 1), asset(2, 1), asset(3, 2), asset(4, 2)]

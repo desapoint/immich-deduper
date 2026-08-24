@@ -181,6 +181,7 @@ class k:
 	gvPnd = 'sim-gvPnd'
 	renderState = 'sim-render-state'
 	actionTrigger = 'sim-action-trigger'
+	viewGroupTrigger = 'sim-view-group-trigger'
 
 	@staticmethod
 	def id(k): return {"type": "sim", "id": f"{k}"}
@@ -206,6 +207,7 @@ def layout(autoId=None):
 		dcc.Store(id=k.assUrl, data=autoId),
 		dcc.Store(id=k.renderState, storage_type="memory"),
 		dcc.Store(id=k.actionTrigger, storage_type="memory"),
+		dcc.Store(id=k.viewGroupTrigger, storage_type="memory"),
 
 		# 客戶端選擇狀態管理的 dummy 元素
 		htm.Div(id={"type": "dummy-output", "id": "selection"}, style={"display": "none"}),
@@ -764,27 +766,21 @@ def sim_UpdateButtons(
 		out(ks.sto.now, "data", allow_duplicate=True),
 		out(k.tabs, "active_tab", allow_duplicate=True),  # Switch to current tab
 	],
-	inp({"type": "btn-view-group", "id": ALL}, "n_clicks"),
+	inp(k.viewGroupTrigger, "data"),
 	[
 		ste(ks.sto.now, "data"),
 	],
 	prevent_initial_call=True
 )
-def sim_OnSwitchViewGroup(clks, dta_now):
-	if not ctx.triggered: return noUpd.by(2)
-
-	# Check if any button was actually clicked
-	if not any(clks): return noUpd.by(2)
+def sim_OnSwitchViewGroup(actionTrigger, dta_now):
+	if not actionTrigger or not actionTrigger.get('id'): return noUpd.by(2)
 
 	now = Now.fromDic(dta_now)
+	trgId = TrgId(actionTrigger['id'])
+	assId = trgId.get("id")
+	if not assId: return noUpd.by(2)
 
-	trgId = ctx.triggered_id
-
-	if not trgId: return noUpd.by(2)
-
-	assId = trgId["id"]
-
-	lg.info(f"[sim:vgrp] switch: id[{assId}] clks[{clks}]")
+	lg.info(f"[sim:vgrp] switch: id[{assId}]")
 
 	asset = db.pics.getById(assId)
 	if not asset: return noUpd.by(2)

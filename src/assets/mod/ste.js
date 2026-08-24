@@ -569,6 +569,8 @@ document.addEventListener( 'DOMContentLoaded', function(){
 			+ '[id*=\'"type":"sim-stack-group"\'], [id*=\'"type":"sim-group-action"\']'
 		)
 		if ( actionButton && ste ) ste.dispatchAction( actionButton )
+		const viewGroupButton = event.target.closest?.( '[id*=\'"type":"btn-view-group"\']' )
+		if ( viewGroupButton && ste ) ste.dispatchAction( viewGroupButton, 'sim-view-group-trigger' )
 		const viewDeleteButton = event.target.closest?.( '[id*=\'"type":"asset-del"\']' )
 		if ( viewDeleteButton && ste ) ste.dispatchAction( viewDeleteButton, 'view-action-trigger' )
 		const coverButton = event.target.closest?.( '[id*=\'"type":"sim-stack-cover"\']' )
