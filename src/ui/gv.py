@@ -19,6 +19,14 @@ GROUP_MARK_RESOLVED = "mark-resolved"
 GROUP_DELETE_ALL = "delete-all"
 
 
+def _groupKey(groupId: int) -> str:
+	return f"sim-group-{groupId}"
+
+
+def _assetKey(asset: models.Asset, prefix: str = "sim-asset") -> str:
+	return f"{prefix}-{asset.autoId}"
+
+
 def _mkGroupAction(
 	label: str,
 	groupId: int,
@@ -83,7 +91,12 @@ def _mkGroupHeader(groupId: int, count: int):
 
 
 def mkCardRow(asset: models.Asset, groupId: int, style: Optional[dict] = None):
-	return htm.Div(cards.mk(asset, stackGroupId=groupId), className="sim-card-cell", style=style or {})
+	return htm.Div(
+		cards.mk(asset, stackGroupId=groupId),
+		className="sim-card-cell",
+		style=style or {},
+		key=_assetKey(asset),
+	)
 
 
 def mkGroupContainer(groupId: int, assets: List[models.Asset], minW=300, maxW=360):
@@ -97,7 +110,7 @@ def mkGroupContainer(groupId: int, assets: List[models.Asset], minW=300, maxW=36
 			className="sim-group-card-list",
 			style=cardGridStyle,
 		),
-	], className="sim-group-container", **{"data-group-id": str(groupId)})
+	], className="sim-group-container", key=_groupKey(groupId), **{"data-group-id": str(groupId)})
 
 
 def mkGrd(assets: list[models.Asset], minW=230, onEmpty=None, maker=cards.mk):
@@ -138,9 +151,9 @@ def mkGrd(assets: list[models.Asset], minW=230, onEmpty=None, maker=cards.mk):
 
 		if a.vw.isRelats and not firstRels:
 			firstRels = True
-			rows.append(htm.Div(htm.Label(f"relates ({cntRelats}) :"), className="hr"))
+			rows.append(htm.Div(htm.Label(f"relates ({cntRelats}) :"), className="hr", key=f"sim-relates-{gid}"))
 
-		rows.append(htm.Div(card, style=styItem))
+		rows.append(htm.Div(card, style=styItem, key=_assetKey(a, "sim-grid-asset")))
 
 	lg.info(f"[sim:gv] assets[{len(assets)}] rows[{len(rows)}]")
 
@@ -196,7 +209,10 @@ def mkPndGrd(assets: list[models.Asset], minW=230, maxW=300, onEmpty=None):
 		}
 		styItem = {}
 
-	rows = [htm.Div(cards.mkCardPnd(a), style=styItem) for a in assets]
+	rows = [
+		htm.Div(cards.mkCardPnd(a), style=styItem, key=_assetKey(a, "sim-pending-asset"))
+		for a in assets
+	]
 
 	lg.info(f"[sim:gvPnd] assets[{len(assets)}] rows[{len(rows)}]")
 
