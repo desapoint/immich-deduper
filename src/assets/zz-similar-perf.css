@@ -9,18 +9,3 @@
 	content-visibility: auto;
 	contain-intrinsic-size: auto 620px;
 }
-
-/* The Current review grid is wrapped by dbc.Spinner. During any callback that
- * targets #sim-gvSim, dbc.Spinner hides its whole child tree and overlays a
- * spinner. That makes a localized Dash Patch (for example deleting one group)
- * look like the entire list was refreshed. Keep the existing grid mounted and
- * visible while the callback runs, and suppress only that spinner overlay.
- * The Pending tab keeps its normal spinner behavior.
- */
-.page-similar div:has(> #sim-gvSim) {
-	visibility: visible !important;
-}
-
-.page-similar div:has(> #sim-gvSim) > div:not(#sim-gvSim) {
-	display: none !important;
-}
