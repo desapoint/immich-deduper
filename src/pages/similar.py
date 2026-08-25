@@ -342,10 +342,7 @@ def layout(autoId=None):
 							),
 
 
-							dbc.Spinner(
-								htm.Div(id=k.gvSim),
-								color="success", type="border", spinner_style={"width": "3rem", "height": "3rem"},
-							),
+							htm.Div(id=k.gvSim),
 
 							# Floating Goto Top Button
 							htm.Button(
