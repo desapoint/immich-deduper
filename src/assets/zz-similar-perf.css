@@ -1,17 +1,11 @@
 /* Similar-review rendering isolation.
  *
- * Each group is an independent visual unit. Let the browser skip layout/paint
- * work for groups that are well outside the viewport while preserving enough
- * intrinsic height to keep scrolling stable. This is especially useful when
- * a search returns dozens of large thumbnail groups.
+ * Let the browser defer work for groups that are well outside the viewport
+ * while preserving an estimated height so scrolling remains stable. Avoid
+ * explicit paint/layout containment here because card tips and popovers may
+ * intentionally overflow their group.
  */
 .page-similar .sim-group-container {
 	content-visibility: auto;
-	contain: layout paint style;
 	contain-intrinsic-size: auto 620px;
-}
-
-/* A card update should not invalidate layout/paint for neighboring groups. */
-.page-similar .sim-group-card-list {
-	contain: layout paint;
 }
