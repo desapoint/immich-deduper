@@ -1,0 +1,93 @@
+name: UI Runtime CI
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "requirements*.txt"
+      - ".github/workflows/ui-runtime-ci.yml"
+  push:
+    branches:
+      - main
+      - perf/interface-responsiveness
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "requirements*.txt"
+      - ".github/workflows/ui-runtime-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-runtime-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ui-regressions:
+    name: UI regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Build CPU validation image
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          file: ./Dockerfile
+          tags: immich-deduper:ui-validation
+          build-args: |
+            DEVICE=cpu
+          load: true
+          push: false
+          cache-from: type=gha,scope=immich-deduper-fork-cpu
+          cache-to: type=gha,scope=immich-deduper-ui-validation,mode=min
+
+      - name: Compile Python sources
+        run: |
+          set -euo pipefail
+          docker run --rm immich-deduper:ui-validation python -m compileall -q /app/src
+
+      - name: Run Python UI regression tests
+        run: |
+          set -euo pipefail
+          for test in \
+            test_mdl_img_layout.py \
+            test_sim_group_action_stack.py \
+            test_sim_render_keys.py \
+            test_sim_render_stack.py \
+            test_ui_page_layouts.py
+          do
+            echo "==> $test"
+            docker run --rm \
+              -v "$PWD/tests:/app/tests:ro" \
+              -w /app \
+              immich-deduper:ui-validation \
+              python "tests/$test"
+          done
+
+      - name: Run JavaScript UI regression tests
+        run: |
+          set -euo pipefail
+          node --version
+          for test in \
+            test_live_photo_visibility.js \
+            test_mdl_img_ui.js \
+            test_notification_ui.js \
+            test_poptip_ui.js \
+            test_sim_ui_state.js \
+            test_stack_selection.js \
+            test_store_sync.js \
+            test_system_check_ui.js
+          do
+            echo "==> $test"
+            node "tests/$test"
+          done
