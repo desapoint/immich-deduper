@@ -208,7 +208,7 @@ def unloadModel(*, force: bool = False, reason: str = 'manual') -> bool:
 
 
 def getOptimalBatchSize() -> int:
-    device_type = conf.device.type
+    device_type = conf.getDevice().type
     if device_type == 'cpu':
         return _envInt('DEDUP_CPU_BATCH_SIZE', 4, 1, 32)
 
@@ -466,7 +466,7 @@ def processVectors(assets: List[models.Asset], photoQ, onUpdate: models.IFnProg,
         return pi
 
     batchSize = getOptimalBatchSize()
-    device_type = conf.device.type
+    device_type = conf.getDevice().type
     decodeWorkers = _getDecodeWorkers(device_type)
     commitBatch = 100
     updAssets: list[models.Asset] = []

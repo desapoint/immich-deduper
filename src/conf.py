@@ -305,12 +305,15 @@ def pathFromRoot(path):
 # envs
 #------------------------------------------------------------------------
 class envs:
-	version = '0.3.2'
+	version = '0.3.1'
 	isDev = False if isDock else bool(os.getenv('IsDev', False))
 	isDevUI = False if isDock else bool(os.getenv('IsDevUI', False))
 	isDock = False if not isDock else True
 	envImmichPath:str = os.getenv('IMMICH_PATH', '')    # original from .env
 	envImmichThumb:str = os.getenv('IMMICH_THUMB', '')  # original from .env
+	immichUrl:str = os.getenv('IMMICH_URL', '')
+	immichApiKey:str = os.getenv('IMMICH_API_KEY', '')
+	immichApiKeys:str = os.getenv('IMMICH_API_KEYS', '')
 	immichPath:str = '/immich' if isDock else envImmichPath
 	immichThumb:str = '/thumbs' if isDock and envImmichThumb else envImmichThumb
 	qdrantUrl:str = os.getenv('QDRANT_URL') or ('http://immich-deduper-qdrant:6333' if isDock else '')
