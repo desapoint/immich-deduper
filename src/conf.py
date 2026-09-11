@@ -2,10 +2,10 @@ import os
 import time
 import random
 import re
+import threading
 from typing import Dict, Callable, Optional
 
 import dotenv
-import torch
 
 # import ssl
 # ssl._create_default_https_context = ssl._create_unverified_context
@@ -16,16 +16,75 @@ from util import log
 
 lg = log.get(__name__)
 
+_device = None
+_device_type = None
+_device_lock = threading.Lock()
+
+
+def _configuredDeviceType() -> Optional[str]:
+	useDevice = os.getenv('ForceCpu')
+	if useDevice: return 'cpu'
+
+	value = (os.getenv('DEDUP_DEVICE') or '').strip().lower()
+	if value.startswith('cuda'): return 'cuda'
+	if value in ('cpu', 'mps'): return value
+
+	# Docker builds install a device-specific torch wheel. Inspect package
+	# metadata without importing torch so idle web startup remains lightweight.
+	if os.path.exists('/.dockerenv'):
+		try:
+			from importlib.metadata import version
+			torchVer = version('torch').lower()
+			if '+cu' in torchVer: return 'cuda'
+			return 'cpu'
+		except Exception: return 'cpu'
+	return None
+
 
 def getDevice():
-	useDevice = os.getenv('ForceCpu')
-	if useDevice: return torch.device('cpu')
+	global _device, _device_type
+	if _device is not None: return _device
 
-	if torch.cuda.is_available(): return torch.device('cuda')
-	elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available(): return torch.device('mps')
-	else: return torch.device('cpu')
+	with _device_lock:
+		if _device is not None: return _device
 
-device = getDevice()
+		import torch
+		deviceType = _configuredDeviceType()
+		if deviceType == 'cpu': device = torch.device('cpu')
+		elif deviceType == 'cuda':
+			if torch.cuda.is_available(): device = torch.device('cuda')
+			else:
+				lg.warning('[conf] CUDA requested but unavailable; falling back to CPU')
+				device = torch.device('cpu')
+		elif deviceType == 'mps':
+			if hasattr(torch.backends, 'mps') and torch.backends.mps.is_available(): device = torch.device('mps')
+			else:
+				lg.warning('[conf] MPS requested but unavailable; falling back to CPU')
+				device = torch.device('cpu')
+		elif torch.cuda.is_available(): device = torch.device('cuda')
+		elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available(): device = torch.device('mps')
+		else: device = torch.device('cpu')
+
+		_device = device
+		_device_type = device.type
+		return _device
+
+
+def getDeviceType() -> str:
+	if _device_type: return _device_type
+	deviceType = _configuredDeviceType()
+	if deviceType: return deviceType
+	return getDevice().type
+
+
+class _LazyDevice:
+	@property
+	def type(self): return getDeviceType()
+	def resolve(self): return getDevice()
+	def __repr__(self): return f"LazyDevice({self.type})"
+
+
+device = _LazyDevice()
 pathRoot = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 isDock = os.path.exists('/.dockerenv')
 
@@ -246,15 +305,12 @@ def pathFromRoot(path):
 # envs
 #------------------------------------------------------------------------
 class envs:
-	version = '0.3.1'
+	version = '0.3.2'
 	isDev = False if isDock else bool(os.getenv('IsDev', False))
 	isDevUI = False if isDock else bool(os.getenv('IsDevUI', False))
 	isDock = False if not isDock else True
 	envImmichPath:str = os.getenv('IMMICH_PATH', '')    # original from .env
 	envImmichThumb:str = os.getenv('IMMICH_THUMB', '')  # original from .env
-	immichUrl:str = os.getenv('IMMICH_URL', '')
-	immichApiKey:str = os.getenv('IMMICH_API_KEY', '')
-	immichApiKeys:str = os.getenv('IMMICH_API_KEYS', '')
 	immichPath:str = '/immich' if isDock else envImmichPath
 	immichThumb:str = '/thumbs' if isDock and envImmichThumb else envImmichThumb
 	qdrantUrl:str = os.getenv('QDRANT_URL') or ('http://immich-deduper-qdrant:6333' if isDock else '')
@@ -295,6 +351,8 @@ class envs:
 		lg.info(f"  QDRANT_COLL: {envs.qdrantColl}")
 		lg.info(f"  DEDUP_PORT: {envs.ddupPort}")
 		lg.info(f"  DEDUP_DATA: {envs.ddupData}")
+		lg.info(f"  DEVICE_HINT: {_configuredDeviceType() or 'auto'}")
+		lg.info(f"  MODEL_IDLE_TIMEOUT: {os.getenv('DEDUP_MODEL_IDLE_TIMEOUT', '600')}s")
 		lg.info(f"  IS_DOCKER: {envs.isDock}")
 		lg.info(f"  IS_DEV: {envs.isDev}")
 

@@ -10,10 +10,12 @@ WORKDIR /app
 ARG DEVICE
 ARG DEDUP_PORT=8086
 ENV PORT=${DEDUP_PORT}
+ENV DEDUP_DEVICE=${DEVICE}
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    TORCHINDUCTOR_CACHE_DIR=/tmp/torch_inductor
+    TORCHINDUCTOR_CACHE_DIR=/tmp/torch_inductor \
+    MALLOC_ARENA_MAX=2
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libimage-exiftool-perl && \

@@ -43,6 +43,18 @@ serve.regBy(app)
 socketio = SocketIO(app.server, cors_allowed_origins="*", logger=False, engineio_logger=False, async_mode="threading")
 tskSvc.setup(socketio)
 
+# Bound completed-task retention and replace the vector task implementation
+# without importing PyTorch in the web process at startup.
+import task_cleanup
+task_cleanup.start(tskSvc.mgr)
+import vector_opt
+vector_opt.register()
+import chk
+import model_check_opt
+chk.model = model_check_opt.model
+from perf import logMemory
+logMemory("application initialized")
+
 
 
 #========================================================================
@@ -126,6 +138,11 @@ if __name__ == "__main__":
 		lg.info("=======================================")
 		raise
 	finally:
+		try:
+			import imgs
+			imgs.unloadModel(force=True, reason='application shutdown')
+		except Exception: pass
+
 		import db
 
 		db.close()
