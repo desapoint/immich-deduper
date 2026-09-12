@@ -60,6 +60,7 @@ jobs:
         run: |
           set -euo pipefail
           for test in \
+            test_face_schema_compat.py \
             test_mdl_img_layout.py \
             test_sim_group_action_stack.py \
             test_sim_render_keys.py \

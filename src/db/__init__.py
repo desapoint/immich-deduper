@@ -8,6 +8,7 @@ import db.sets as sets
 import db.vecs as vecs
 import db.psql as psql
 import db.sim as sim
+import db.face_compat as face_compat
 from dto import dto, DtoSets, AutoDbField
 
 
@@ -18,6 +19,7 @@ def init():
         pics.init()
         vecs.init()
         psql.init()
+        face_compat.install(psql)
     except Exception as e:
         raise RuntimeError(f'Database initialization failed: {str(e)}')
 
