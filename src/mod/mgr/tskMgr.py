@@ -37,6 +37,7 @@ class SioWrap:
 from mod.models import TskStatus, IFnRst, IFnProg, Gws
 
 DEBUG = False
+MAX_COMPLETED_TASKS = 20
 
 
 @dataclass
@@ -78,6 +79,21 @@ class TskMgr:
 		self.connected_clients: Set[str] = set()
 		self.running = False
 		self.startupId = str(uuid.uuid4())
+
+	def _pruneCompleted(self):
+		"""Bound retained terminal task state without touching active tasks."""
+		terminal = {TskStatus.COMPLETED, TskStatus.FAILED, TskStatus.CANCELLED}
+		completed = [
+			(tsn, ti) for tsn, ti in self.infos.items()
+			if ti.status in terminal and ti.dte is not None
+		]
+		if len(completed) <= MAX_COMPLETED_TASKS: return
+
+		completed.sort(key=lambda item: item[1].dte or 0, reverse=True)
+		for tsn, _ in completed[MAX_COMPLETED_TASKS:]:
+			self.threads.pop(tsn, None)
+			self.tsks.pop(tsn, None)
+			self.infos.pop(tsn, None)
 
 	def _sendCurrentTaskStatus(self, client_id: str):
 		if not self.sio: return
@@ -186,6 +202,7 @@ class TskMgr:
 
 		# Send cancel complete message to update UI
 		if self.sio: self.broadcast(ti.gws('complete'))
+		self._pruneCompleted()
 
 		return True
 
@@ -255,6 +272,7 @@ class TskMgr:
 			if ti.status != TskStatus.CANCELLED: doSend(ti.gws('complete'))
 
 			if tsn in self.threads: del self.threads[tsn]
+			self._pruneCompleted()
 
 	def run(self, tsn: str) -> bool:
 		if tsn not in self.infos: raise RuntimeError(f"Task {tsn} not found in tasks")
