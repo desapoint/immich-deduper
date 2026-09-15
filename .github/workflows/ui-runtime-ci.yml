@@ -1,21 +1,16 @@
 name: UI Runtime CI
 
 on:
+  push:
+    branches:
+      - perf/interface-responsiveness
   pull_request:
     paths:
       - "src/**"
       - "tests/**"
-      - "requirements*.txt"
       - ".github/workflows/ui-runtime-ci.yml"
-  push:
-    branches:
-      - main
-      - perf/interface-responsiveness
-    paths:
-      - "src/**"
-      - "tests/**"
+      - "Dockerfile"
       - "requirements*.txt"
-      - ".github/workflows/ui-runtime-ci.yml"
   workflow_dispatch:
 
 permissions:
@@ -26,27 +21,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ui-regressions:
+  ui-runtime-regressions:
     name: UI regressions
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
 
       - name: Build CPU validation image
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
-          file: ./Dockerfile
+          load: true
           tags: immich-deduper:ui-validation
           build-args: |
+            DEDUP_PORT=8086
             DEVICE=cpu
-          load: true
           push: false
           cache-from: type=gha,scope=immich-deduper-fork-cpu
           cache-to: type=gha,scope=immich-deduper-ui-validation,mode=min
@@ -62,6 +57,7 @@ jobs:
           for test in \
             test_face_schema_compat.py \
             test_mdl_img_layout.py \
+            test_model_runtime_contract.py \
             test_sim_group_action_stack.py \
             test_sim_render_keys.py \
             test_sim_render_stack.py \
