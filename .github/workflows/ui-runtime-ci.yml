@@ -65,6 +65,7 @@ jobs:
             test_sim_group_action_stack.py \
             test_sim_render_keys.py \
             test_sim_render_stack.py \
+            test_task_history_retention.py \
             test_ui_page_layouts.py
           do
             echo "==> $test"
