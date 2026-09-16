@@ -133,6 +133,30 @@ def test_model_initialization_stays_in_one_cache_guard():
     ), "model eval setup must remain in the guarded initialization path"
 
 
+def test_model_cache_is_only_published_by_get_model():
+    tree = _tree()
+    writers = []
+    for node in tree.body:
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        for child in ast.walk(node):
+            targets = []
+            if isinstance(child, ast.Assign):
+                targets = child.targets
+            elif isinstance(child, ast.AnnAssign):
+                targets = [child.target]
+            elif isinstance(child, ast.AugAssign):
+                targets = [child.target]
+            if any(isinstance(target, ast.Name) and target.id == "_model" for target in targets):
+                writers.append(node.name)
+                break
+
+    assert writers == ["getModel"], (
+        "the shared model cache must have one publication path so synchronization cannot be "
+        f"bypassed by another writer: found {writers}"
+    )
+
+
 def test_model_runtime_keeps_threading_available_for_synchronization():
     imports = [
         node for node in _tree().body
@@ -220,6 +244,7 @@ if __name__ == "__main__":
     test_feature_extraction_disables_autograd()
     test_get_model_keeps_singleton_contract()
     test_model_initialization_stays_in_one_cache_guard()
+    test_model_cache_is_only_published_by_get_model()
     test_model_runtime_keeps_threading_available_for_synchronization()
     test_model_cache_directory_is_configured_before_weight_load()
     test_cached_model_is_device_ready_and_in_inference_mode()
