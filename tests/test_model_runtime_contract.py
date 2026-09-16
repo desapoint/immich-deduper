@@ -133,6 +133,24 @@ def test_model_initialization_stays_in_one_cache_guard():
     ), "model eval setup must remain in the guarded initialization path"
 
 
+def test_model_cache_has_one_publication_assignment():
+    get_model = _function("getModel")
+    assignments = []
+    for node in ast.walk(get_model):
+        if not isinstance(node, ast.Assign):
+            continue
+        if any(isinstance(target, ast.Name) and target.id == "_model" for target in node.targets):
+            assignments.append(node)
+
+    assert len(assignments) == 2, (
+        "getModel currently publishes the model through construction and device-transfer assignments; "
+        f"found {len(assignments)} assignments, so synchronization work must re-audit publication order"
+    )
+    assert assignments[0].lineno < assignments[1].lineno, (
+        "model construction must precede device transfer before the shared cache is returned"
+    )
+
+
 def test_model_cache_is_only_published_by_get_model():
     tree = _tree()
     writers = []
@@ -244,6 +262,7 @@ if __name__ == "__main__":
     test_feature_extraction_disables_autograd()
     test_get_model_keeps_singleton_contract()
     test_model_initialization_stays_in_one_cache_guard()
+    test_model_cache_has_one_publication_assignment()
     test_model_cache_is_only_published_by_get_model()
     test_model_runtime_keeps_threading_available_for_synchronization()
     test_model_cache_directory_is_configured_before_weight_load()
