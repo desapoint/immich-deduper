@@ -9,11 +9,27 @@ from pathlib import Path
 IMGS = Path(__file__).resolve().parent.parent / "src" / "imgs.py"
 
 
+def _tree():
+    return ast.parse(IMGS.read_text(encoding="utf-8"), filename=str(IMGS))
+
+
 def _get_model():
-    tree = ast.parse(IMGS.read_text(encoding="utf-8"), filename=str(IMGS))
     return next(
-        node for node in tree.body
+        node for node in _tree().body
         if isinstance(node, ast.FunctionDef) and node.name == "getModel"
+    )
+
+
+def test_model_cache_starts_empty_at_module_scope():
+    assignments = [
+        node for node in _tree().body
+        if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id == "_model" for target in node.targets)
+    ]
+    assert len(assignments) == 1, "the shared model cache should have one module-level initializer"
+    initializer = assignments[0].value
+    assert isinstance(initializer, ast.Constant) and initializer.value is None, (
+        "the shared model cache must start empty so importing imgs cannot eagerly allocate ResNet"
     )
 
 
@@ -48,5 +64,6 @@ def test_all_model_publication_stays_inside_cache_miss_guard():
 
 
 if __name__ == "__main__":
+    test_model_cache_starts_empty_at_module_scope()
     test_all_model_publication_stays_inside_cache_miss_guard()
     print("model initialization guard tests passed")
