@@ -77,6 +77,47 @@ def test_failed_initialization_leaves_cache_empty_and_allows_retry():
     assert attempts == 2, "successful retry should restore the lock-free cached path"
 
 
+def test_failed_candidate_setup_is_not_published_and_retry_rebuilds_it():
+    lock = threading.Lock()
+    model = None
+    attempts = 0
+    candidates = []
+
+    class Candidate:
+        ready = False
+
+    def get_model():
+        nonlocal model, attempts
+        if model is None:
+            with lock:
+                if model is None:
+                    attempts += 1
+                    candidate = Candidate()
+                    candidates.append(candidate)
+                    if attempts == 1:
+                        raise RuntimeError("simulated device setup failure")
+                    candidate.ready = True
+                    model = candidate
+        return model
+
+    try:
+        get_model()
+    except RuntimeError as exc:
+        assert str(exc) == "simulated device setup failure"
+    else:
+        raise AssertionError("candidate setup should fail before publication")
+
+    assert model is None, "a candidate that fails setup must never enter the shared cache"
+    assert len(candidates) == 1 and not candidates[0].ready
+
+    recovered = get_model()
+    assert recovered is model
+    assert recovered.ready
+    assert attempts == 2
+    assert len(candidates) == 2
+    assert recovered is candidates[1], "retry must publish a freshly configured candidate"
+
+
 def test_concurrent_readers_never_observe_model_before_initialization_finishes():
     lock = threading.Lock()
     model = None
@@ -116,5 +157,6 @@ def test_concurrent_readers_never_observe_model_before_initialization_finishes()
 if __name__ == "__main__":
     test_double_checked_lock_serializes_lazy_initialization_and_keeps_hot_path_lock_free()
     test_failed_initialization_leaves_cache_empty_and_allows_retry()
+    test_failed_candidate_setup_is_not_published_and_retry_rebuilds_it()
     test_concurrent_readers_never_observe_model_before_initialization_finishes()
     print("model lock primitive tests passed")
