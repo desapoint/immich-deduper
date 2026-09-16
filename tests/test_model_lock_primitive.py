@@ -77,7 +77,44 @@ def test_failed_initialization_leaves_cache_empty_and_allows_retry():
     assert attempts == 2, "successful retry should restore the lock-free cached path"
 
 
+def test_concurrent_readers_never_observe_model_before_initialization_finishes():
+    lock = threading.Lock()
+    model = None
+    initialization_started = threading.Event()
+    allow_initialization_to_finish = threading.Event()
+
+    class Candidate:
+        ready = False
+
+    def get_model():
+        nonlocal model
+        if model is None:
+            with lock:
+                if model is None:
+                    candidate = Candidate()
+                    initialization_started.set()
+                    assert allow_initialization_to_finish.wait(timeout=1)
+                    candidate.ready = True
+                    model = candidate
+        return model
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        first = executor.submit(get_model)
+        assert initialization_started.wait(timeout=1)
+        readers = [executor.submit(get_model) for _ in range(7)]
+        time.sleep(0.01)
+        allow_initialization_to_finish.set()
+
+        models = [first.result(timeout=1)] + [future.result(timeout=1) for future in readers]
+
+    assert all(value.ready for value in models), (
+        "the shared cache must not expose a model until device/setup initialization is complete"
+    )
+    assert len({id(value) for value in models}) == 1
+
+
 if __name__ == "__main__":
     test_double_checked_lock_serializes_lazy_initialization_and_keeps_hot_path_lock_free()
     test_failed_initialization_leaves_cache_empty_and_allows_retry()
+    test_concurrent_readers_never_observe_model_before_initialization_finishes()
     print("model lock primitive tests passed")
