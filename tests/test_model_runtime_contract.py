@@ -63,8 +63,27 @@ def test_get_model_keeps_singleton_contract():
     ), "getModel must return the cached model"
 
 
+def test_resnet_construction_is_confined_to_model_cache():
+    tree = _tree()
+    construction_sites = []
+    for node in tree.body:
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if _calls(node, "resnet152"):
+            construction_sites.append(node.name)
+
+    assert construction_sites == ["getModel"], (
+        "ResNet construction must stay behind getModel so extraction paths cannot "
+        f"allocate independent model copies: found {construction_sites}"
+    )
+    assert len(_calls(_function("getModel"), "resnet152")) == 1, (
+        "getModel should have exactly one ResNet construction site"
+    )
+
+
 if __name__ == "__main__":
     test_model_is_created_lazily()
     test_feature_extraction_uses_shared_model_cache()
     test_get_model_keeps_singleton_contract()
+    test_resnet_construction_is_confined_to_model_cache()
     print("model runtime contract tests passed")
