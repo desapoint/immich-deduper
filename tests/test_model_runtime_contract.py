@@ -101,6 +101,28 @@ def test_get_model_keeps_singleton_contract():
     ), "getModel must return the cached model"
 
 
+def test_model_cache_directory_is_configured_before_weight_load():
+    get_model = _function("getModel")
+    calls = [node for node in ast.walk(get_model) if isinstance(node, ast.Call)]
+
+    set_dir_calls = [
+        node for node in calls
+        if isinstance(node.func, ast.Attribute)
+        and isinstance(node.func.value, ast.Attribute)
+        and isinstance(node.func.value.value, ast.Name)
+        and node.func.value.value.id == "torch"
+        and node.func.value.attr == "hub"
+        and node.func.attr == "set_dir"
+    ]
+    resnet_calls = _calls(get_model, "resnet152")
+    assert len(set_dir_calls) == 1, "getModel must configure the persistent torch model cache once"
+    assert len(resnet_calls) == 1, "getModel should have exactly one ResNet construction site"
+    assert set_dir_calls[0].lineno < resnet_calls[0].lineno, (
+        "torch.hub.set_dir must run before ResNet construction so weights continue using "
+        "the configured deduper data directory instead of a process-global default cache"
+    )
+
+
 def test_cached_model_is_device_ready_and_in_inference_mode():
     get_model = _function("getModel")
     calls = [node for node in ast.walk(get_model) if isinstance(node, ast.Call)]
@@ -153,6 +175,7 @@ if __name__ == "__main__":
     test_feature_extraction_acquires_model_once_per_inference()
     test_feature_extraction_disables_autograd()
     test_get_model_keeps_singleton_contract()
+    test_model_cache_directory_is_configured_before_weight_load()
     test_cached_model_is_device_ready_and_in_inference_mode()
     test_resnet_construction_is_confined_to_model_cache()
     print("model runtime contract tests passed")
