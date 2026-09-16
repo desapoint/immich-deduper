@@ -154,9 +154,53 @@ def test_concurrent_readers_never_observe_model_before_initialization_finishes()
     assert len({id(value) for value in models}) == 1
 
 
+def test_concurrent_waiters_recover_after_first_initializer_fails():
+    lock = threading.Lock()
+    model = None
+    attempts = 0
+    first_attempt_started = threading.Event()
+    allow_first_attempt_to_fail = threading.Event()
+
+    def get_model():
+        nonlocal model, attempts
+        if model is None:
+            with lock:
+                if model is None:
+                    attempts += 1
+                    if attempts == 1:
+                        first_attempt_started.set()
+                        assert allow_first_attempt_to_fail.wait(timeout=1)
+                        raise RuntimeError("simulated first initializer failure")
+                    model = object()
+        return model
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        first = executor.submit(get_model)
+        assert first_attempt_started.wait(timeout=1)
+        waiters = [executor.submit(get_model) for _ in range(7)]
+        time.sleep(0.01)
+        allow_first_attempt_to_fail.set()
+
+        try:
+            first.result(timeout=1)
+        except RuntimeError as exc:
+            assert str(exc) == "simulated first initializer failure"
+        else:
+            raise AssertionError("the first initializer should fail")
+
+        recovered = [future.result(timeout=1) for future in waiters]
+
+    assert attempts == 2, "only one waiter should retry initialization after the failure"
+    assert model is not None
+    assert all(value is model for value in recovered), (
+        "all waiters must converge on the one model published by the successful retry"
+    )
+
+
 if __name__ == "__main__":
     test_double_checked_lock_serializes_lazy_initialization_and_keeps_hot_path_lock_free()
     test_failed_initialization_leaves_cache_empty_and_allows_retry()
     test_failed_candidate_setup_is_not_published_and_retry_rebuilds_it()
     test_concurrent_readers_never_observe_model_before_initialization_finishes()
+    test_concurrent_waiters_recover_after_first_initializer_fails()
     print("model lock primitive tests passed")
