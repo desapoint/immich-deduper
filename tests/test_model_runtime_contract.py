@@ -33,6 +33,24 @@ def _calls(function, name):
     ]
 
 
+def _torch_no_grad_blocks(function):
+    blocks = []
+    for node in ast.walk(function):
+        if not isinstance(node, ast.With):
+            continue
+        for item in node.items:
+            call = item.context_expr
+            if not isinstance(call, ast.Call) or not isinstance(call.func, ast.Attribute):
+                continue
+            if (
+                isinstance(call.func.value, ast.Name)
+                and call.func.value.id == "torch"
+                and call.func.attr == "no_grad"
+            ):
+                blocks.append(node)
+    return blocks
+
+
 def test_model_is_created_lazily():
     tree = _tree()
     assignments = [
@@ -51,6 +69,17 @@ def test_feature_extraction_uses_shared_model_cache():
     batch = _function("extractFeaturesBatch")
     assert _calls(single, "getModel"), "single-image extraction bypasses the shared model cache"
     assert _calls(batch, "getModel"), "batch extraction bypasses the shared model cache"
+
+
+def test_feature_extraction_disables_autograd():
+    for name in ("extractFeatures", "extractFeaturesBatch"):
+        function = _function(name)
+        no_grad_blocks = _torch_no_grad_blocks(function)
+        assert no_grad_blocks, f"{name} must disable autograd during model inference"
+        assert any(_calls(block, "getModel") for block in no_grad_blocks), (
+            f"{name} calls the shared model outside torch.no_grad(), which can retain "
+            "autograd graphs and increase memory usage during vector generation"
+        )
 
 
 def test_get_model_keeps_singleton_contract():
@@ -84,6 +113,7 @@ def test_resnet_construction_is_confined_to_model_cache():
 if __name__ == "__main__":
     test_model_is_created_lazily()
     test_feature_extraction_uses_shared_model_cache()
+    test_feature_extraction_disables_autograd()
     test_get_model_keeps_singleton_contract()
     test_resnet_construction_is_confined_to_model_cache()
     print("model runtime contract tests passed")
