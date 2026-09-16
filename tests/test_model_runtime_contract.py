@@ -101,6 +101,34 @@ def test_get_model_keeps_singleton_contract():
     ), "getModel must return the cached model"
 
 
+def test_cached_model_is_device_ready_and_in_inference_mode():
+    get_model = _function("getModel")
+    calls = [node for node in ast.walk(get_model) if isinstance(node, ast.Call)]
+
+    to_calls = [
+        node for node in calls
+        if isinstance(node.func, ast.Attribute) and node.func.attr == "to"
+    ]
+    assert len(to_calls) == 1, "getModel should move the shared model to its device exactly once"
+    assert len(to_calls[0].args) == 1, "model device transfer should use one explicit target"
+    target = to_calls[0].args[0]
+    assert (
+        isinstance(target, ast.Attribute)
+        and isinstance(target.value, ast.Name)
+        and target.value.id == "conf"
+        and target.attr == "device"
+    ), "getModel must keep the shared model on conf.device"
+
+    eval_calls = [
+        node for node in calls
+        if isinstance(node.func, ast.Attribute) and node.func.attr == "eval"
+    ]
+    assert len(eval_calls) == 1, (
+        "getModel must put the cached model in eval mode exactly once so inference does not "
+        "silently retain training-only behavior"
+    )
+
+
 def test_resnet_construction_is_confined_to_model_cache():
     tree = _tree()
     construction_sites = []
@@ -125,5 +153,6 @@ if __name__ == "__main__":
     test_feature_extraction_acquires_model_once_per_inference()
     test_feature_extraction_disables_autograd()
     test_get_model_keeps_singleton_contract()
+    test_cached_model_is_device_ready_and_in_inference_mode()
     test_resnet_construction_is_confined_to_model_cache()
     print("model runtime contract tests passed")
