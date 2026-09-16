@@ -71,6 +71,15 @@ def test_feature_extraction_uses_shared_model_cache():
     assert _calls(batch, "getModel"), "batch extraction bypasses the shared model cache"
 
 
+def test_feature_extraction_acquires_model_once_per_inference():
+    for name in ("extractFeatures", "extractFeaturesBatch"):
+        calls = _calls(_function(name), "getModel")
+        assert len(calls) == 1, (
+            f"{name} should acquire the shared model exactly once per inference; "
+            f"found {len(calls)} getModel() calls"
+        )
+
+
 def test_feature_extraction_disables_autograd():
     for name in ("extractFeatures", "extractFeaturesBatch"):
         function = _function(name)
@@ -113,6 +122,7 @@ def test_resnet_construction_is_confined_to_model_cache():
 if __name__ == "__main__":
     test_model_is_created_lazily()
     test_feature_extraction_uses_shared_model_cache()
+    test_feature_extraction_acquires_model_once_per_inference()
     test_feature_extraction_disables_autograd()
     test_get_model_keeps_singleton_contract()
     test_resnet_construction_is_confined_to_model_cache()
