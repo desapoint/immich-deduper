@@ -101,6 +101,38 @@ def test_get_model_keeps_singleton_contract():
     ), "getModel must return the cached model"
 
 
+def test_model_initialization_stays_in_one_cache_guard():
+    get_model = _function("getModel")
+    guards = []
+    for node in ast.walk(get_model):
+        if not isinstance(node, ast.If):
+            continue
+        test = node.test
+        if (
+            isinstance(test, ast.Compare)
+            and isinstance(test.left, ast.Name)
+            and test.left.id == "_model"
+            and len(test.ops) == 1
+            and isinstance(test.ops[0], ast.Is)
+            and len(test.comparators) == 1
+            and isinstance(test.comparators[0], ast.Constant)
+            and test.comparators[0].value is None
+        ):
+            guards.append(node)
+
+    assert len(guards) == 1, "getModel should have one cache-miss initialization guard"
+    guard = guards[0]
+    assert len(_calls(guard, "resnet152")) == 1, (
+        "ResNet construction must remain inside the cache-miss guard so the whole "
+        "initialization path can be protected by one synchronization boundary"
+    )
+    guarded_calls = [node for node in ast.walk(guard) if isinstance(node, ast.Call)]
+    assert any(
+        isinstance(node.func, ast.Attribute) and node.func.attr == "eval"
+        for node in guarded_calls
+    ), "model eval setup must remain in the guarded initialization path"
+
+
 def test_model_runtime_keeps_threading_available_for_synchronization():
     imports = [
         node for node in _tree().body
@@ -187,6 +219,7 @@ if __name__ == "__main__":
     test_feature_extraction_acquires_model_once_per_inference()
     test_feature_extraction_disables_autograd()
     test_get_model_keeps_singleton_contract()
+    test_model_initialization_stays_in_one_cache_guard()
     test_model_runtime_keeps_threading_available_for_synchronization()
     test_model_cache_directory_is_configured_before_weight_load()
     test_cached_model_is_device_ready_and_in_inference_mode()
