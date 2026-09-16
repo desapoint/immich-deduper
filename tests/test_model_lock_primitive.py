@@ -45,6 +45,39 @@ def test_double_checked_lock_serializes_lazy_initialization_and_keeps_hot_path_l
     )
 
 
+def test_failed_initialization_leaves_cache_empty_and_allows_retry():
+    lock = threading.Lock()
+    model = None
+    attempts = 0
+
+    def get_model():
+        nonlocal model, attempts
+        if model is None:
+            with lock:
+                if model is None:
+                    attempts += 1
+                    if attempts == 1:
+                        raise RuntimeError("simulated model load failure")
+                    model = object()
+        return model
+
+    try:
+        get_model()
+    except RuntimeError as exc:
+        assert str(exc) == "simulated model load failure"
+    else:
+        raise AssertionError("the first model load should fail")
+
+    assert model is None, "failed initialization must not publish a partial cached model"
+
+    recovered = get_model()
+    assert recovered is model
+    assert attempts == 2
+    assert get_model() is recovered
+    assert attempts == 2, "successful retry should restore the lock-free cached path"
+
+
 if __name__ == "__main__":
     test_double_checked_lock_serializes_lazy_initialization_and_keeps_hot_path_lock_free()
-    print("model lock primitive test passed")
+    test_failed_initialization_leaves_cache_empty_and_allows_retry()
+    print("model lock primitive tests passed")
