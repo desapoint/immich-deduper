@@ -101,6 +101,18 @@ def test_get_model_keeps_singleton_contract():
     ), "getModel must return the cached model"
 
 
+def test_model_runtime_keeps_threading_available_for_synchronization():
+    imports = [
+        node for node in _tree().body
+        if isinstance(node, ast.Import)
+        and any(alias.name == "threading" for alias in node.names)
+    ]
+    assert imports, (
+        "imgs must keep threading available so shared model initialization can be synchronized "
+        "without adding another runtime dependency"
+    )
+
+
 def test_model_cache_directory_is_configured_before_weight_load():
     get_model = _function("getModel")
     calls = [node for node in ast.walk(get_model) if isinstance(node, ast.Call)]
@@ -175,6 +187,7 @@ if __name__ == "__main__":
     test_feature_extraction_acquires_model_once_per_inference()
     test_feature_extraction_disables_autograd()
     test_get_model_keeps_singleton_contract()
+    test_model_runtime_keeps_threading_available_for_synchronization()
     test_model_cache_directory_is_configured_before_weight_load()
     test_cached_model_is_device_ready_and_in_inference_mode()
     test_resnet_construction_is_confined_to_model_cache()
