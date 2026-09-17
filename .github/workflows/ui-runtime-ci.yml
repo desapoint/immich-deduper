@@ -57,6 +57,10 @@ jobs:
           for test in \
             test_face_schema_compat.py \
             test_mdl_img_layout.py \
+            test_model_cache_declaration.py \
+            test_model_cache_setup_order.py \
+            test_model_initialization_guard.py \
+            test_model_lock_primitive.py \
             test_model_runtime_contract.py \
             test_sim_group_action_stack.py \
             test_sim_render_keys.py \
