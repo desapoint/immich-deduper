@@ -45,6 +45,30 @@ def test_double_checked_lock_serializes_lazy_initialization_and_keeps_hot_path_l
     )
 
 
+def test_cached_model_hot_path_stays_lock_free_under_concurrent_load():
+    lock = threading.Lock()
+    model = object()
+    lock_acquisitions = 0
+
+    def get_model():
+        nonlocal model, lock_acquisitions
+        if model is None:
+            with lock:
+                lock_acquisitions += 1
+                if model is None:
+                    model = object()
+        return model
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        models = list(executor.map(lambda _: get_model(), range(512)))
+
+    assert all(value is model for value in models)
+    assert lock_acquisitions == 0, (
+        "concurrent cached-model reads must bypass the initialization lock so inference "
+        "workers do not serialize after startup"
+    )
+
+
 def test_failed_initialization_leaves_cache_empty_and_allows_retry():
     lock = threading.Lock()
     model = None
@@ -199,6 +223,7 @@ def test_concurrent_waiters_recover_after_first_initializer_fails():
 
 if __name__ == "__main__":
     test_double_checked_lock_serializes_lazy_initialization_and_keeps_hot_path_lock_free()
+    test_cached_model_hot_path_stays_lock_free_under_concurrent_load()
     test_failed_initialization_leaves_cache_empty_and_allows_retry()
     test_failed_candidate_setup_is_not_published_and_retry_rebuilds_it()
     test_concurrent_readers_never_observe_model_before_initialization_finishes()
