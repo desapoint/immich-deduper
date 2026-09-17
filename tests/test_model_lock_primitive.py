@@ -8,8 +8,10 @@ double-checked locking pattern while the existing source-contract tests protect
 publication, device placement, eval mode, and lazy loading.
 """
 
+import gc
 import threading
 import time
+import weakref
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -25,7 +27,6 @@ def test_double_checked_lock_serializes_lazy_initialization_and_keeps_hot_path_l
             with lock:
                 lock_acquisitions += 1
                 if model is None:
-                    # Release the GIL long enough for competing workers to reach the lock.
                     time.sleep(0.01)
                     initializations += 1
                     model = object()
@@ -142,6 +143,38 @@ def test_failed_candidate_setup_is_not_published_and_retry_rebuilds_it():
     assert recovered is candidates[1], "retry must publish a freshly configured candidate"
 
 
+def test_failed_candidate_is_collectible_after_initialization_error():
+    lock = threading.Lock()
+    model = None
+    failed_candidate = None
+
+    class Candidate:
+        pass
+
+    def get_model():
+        nonlocal model, failed_candidate
+        if model is None:
+            with lock:
+                if model is None:
+                    candidate = Candidate()
+                    failed_candidate = weakref.ref(candidate)
+                    raise RuntimeError("simulated setup failure")
+        return model
+
+    try:
+        get_model()
+    except RuntimeError as exc:
+        assert str(exc) == "simulated setup failure"
+    else:
+        raise AssertionError("candidate setup should fail")
+
+    gc.collect()
+    assert model is None
+    assert failed_candidate() is None, (
+        "a failed local candidate must not remain retained after initialization unwinds"
+    )
+
+
 def test_concurrent_readers_never_observe_model_before_initialization_finishes():
     lock = threading.Lock()
     model = None
@@ -226,6 +259,7 @@ if __name__ == "__main__":
     test_cached_model_hot_path_stays_lock_free_under_concurrent_load()
     test_failed_initialization_leaves_cache_empty_and_allows_retry()
     test_failed_candidate_setup_is_not_published_and_retry_rebuilds_it()
+    test_failed_candidate_is_collectible_after_initialization_error()
     test_concurrent_readers_never_observe_model_before_initialization_finishes()
     test_concurrent_waiters_recover_after_first_initializer_fails()
     print("model lock primitive tests passed")
